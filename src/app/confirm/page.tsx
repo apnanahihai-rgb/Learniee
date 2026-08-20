@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CognitoUser } from "amazon-cognito-identity-js";
 import { userPool } from "@/lib/cognito";
 
-export default function ConfirmPage() {
+function ConfirmForm() {
   const email = useSearchParams().get("email") ?? "";
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -40,5 +40,13 @@ export default function ConfirmPage() {
         Confirm
       </button>
     </form>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+      <ConfirmForm />
+    </Suspense>
   );
 }
