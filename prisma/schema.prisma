@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model ParentProfile {
+  id                   String   @id @default(uuid())
+  cognitoSub           String   @unique
+  firstName            String
+  lastName             String
+  visibleName          String?
+  tuitionType          String?
+  nationality          String?
+  nriOrIndian          String?
+  address              String?
+  city                 String?
+  country              String?
+  pincode              String?
+  currency             String?
+  timezone             String?
+  phone                String
+  whatsappNumber       String?
+  email                String   @unique
+  relationToStudent    String?
+  childStatus          String?
+  onlineTuition        String?
+  modeOfCommunication  String?
+  childInterest        String?
+  favoriteSubject      String?
+  weakSubject          String?
+  preferredLanguage    String?
+  howDidYouHear        String?
+  suggestions          String?
+  onboardingComplete   Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  students             Student[]
+}
+
+model Student {
+  id                   String   @id @default(uuid())
+  parentId             String
+  parent               ParentProfile @relation(fields: [parentId], references: [id])
+  firstName            String
+  lastName             String
+  visibleName          String?
+  gender               String?
+  age                  Int?
+  dateOfBirth          DateTime?
+  standard             String?
+  board                String?
+  currentSchoolName    String?
+  learningDifficulties String?
+  photoUrl             String?
+  createdAt            DateTime @default(now())
+}

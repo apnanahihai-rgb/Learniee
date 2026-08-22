@@ -19,11 +19,21 @@ export default function LoginPage() {
     const authDetails = new AuthenticationDetails({ Username: email, Password: password });
 
     user.authenticateUser(authDetails, {
-      onSuccess: (session) => {
+      onSuccess: async (session) => {
         const idToken = session.getIdToken().getJwtToken();
         Cookies.set("idToken", idToken, { expires: 1 });
 
         const role = session.getIdToken().payload["custom:role"];
+        console.log("ROLE FROM TOKEN:", role); 
+
+        if (role === "parent") {
+          const res = await fetch("/api/onboarding/status");
+          const data = await res.json();
+          if (!data.onboardingComplete) {
+            router.push("/parent/onboarding/step1");
+            return;
+          }
+        }
         router.push(`/${role}`);
       },
       onFailure: (err) => {
