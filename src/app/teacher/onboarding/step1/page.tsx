@@ -1,95 +1,243 @@
 "use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+import CountrySelect from "@/components/common/CountrySelect";
+
+import DateOfBirthSelect from "@/components/teacher/onboarding/step1/DateOfBirthSelect";
+import GenderSelect from "@/components/teacher/onboarding/step1/GenderSelect";
+import CriminalCaseSelect from "@/components/teacher/onboarding/step1/CriminalCaseSelect";
+import TeacherMediaPlaceholder from "@/components/teacher/onboarding/step1/TeacherMediaPlaceholder";
 
 export default function TeacherStep1() {
   const router = useRouter();
+
   const [formData, setFormData] = useState({
-    firstName: '', lastName: '', email: '', password: '',
-    visibleName: '', dobDay: '', dobMonth: '', dobYear: '',
-    gender: '', nationality: '', address: '', city: '',
-    country: '', pincode: '', phone: '', whatsapp: '',
-    aboutMe: '', criminalCase: ''
+    firstName: "",
+    lastName: "",
+    email: "",
+
+    visibleName: "",
+
+    dobDay: "",
+    dobMonth: "",
+    dobYear: "",
+
+    gender: "",
+    nationality: "",
+
+    address: "",
+    city: "",
+    country: "",
+    pincode: "",
+
+    phone: "",
+    whatsapp: "",
+
+    aboutMe: "",
+    criminalCase: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  function handleChange(
+    e: React.ChangeEvent<
+      HTMLInputElement |
+      HTMLSelectElement |
+      HTMLTextAreaElement
+    >
+  ) {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(
+    e: React.FormEvent
+  ) {
     e.preventDefault();
-    const res = await fetch('/api/teacher/onboarding/step1', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    
-    if (res.ok) {
-      const data = await res.json();
-      localStorage.setItem('teacherId', data.teacherId);
-      router.push('/teacher/onboarding/step2');
+
+    const res = await fetch(
+      "/api/teacher/onboarding/step1",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      }
+    );
+
+    if (!res.ok) {
+      console.error("Failed to save Step 1");
+      return;
     }
-  };
+
+    const data = await res.json();
+
+    localStorage.setItem(
+      "teacherId",
+      data.teacherId
+    );
+
+    router.push(
+      "/teacher/onboarding/step2"
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-white rounded-xl shadow-sm border mt-10">
-      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">Registration</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
+
+      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">
+        Registration
+      </h2>
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6"
+      >
+
+        {/* Basic Information */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input name="firstName" placeholder="First Name" onChange={handleChange} required />
-          <Input name="lastName" placeholder="Last Name" onChange={handleChange} required />
-          <Input name="email" type="email" placeholder="Email" onChange={handleChange} required />
-          <Input name="password" type="password" placeholder="Password" onChange={handleChange} required />
-          
-          <Input name="visibleName" placeholder="Visible Name" onChange={handleChange} />
-          <div className="flex gap-2">
-            <select name="dobDay" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">Date</option></select>
-            <select name="dobMonth" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">Month</option></select>
-            <select name="dobYear" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">Year</option></select>
-          </div>
-          
-          <select name="gender" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">Gender</option></select>
-          <select name="nationality" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">Nationality</option></select>
-          
-          <Input name="address" placeholder="Address" onChange={handleChange} />
-          <select name="city" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">City</option></select>
-          
-          <select name="country" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}><option value="">Country</option></select>
-          <Input name="pincode" placeholder="Pincode" onChange={handleChange} />
-          
-          <Input name="phone" placeholder="Phone" onChange={handleChange} />
-          <Input name="whatsapp" placeholder="WhatsApp Number" onChange={handleChange} />
+
+          <Input
+            name="firstName"
+            placeholder="First Name"
+            value={formData.firstName}
+            onChange={handleChange}
+            required
+          />
+
+          <Input
+            name="lastName"
+            placeholder="Last Name"
+            value={formData.lastName}
+            onChange={handleChange}
+            required
+          />
+
+          <Input
+            name="email"
+            type="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+
+          <Input
+            name="visibleName"
+            placeholder="Visible Name"
+            value={formData.visibleName}
+            onChange={handleChange}
+          />
+
+          {/* DOB */}
+          <DateOfBirthSelect
+            day={formData.dobDay}
+            month={formData.dobMonth}
+            year={formData.dobYear}
+            onChange={handleChange}
+          />
+
+          {/* Gender */}
+          <GenderSelect
+            value={formData.gender}
+            onChange={handleChange}
+          />
+
+          {/* Nationality */}
+          <CountrySelect
+            name="nationality"
+            value={formData.nationality}
+            onChange={handleChange}
+            placeholder="Nationality"
+          />
+
+          <Input
+            name="address"
+            placeholder="Address"
+            value={formData.address}
+            onChange={handleChange}
+          />
+
+          <Input
+            name="city"
+            placeholder="City"
+            value={formData.city}
+            onChange={handleChange}
+          />
+
+          {/* Country */}
+          <CountrySelect
+            name="country"
+            value={formData.country}
+            onChange={handleChange}
+            placeholder="Country"
+          />
+
+          <Input
+            name="pincode"
+            placeholder="Pincode"
+            value={formData.pincode}
+            onChange={handleChange}
+          />
+
+          <Input
+            name="phone"
+            placeholder="Phone"
+            value={formData.phone}
+            onChange={handleChange}
+          />
+
+          <Input
+            name="whatsapp"
+            placeholder="WhatsApp Number"
+            value={formData.whatsapp}
+            onChange={handleChange}
+          />
+
         </div>
-        
-        <textarea 
-          name="aboutMe" 
-          placeholder="About me" 
-          className="w-full border rounded-md p-3 text-sm text-gray-600" 
-          rows={4} 
-          onChange={handleChange} 
+
+        {/* About */}
+
+        <textarea
+          name="aboutMe"
+          placeholder="About me"
+          value={formData.aboutMe}
+          onChange={handleChange}
+          className="w-full border rounded-md p-3 text-sm text-gray-600"
+          rows={4}
         />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border rounded-md p-3 flex justify-between items-center text-sm text-gray-500 cursor-not-allowed bg-gray-50">
-            <span>Video Introduction (S3 logic later)</span>
-          </div>
-          <div className="border rounded-md p-3 flex justify-between items-center text-sm text-gray-500 cursor-not-allowed bg-gray-50">
-            <span>Upload Photo (S3 logic later)</span>
-          </div>
+
+        {/* Media */}
+
+        <TeacherMediaPlaceholder />
+
+        {/* Criminal Case */}
+
+        <div className="w-full md:w-1/2">
+          <CriminalCaseSelect
+            value={formData.criminalCase}
+            onChange={handleChange}
+          />
         </div>
-        
-        <div className="w-1/2 pr-2">
-           <select name="criminalCase" className="w-full border rounded-md px-3 py-2 text-sm text-gray-600" onChange={handleChange}>
-             <option value="">Criminal Court Case (Optional)</option>
-           </select>
-        </div>
-        
+
+        {/* Submit */}
+
         <div className="flex justify-end pt-4">
-          <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full">Next</Button>
+          <Button
+            type="submit"
+            className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full"
+          >
+            Next
+          </Button>
         </div>
+
       </form>
     </div>
   );

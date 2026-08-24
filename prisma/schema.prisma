@@ -7,42 +7,41 @@ datasource db {
 }
 
 model ParentProfile {
-  id                   String   @id @default(uuid())
-  cognitoSub           String   @unique
-  firstName            String
-  lastName             String
-  visibleName          String?
-  tuitionType          String?
-  nationality          String?
-  nriOrIndian          String?
-  address              String?
-  city                 String?
-  country              String?
-  pincode              String?
-  currency             String?
-  timezone             String?
-  phone                String
-  whatsappNumber       String?
-  email                String   @unique
-  relationToStudent    String?
-  childStatus          String?
-  onlineTuition        String?
-  modeOfCommunication  String?
-  childInterest        String?
-  favoriteSubject      String?
-  weakSubject          String?
-  preferredLanguage    String?
-  howDidYouHear        String?
-  suggestions          String?
-  onboardingComplete   Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  students             Student[]
+  id                  String    @id @default(uuid())
+  cognitoSub          String    @unique
+  firstName           String
+  lastName            String
+  visibleName         String?
+  tuitionType         String?
+  nationality         String?
+  nriOrIndian         String?
+  address             String?
+  city                String?
+  country             String?
+  pincode             String?
+  currency            String?
+  timezone            String?
+  phone               String
+  whatsappNumber      String?
+  email               String    @unique
+  relationToStudent   String?
+  childStatus         String?
+  onlineTuition       String?
+  modeOfCommunication String?
+  childInterest       String?
+  favoriteSubject     String?
+  weakSubject         String?
+  preferredLanguage   String?
+  howDidYouHear       String?
+  suggestions         String?
+  onboardingComplete  Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  students            Student[]
 }
 
 model Student {
-  id                   String   @id @default(uuid())
+  id                   String        @id @default(uuid())
   parentId             String
-  parent               ParentProfile @relation(fields: [parentId], references: [id])
   firstName            String
   lastName             String
   visibleName          String?
@@ -54,95 +53,93 @@ model Student {
   currentSchoolName    String?
   learningDifficulties String?
   photoUrl             String?
-  createdAt            DateTime @default(now())
+  createdAt            DateTime      @default(now())
+  parent               ParentProfile @relation(fields: [parentId], references: [id])
 }
-
-// prisma/schema.prisma
-
+enum TeacherApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
 model Teacher {
-  id                  String   @id @default(uuid())
-  cognitoId           String   @unique // Links to AWS Cognito
-  email               String   @unique
-  firstName           String
-  lastName            String
-  visibleName         String?
-  dobDay              Int?
-  dobMonth            String?
-  dobYear             Int?
-  gender              String?
-  nationality         String?
-  address             String?
-  city                String?
-  country             String?
-  pincode             String?
-  phone               String?
-  whatsapp            String?
-  aboutMe             String?
-  criminalCase        String?  // Optional field from UI
-  
-  // Relations
-  professionalInfo    TeacherProfessional?
-  documents           TeacherDocuments?
-  
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id               String               @id @default(uuid())
+  cognitoId        String               @unique
+  email            String               @unique
+  firstName        String
+  lastName         String
+  onboardingComplete Boolean              @default(false)
+  approvalStatus     TeacherApprovalStatus @default(PENDING)
+  visibleName      String?
+  dobDay           Int?
+  dobMonth         String?
+  dobYear          Int?
+  gender           String?
+  nationality      String?
+  address          String?
+  city             String?
+  country          String?
+  pincode          String?
+  phone            String?
+  whatsapp         String?
+  aboutMe          String?
+  criminalCase     String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  documents        TeacherDocuments?
+  professionalInfo TeacherProfessional?
 }
 
 model TeacherProfessional {
-  id                      String  @id @default(uuid())
-  teacherId               String  @unique
-  teacher                 Teacher @relation(fields: [teacherId], references: [id])
-  
-  referredBy              String?
-  qualifications          String?
-  overallExperience       String?
-  comfortableLanguage     String?
-  schoolsTaught           String?
-  
-  // Checkboxes & Inputs
-  workingInSchool         Boolean @default(false)
-  schoolName              String?
-  workingInAcademy        Boolean @default(false)
-  academyName             String?
-  
-  // Preferences
-  homeTuitionArea         String?
-  studentsTaught          String?
-  canTakeHomeTuition      String?
-  hoursPerDay             String?
-  haveOwnNotes            String?
-  canMakePresentations    String?
-  provideHomework         String?
-  conductPTM              String?
-  
-  // Equipment/Skills
-  hasLaptop               Boolean @default(false)
-  hasPenTab               Boolean @default(false)
-  proficientInEnglish     Boolean @default(false)
-  notWithOtherAcademy     Boolean @default(false)
-  
-  additionalInfo          String?
-  
-  // Social Media
-  facebook                String?
-  linkedin                String?
-  instagram               String?
-  youtube                 String?
+  id                   String  @id @default(uuid())
+  teacherId            String  @unique
+  referredBy           String?
+  qualifications       String?
+  overallExperience    String?
+  comfortableLanguage  String?
+  schoolsTaught        String?
+  workingInSchool      Boolean @default(false)
+  schoolName           String?
+  workingInAcademy     Boolean @default(false)
+  academyName          String?
+  homeTuitionArea      String?
+  studentsTaught       String?
+  canTakeHomeTuition   String?
+  hoursPerDay          String?
+  haveOwnNotes         String?
+  canMakePresentations String?
+  provideHomework      String?
+  conductPTM           String?
+  hasLaptop            Boolean @default(false)
+  hasPenTab            Boolean @default(false)
+  proficientInEnglish  Boolean @default(false)
+  notWithOtherAcademy  Boolean @default(false)
+  additionalInfo       String?
+  facebook             String?
+  linkedin             String?
+  instagram            String?
+  youtube              String?
+  teacher              Teacher @relation(fields: [teacherId], references: [id])
 }
 
 model TeacherDocuments {
-  id                      String  @id @default(uuid())
-  teacherId               String  @unique
-  teacher                 Teacher @relation(fields: [teacherId], references: [id])
-  
-  // File placeholders (Will store file URLs/Keys later)
-  videoIntroKey           String?
-  photoKey                String?
-  certificationKey        String?
-  awardsKey               String?
-  dobProofKey             String?
-  addressProofKey         String?
-  qualificationProofKey   String?
-  
-  panCardNumber           String?
+  id                    String  @id @default(uuid())
+  teacherId             String  @unique
+  videoIntroKey         String?
+  photoKey              String?
+  certificationKey      String?
+  awardsKey             String?
+  dobProofKey           String?
+  addressProofKey       String?
+  qualificationProofKey String?
+  panCardNumber         String?
+  teacher               Teacher @relation(fields: [teacherId], references: [id])
+}
+
+model Admin {
+  id         String   @id @default(uuid())
+  cognitoId  String   @unique
+  email      String   @unique
+  firstName  String
+  lastName   String
+  createdAt  DateTime @default(now())
 }
