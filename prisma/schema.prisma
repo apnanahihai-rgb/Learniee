@@ -56,3 +56,93 @@ model Student {
   photoUrl             String?
   createdAt            DateTime @default(now())
 }
+
+// prisma/schema.prisma
+
+model Teacher {
+  id                  String   @id @default(uuid())
+  cognitoId           String   @unique // Links to AWS Cognito
+  email               String   @unique
+  firstName           String
+  lastName            String
+  visibleName         String?
+  dobDay              Int?
+  dobMonth            String?
+  dobYear             Int?
+  gender              String?
+  nationality         String?
+  address             String?
+  city                String?
+  country             String?
+  pincode             String?
+  phone               String?
+  whatsapp            String?
+  aboutMe             String?
+  criminalCase        String?  // Optional field from UI
+  
+  // Relations
+  professionalInfo    TeacherProfessional?
+  documents           TeacherDocuments?
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model TeacherProfessional {
+  id                      String  @id @default(uuid())
+  teacherId               String  @unique
+  teacher                 Teacher @relation(fields: [teacherId], references: [id])
+  
+  referredBy              String?
+  qualifications          String?
+  overallExperience       String?
+  comfortableLanguage     String?
+  schoolsTaught           String?
+  
+  // Checkboxes & Inputs
+  workingInSchool         Boolean @default(false)
+  schoolName              String?
+  workingInAcademy        Boolean @default(false)
+  academyName             String?
+  
+  // Preferences
+  homeTuitionArea         String?
+  studentsTaught          String?
+  canTakeHomeTuition      String?
+  hoursPerDay             String?
+  haveOwnNotes            String?
+  canMakePresentations    String?
+  provideHomework         String?
+  conductPTM              String?
+  
+  // Equipment/Skills
+  hasLaptop               Boolean @default(false)
+  hasPenTab               Boolean @default(false)
+  proficientInEnglish     Boolean @default(false)
+  notWithOtherAcademy     Boolean @default(false)
+  
+  additionalInfo          String?
+  
+  // Social Media
+  facebook                String?
+  linkedin                String?
+  instagram               String?
+  youtube                 String?
+}
+
+model TeacherDocuments {
+  id                      String  @id @default(uuid())
+  teacherId               String  @unique
+  teacher                 Teacher @relation(fields: [teacherId], references: [id])
+  
+  // File placeholders (Will store file URLs/Keys later)
+  videoIntroKey           String?
+  photoKey                String?
+  certificationKey        String?
+  awardsKey               String?
+  dobProofKey             String?
+  addressProofKey         String?
+  qualificationProofKey   String?
+  
+  panCardNumber           String?
+}
