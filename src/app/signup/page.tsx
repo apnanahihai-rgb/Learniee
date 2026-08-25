@@ -1,5 +1,5 @@
-import SignupForm from "@/components/signup/SignupForm";
-import SignupSidePanel from "@/components/signup/SignupSidePanel";
+import SignupForm from "@/features/auth/components/signup/SignupForm";
+import SignupSidePanel from "@/features/auth/components/signup/SignupSidePanel";
 
 export default function SignupPage() {
   return (

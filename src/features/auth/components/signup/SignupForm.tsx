@@ -5,8 +5,8 @@ import PasswordInput from "./PasswordInput";
 import TermsCheckbox from "./TermsCheckbox";
 import OtpVerification from "./OtpVerification";
 import RoleSelector from "./RoleSelector";
-import { useSignup } from "@/hooks/useSignup";
-import PhoneInput from "@/components/signup/PhoneInput";
+import { useSignup } from "@/features/auth/hooks/useSignup";
+import PhoneInput from "@/features/auth/components/signup/PhoneInput";
 const PRIMARY = "#7E2BF1";
 
 export default function SignupForm() {

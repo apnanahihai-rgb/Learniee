@@ -1,4 +1,4 @@
-import { SignupRole } from "@/types/signup";
+import { SignupRole } from "@/features/auth/types/signup";
 
 interface RoleSelectorProps {
   role: SignupRole;

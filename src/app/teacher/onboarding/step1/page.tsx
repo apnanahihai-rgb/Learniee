@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import CountrySelect from "@/components/common/CountrySelect";
+import CountrySelect from "@/features/shared/components/CountrySelect";
 
-import DateOfBirthSelect from "@/components/teacher/onboarding/step1/DateOfBirthSelect";
-import GenderSelect from "@/components/teacher/onboarding/step1/GenderSelect";
-import CriminalCaseSelect from "@/components/teacher/onboarding/step1/CriminalCaseSelect";
-import TeacherMediaPlaceholder from "@/components/teacher/onboarding/step1/TeacherMediaPlaceholder";
+import DateOfBirthSelect from "@/features/teacher/components/onboarding/step1/DateOfBirthSelect";
+import GenderSelect from "@/features/teacher/components/onboarding/step1/GenderSelect";
+import CriminalCaseSelect from "@/features/teacher/components/onboarding/step1/CriminalCaseSelect";
+import TeacherMediaPlaceholder from "@/features/teacher/components/onboarding/step1/TeacherMediaPlaceholder";
 
 interface FormData {
   firstName: string;

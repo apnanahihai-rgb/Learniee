@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-import TeacherNavbar from "@/components/teacher/TeacherNavbar";
-import TeacherSidebar from "@/components/teacher/TeacherSidebar";
+import TeacherNavbar from "@/features/teacher/components/layout/TeacherNavbar";
+import TeacherSidebar from "@/features/teacher/components/layout/TeacherSidebar";
 
 export default function TeacherDashboard() {
   const [sidebarOpen, setSidebarOpen] =

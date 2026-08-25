@@ -1,6 +1,6 @@
 "use client";
 
-import { useForgotPassword } from "@/hooks/useForgotPassword";
+import { useForgotPassword } from "@/features/auth/hooks/useForgotPassword";
 
 import OtpVerification from "./OtpVerification";
 import NewPasswordForm from "./NewPasswordForm";

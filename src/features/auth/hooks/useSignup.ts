@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CognitoUser, CognitoUserAttribute } from "amazon-cognito-identity-js";
 
 import { userPool } from "@/lib/cognito";
-import { SignupFormData, SignupFormErrors } from "@/types/signup";
+import { SignupFormData, SignupFormErrors } from "@/features/auth/types/signup";
 import { isValidPhoneNumber } from "react-phone-number-input";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

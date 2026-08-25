@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import LoginInput from "./LoginInput";
 import PasswordInput from "./PasswordInput";
-import { useLogin } from "@/hooks/useLogin";
+import { useLogin } from "@/features/auth/hooks/useLogin";
 
 const PRIMARY = "#7E2BF1";
 
