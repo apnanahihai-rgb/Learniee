@@ -38,14 +38,15 @@ export async function GET(req: Request) {
       );
     }
 
-    // Find teacher using Cognito user ID
+    // Find teacher using Cognito ID
     const teacher = await prisma.teacher.findUnique({
       where: {
         cognitoId: decoded.sub,
       },
       select: {
         id: true,
-        onboardingComplete: true,
+        currentStep: true,
+        onboardingStatus: true,
         approvalStatus: true,
       },
     });
@@ -54,13 +55,24 @@ export async function GET(req: Request) {
     if (!teacher) {
       return NextResponse.json({
         onboardingComplete: false,
+        currentStep: 0,
+        onboardingStatus: "NOT_STARTED",
         approvalStatus: null,
       });
     }
 
     return NextResponse.json({
-      onboardingComplete: teacher.onboardingComplete,
-      approvalStatus: teacher.approvalStatus,
+      // We calculate this instead of storing another column
+      onboardingComplete:
+        teacher.onboardingStatus === "COMPLETED",
+
+      currentStep: teacher.currentStep,
+
+      onboardingStatus:
+        teacher.onboardingStatus,
+
+      approvalStatus:
+        teacher.approvalStatus,
     });
 
   } catch (error) {
