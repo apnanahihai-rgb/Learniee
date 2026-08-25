@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -8,6 +9,9 @@ export async function POST(req: Request) {
     const {
       teacherId,
       panCardNumber,
+      dobProofKey,
+      addressProofKey,
+      qualificationProofKey,
     } = data;
 
     if (!teacherId) {
@@ -39,8 +43,34 @@ export async function POST(req: Request) {
       );
     }
 
+    // Files are uploaded to S3 directly from the browser via a
+    // presigned URL (see /api/upload/presign) before this route is
+    // called, so we only ever receive the resulting object keys
+    // here - never raw file bytes.
+    const hasAnyDocumentKey =
+      dobProofKey || addressProofKey || qualificationProofKey;
+
+    if (hasAnyDocumentKey) {
+      await prisma.teacherDocuments.upsert({
+        where: { teacherId },
+        update: {
+          ...(dobProofKey && { dobProofKey }),
+          ...(addressProofKey && { addressProofKey }),
+          ...(qualificationProofKey && { qualificationProofKey }),
+          ...(panCardNumber && { panCardNumber: panCardNumber.trim() }),
+        },
+        create: {
+          id: randomUUID(),
+          teacherId,
+          dobProofKey: dobProofKey || null,
+          addressProofKey: addressProofKey || null,
+          qualificationProofKey: qualificationProofKey || null,
+          panCardNumber: panCardNumber?.trim() || null,
+        },
+      });
+    }
+
     // Save PAN and complete onboarding.
-    // File uploads are intentionally NOT handled yet.
     const updatedTeacher = await prisma.teacher.update({
       where: {
         id: teacherId,

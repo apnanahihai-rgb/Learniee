@@ -21,6 +21,7 @@ export function useSignup() {
     otp: "",
     password: "",
     confirmPassword: "",
+    confirmedTeacherRole: false,
     acceptedTerms: false,
   });
   const [errors, setErrors] = useState<SignupFormErrors>({});
@@ -89,6 +90,11 @@ export function useSignup() {
       next.confirmPassword = "Please confirm your password";
     } else if (form.confirmPassword !== form.password) {
       next.confirmPassword = "Passwords do not match";
+    }
+
+    if (form.role === "teacher" && !form.confirmedTeacherRole) {
+      next.confirmedTeacherRole =
+        "Please confirm you are signing up as a teacher";
     }
 
     if (!form.acceptedTerms) {

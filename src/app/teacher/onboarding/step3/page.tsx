@@ -4,12 +4,35 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { uploadFileToS3 } from "@/lib/uploadFileToS3";
+
+interface DocumentSlot {
+  key: "dobProof" | "addressProof" | "qualificationProof";
+  label: string;
+}
+
+const DOCUMENT_SLOTS: DocumentSlot[] = [
+  { key: "dobProof", label: "Date of Birth Proof" },
+  { key: "addressProof", label: "Address Proof" },
+  { key: "qualificationProof", label: "Qualification / Course Certification" },
+];
+
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
+const MAX_FILE_SIZE_MB = 50;
 
 export default function TeacherStep3() {
   const router = useRouter();
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [panCardNumber, setPanCardNumber] = useState("");
+  const [files, setFiles] = useState<Record<string, File | null>>({
+    dobProof: null,
+    addressProof: null,
+    qualificationProof: null,
+  });
+  const [fileErrors, setFileErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     const id = localStorage.getItem("teacherId");
@@ -23,6 +46,33 @@ export default function TeacherStep3() {
     setTeacherId(id);
   }, [router]);
 
+  function handleFileSelect(slotKey: string, file: File | null) {
+    setFileErrors((prev) => ({ ...prev, [slotKey]: "" }));
+
+    if (!file) {
+      setFiles((prev) => ({ ...prev, [slotKey]: null }));
+      return;
+    }
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setFileErrors((prev) => ({
+        ...prev,
+        [slotKey]: "Only PNG, JPG, or PDF files are allowed",
+      }));
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setFileErrors((prev) => ({
+        ...prev,
+        [slotKey]: `File must be under ${MAX_FILE_SIZE_MB}MB`,
+      }));
+      return;
+    }
+
+    setFiles((prev) => ({ ...prev, [slotKey]: file }));
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -31,7 +81,28 @@ export default function TeacherStep3() {
       return;
     }
 
+    setSubmitError("");
+    setSubmitting(true);
+
     try {
+      // Upload any selected documents to S3 first, in parallel.
+      const uploadEntries = await Promise.all(
+        DOCUMENT_SLOTS.map(async ({ key }) => {
+          const file = files[key];
+          if (!file) return [key, undefined] as const;
+
+          const s3Key = await uploadFileToS3({
+            file,
+            folder: "teacher-documents",
+            teacherId,
+          });
+
+          return [key, s3Key] as const;
+        })
+      );
+
+      const uploadedKeys = Object.fromEntries(uploadEntries);
+
       const res = await fetch("/api/teacher/onboarding/step3", {
         method: "POST",
         headers: {
@@ -40,13 +111,17 @@ export default function TeacherStep3() {
         body: JSON.stringify({
           teacherId,
           panCardNumber,
+          dobProofKey: uploadedKeys.dobProof,
+          addressProofKey: uploadedKeys.addressProof,
+          qualificationProofKey: uploadedKeys.qualificationProof,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
         console.error(data);
-        alert("Failed to save documents.");
+        setSubmitError(data.error || "Failed to save documents.");
+        setSubmitting(false);
         return;
       }
 
@@ -55,7 +130,12 @@ export default function TeacherStep3() {
       router.push("/teacher/pending-approval");
     } catch (error) {
       console.error("Step 3 submission error:", error);
-      alert("Something went wrong. Please try again.");
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+      setSubmitting(false);
     }
   };
 
@@ -66,62 +146,49 @@ export default function TeacherStep3() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Date of Birth Proof */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Date of Birth Proof
-          </label>
+        {DOCUMENT_SLOTS.map(({ key, label }) => {
+          const file = files[key];
+          const error = fileErrors[key];
 
-          <div className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 text-gray-400">
-            <p>Drag files or upload</p>
+          return (
+            <div key={key}>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
+                {label}
+              </label>
 
-            <p className="text-xs mt-2">
-              Max file size: 50MB | Supported: PNG, JPG, PDF
-            </p>
+              <label
+                htmlFor={`file-${key}`}
+                className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 text-gray-400 cursor-pointer hover:bg-gray-100 transition-colors"
+              >
+                <input
+                  id={`file-${key}`}
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.pdf"
+                  className="hidden"
+                  onChange={(e) =>
+                    handleFileSelect(key, e.target.files?.[0] ?? null)
+                  }
+                />
 
-            <p className="text-xs text-purple-600 mt-2 font-semibold">
-              S3 integration later
-            </p>
-          </div>
-        </div>
+                {file ? (
+                  <p className="text-sm font-medium text-purple-600 text-center break-all">
+                    {file.name}
+                  </p>
+                ) : (
+                  <p>Drag files or upload</p>
+                )}
 
-        {/* Address Proof */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Address Proof
-          </label>
+                <p className="text-xs mt-2">
+                  Max file size: {MAX_FILE_SIZE_MB}MB | Supported: PNG, JPG, PDF
+                </p>
+              </label>
 
-          <div className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 text-gray-400">
-            <p>Drag files or upload</p>
-
-            <p className="text-xs mt-2">
-              Max file size: 50MB | Supported: PNG, JPG, PDF
-            </p>
-
-            <p className="text-xs text-purple-600 mt-2 font-semibold">
-              S3 integration later
-            </p>
-          </div>
-        </div>
-
-        {/* Qualification */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Qualification / Course Certification
-          </label>
-
-          <div className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 text-gray-400">
-            <p>Drag files or upload</p>
-
-            <p className="text-xs mt-2">
-              Max file size: 50MB | Supported: PNG, JPG, PDF
-            </p>
-
-            <p className="text-xs text-purple-600 mt-2 font-semibold">
-              S3 integration later
-            </p>
-          </div>
-        </div>
+              {error && (
+                <p className="text-xs text-red-600 mt-1">{error}</p>
+              )}
+            </div>
+          );
+        })}
 
         {/* PAN Card */}
         <div>
@@ -139,12 +206,17 @@ export default function TeacherStep3() {
           />
         </div>
 
+        {submitError && (
+          <p className="text-sm text-red-600 text-center">{submitError}</p>
+        )}
+
         {/* Buttons */}
         <div className="flex justify-center gap-4 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.back()}
+            disabled={submitting}
             className="w-40 rounded-full border-purple-600 text-purple-600"
           >
             Back
@@ -152,9 +224,10 @@ export default function TeacherStep3() {
 
           <Button
             type="submit"
-            className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full"
+            disabled={submitting}
+            className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full disabled:opacity-60"
           >
-            Submit
+            {submitting ? "Uploading..." : "Submit"}
           </Button>
         </div>
       </form>

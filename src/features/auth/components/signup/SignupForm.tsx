@@ -3,6 +3,7 @@
 import SignupInput from "./SignupInput";
 import PasswordInput from "./PasswordInput";
 import TermsCheckbox from "./TermsCheckbox";
+import TeacherConfirmationCheckbox from "./TeacherConfirmationCheckbox";
 import OtpVerification from "./OtpVerification";
 import RoleSelector from "./RoleSelector";
 import { useSignup } from "@/features/auth/hooks/useSignup";
@@ -121,6 +122,17 @@ export default function SignupForm() {
           disabled={otpSent}
           error={errors.confirmPassword}
         />
+
+        {form.role === "teacher" && (
+          <TeacherConfirmationCheckbox
+            checked={form.confirmedTeacherRole}
+            onChange={(value) =>
+              updateField("confirmedTeacherRole", value)
+            }
+            disabled={otpSent}
+            error={errors.confirmedTeacherRole}
+          />
+        )}
 
         <TermsCheckbox
           checked={form.acceptedTerms}

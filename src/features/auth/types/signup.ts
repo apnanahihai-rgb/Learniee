@@ -9,6 +9,7 @@ export interface SignupFormData {
   otp: string;
   password: string;
   confirmPassword: string;
+  confirmedTeacherRole: boolean;
   acceptedTerms: boolean;
 }
 

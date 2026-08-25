@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtDecode } from "jwt-decode";
 import { prisma } from "@/lib/prisma";
+import { createPresignedDownloadUrl } from "@/lib/s3";
 
 interface DecodedToken {
   sub: string;
@@ -22,7 +23,18 @@ export async function POST(req: NextRequest) {
   });
   if (!parent) return NextResponse.json({ error: "Complete step 1 first" }, { status: 400 });
 
-  await prisma.student.create({
+  // The photo, if any, was already uploaded straight to S3 from the
+  // browser via a presigned URL (see /api/upload/presign) - we only
+  // ever receive the resulting object key here, never raw bytes.
+  // The bucket stays private, so we store the S3 key itself in
+  // `photoUrl` (not a public link) and generate a short-lived
+  // presigned GET URL below to hand back to the client for
+  // immediate display. Anywhere else that needs to show this photo
+  // later should call createPresignedDownloadUrl(student.photoUrl)
+  // again at read time, since the one below will expire.
+  const photoKey: string | undefined = body.photoKey;
+
+  const student = await prisma.student.create({
     data: {
       parentId: parent.id,
       firstName: body.firstName,
@@ -34,8 +46,17 @@ export async function POST(req: NextRequest) {
       board: body.board,
       currentSchoolName: body.currentSchoolName,
       learningDifficulties: body.learningDifficulties,
+      photoUrl: photoKey || null,
     },
   });
 
-  return NextResponse.json({ success: true });
+  const photoViewUrl = photoKey
+    ? await createPresignedDownloadUrl(photoKey)
+    : null;
+
+  return NextResponse.json({
+    success: true,
+    studentId: student.id,
+    photoViewUrl,
+  });
 }

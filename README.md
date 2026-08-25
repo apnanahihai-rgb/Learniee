@@ -60,9 +60,47 @@ ZOHO_REFRESH_TOKEN=
 
 # Fast2SMS
 FAST2SMS_API_KEY=
+
+# AWS S3 (teacher document + child photo uploads)
+AWS_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_S3_BUCKET_NAME=
 ```
 
 Fill these in locally after setting up each service. For production, set the same values as Firebase App Hosting secrets rather than committing them anywhere.
+
+### S3 bucket setup (teacher documents + child photos)
+
+Uploads (teacher DOB/address/qualification proofs in onboarding step 3,
+child photos in parent onboarding step 2) go straight from the browser to
+S3 using short-lived presigned URLs, so files never pass through our
+server. See `src/lib/s3.ts` and `/api/upload/presign`.
+
+One-time bucket setup:
+
+```bash
+aws s3api create-bucket \
+  --bucket <your-bucket-name> \
+  --region <your-region> \
+  --create-bucket-configuration LocationConstraint=<your-region>
+
+# Keep the bucket fully private - we only ever access it via
+# presigned URLs, never a public bucket policy.
+aws s3api put-public-access-block \
+  --bucket <your-bucket-name> \
+  --public-access-block-configuration \
+  BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+# Allow the browser to PUT files directly from our app's origin(s)
+aws s3api put-bucket-cors \
+  --bucket <your-bucket-name> \
+  --cors-configuration file://infra/s3-cors.json
+```
+
+The IAM user/role the app runs as needs at least `s3:PutObject` and
+`s3:GetObject` on `arn:aws:s3:::<your-bucket-name>/*` — see
+`infra/s3-iam-policy.json`.
 
 ## Guidelines
 
