@@ -19,6 +19,7 @@ export default function TeacherStep3() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTeacherId(id);
   }, [router]);
 

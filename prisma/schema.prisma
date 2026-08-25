@@ -39,6 +39,15 @@ model ParentProfile {
   students            Student[]
 }
 
+model Admin {
+  id        String   @id @default(uuid())
+  cognitoId String   @unique
+  email     String   @unique
+  firstName String
+  lastName  String
+  createdAt DateTime @default(now())
+}
+
 model Student {
   id                   String        @id @default(uuid())
   parentId             String
@@ -54,47 +63,36 @@ model Student {
   learningDifficulties String?
   photoUrl             String?
   createdAt            DateTime      @default(now())
-  parent               ParentProfile @relation(fields: [parentId], references: [id])
-}
-
-enum TeacherApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  parent               ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
 }
 
 model Teacher {
-  id        String @id @default(uuid())
-  cognitoId String @unique
-  email     String @unique
-  firstName String
-  lastName  String
-
-  // Onboarding tracking
-  currentStep      Int    @default(1)
-  onboardingStatus String @default("IN_PROGRESS")
-
-  // Admin approval
-  approvalStatus TeacherApprovalStatus @default(PENDING)
-
-  visibleName  String?
-  dobDay       Int?
-  dobMonth     String?
-  dobYear      Int?
-  gender       String?
-  nationality  String?
-  address      String?
-  city         String?
-  country      String?
-  pincode      String?
-  phone        String?
-  whatsapp     String?
-  aboutMe      String?
-  criminalCase String?
-  panCardNumber     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id               String                @id @default(uuid())
+  cognitoId        String                @unique
+  email            String                @unique
+  firstName        String
+  lastName         String
+  visibleName      String?
+  dobDay           Int?
+  dobMonth         String?
+  dobYear          Int?
+  gender           String?
+  nationality      String?
+  address          String?
+  city             String?
+  country          String?
+  pincode          String?
+  phone            String?
+  whatsapp         String?
+  aboutMe          String?
+  criminalCase     String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  currentStep      Int                   @default(1)
+  onboardingStatus String                @default("IN_PROGRESS")
+  approvalStatus   TeacherApprovalStatus @default(PENDING)
+  panCardNumber    String?
+  TeacherDocuments TeacherDocuments?
   files            TeacherFile[]
   professionalInfo TeacherProfessional?
 }
@@ -128,28 +126,7 @@ model TeacherProfessional {
   linkedin             String?
   instagram            String?
   youtube              String?
-  teacher              Teacher @relation(fields: [teacherId], references: [id])
-}
-
-model Admin {
-  id        String   @id @default(uuid())
-  cognitoId String   @unique
-  email     String   @unique
-  firstName String
-  lastName  String
-  createdAt DateTime @default(now())
-}
-
-enum TeacherFileType {
-  PROFILE_PHOTO
-  INTRO_VIDEO
-
-  CERTIFICATION
-  AWARD
-
-  DOB_PROOF
-  ADDRESS_PROOF
-  QUALIFICATION_PROOF
+  teacher              Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 }
 
 model TeacherFile {
@@ -162,9 +139,38 @@ model TeacherFile {
   fileSize         Int
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
-
-  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher          Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([teacherId])
   @@index([teacherId, type])
+}
+
+model TeacherDocuments {
+  id                    String  @id
+  teacherId             String  @unique
+  videoIntroKey         String?
+  photoKey              String?
+  certificationKey      String?
+  awardsKey             String?
+  dobProofKey           String?
+  addressProofKey       String?
+  qualificationProofKey String?
+  panCardNumber         String?
+  Teacher               Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
+
+enum TeacherApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TeacherFileType {
+  PROFILE_PHOTO
+  INTRO_VIDEO
+  CERTIFICATION
+  AWARD
+  DOB_PROOF
+  ADDRESS_PROOF
+  QUALIFICATION_PROOF
 }
