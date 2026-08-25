@@ -7,12 +7,19 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 
 /**
- * Single shared S3 client, following the same pattern as
- * src/lib/cognitoAdmin.ts. Picks up credentials from the default
- * AWS SDK credential chain (env vars / IAM role in production).
+ * Dedicated S3 client, using its own IAM user's credentials
+ * (AWS_S3_ACCESS_KEY_ID / AWS_S3_SECRET_ACCESS_KEY) rather than the
+ * shared default AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, which
+ * cognitoAdmin.ts relies on. Keeping these separate means the S3
+ * upload IAM user only ever needs S3 permissions, and Cognito
+ * keeps using its own separate identity.
  */
 export const s3Client = new S3Client({
   region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID as string,
+    secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY as string,
+  },
 });
 
 export const S3_BUCKET = process.env.AWS_S3_BUCKET_NAME as string;
