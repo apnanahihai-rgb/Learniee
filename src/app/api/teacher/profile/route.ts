@@ -1,36 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jwtDecode } from "jwt-decode";
-
-interface TokenPayload {
-  sub: string;
-}
+import { requireCognitoAuth } from "@/lib/api-auth";
 
 export async function GET(req: Request) {
   try {
-    const token = req.headers
-      .get("cookie")
-      ?.match(/idToken=([^;]+)/)?.[1];
+    const auth = requireCognitoAuth(req);
 
-    if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const decoded = jwtDecode<TokenPayload>(token);
-
-    if (!decoded.sub) {
-      return NextResponse.json(
-        { error: "Invalid token" },
-        { status: 401 }
-      );
+    if ("error" in auth) {
+      return auth.error;
     }
 
     const teacher = await prisma.teacher.findUnique({
       where: {
-        cognitoId: decoded.sub,
+        cognitoId: auth.payload.sub,
       },
       select: {
         id: true,

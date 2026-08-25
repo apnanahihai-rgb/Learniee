@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jwtDecode } from "jwt-decode";
+import { requireAdminAuth } from "@/lib/api-auth";
 import { TeacherApprovalStatus } from "@prisma/client";
-
-interface TokenPayload {
-  sub: string;
-  email?: string;
-  ["custom:role"]?: string;
-}
 
 export async function PATCH(
   req: Request,
@@ -27,32 +21,12 @@ export async function PATCH(
     }
 
     // -----------------------------------------
-    // Get Cognito token
+    // Auth + admin role check
     // -----------------------------------------
-    const token = req.headers
-      .get("cookie")
-      ?.match(/idToken=([^;]+)/)?.[1];
+    const auth = requireAdminAuth(req);
 
-    if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // -----------------------------------------
-    // Decode token
-    // -----------------------------------------
-    const decoded = jwtDecode<TokenPayload>(token);
-
-    // -----------------------------------------
-    // Check admin role
-    // -----------------------------------------
-    if (decoded["custom:role"] !== "admin") {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+    if ("error" in auth) {
+      return auth.error;
     }
 
     // -----------------------------------------

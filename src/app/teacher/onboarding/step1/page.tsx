@@ -1,8 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -13,172 +10,10 @@ import GenderSelect from "@/features/teacher/components/onboarding/step1/GenderS
 import CriminalCaseSelect from "@/features/teacher/components/onboarding/step1/CriminalCaseSelect";
 import TeacherMediaPlaceholder from "@/features/teacher/components/onboarding/step1/TeacherMediaPlaceholder";
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-
-  visibleName: string;
-
-  dobDay: string;
-  dobMonth: string;
-  dobYear: string;
-
-  gender: string;
-  nationality: string;
-
-  address: string;
-  city: string;
-  country: string;
-  pincode: string;
-
-  phone: string;
-  whatsapp: string;
-
-  aboutMe: string;
-  criminalCase: string;
-}
+import { useTeacherStep1Form } from "@/features/teacher/hooks/useTeacherStep1Form";
 
 export default function TeacherStep1() {
-  const router = useRouter();
-
-  const [loading, setLoading] = useState(true);
-
-  const [formData, setFormData] = useState<FormData>({
-    firstName: "",
-    lastName: "",
-    email: "",
-
-    visibleName: "",
-
-    dobDay: "",
-    dobMonth: "",
-    dobYear: "",
-
-    gender: "",
-    nationality: "",
-
-    address: "",
-    city: "",
-    country: "",
-    pincode: "",
-
-    phone: "",
-    whatsapp: "",
-
-    aboutMe: "",
-    criminalCase: "",
-  });
-
-  /*
-  |--------------------------------------------------------------------------
-  | Load Cognito + existing RDS data
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    async function loadTeacherData() {
-      try {
-        setLoading(true);
-
-        const res = await fetch("/api/teacher/onboarding/step1", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to load teacher information");
-        }
-
-        const data = await res.json();
-
-        console.log("STEP 1 DATA:", data);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Populate form
-        |--------------------------------------------------------------------------
-        */
-
-        setFormData(data.formData);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Existing Teacher ID
-        |--------------------------------------------------------------------------
-        */
-
-        if (data.teacherId) {
-          localStorage.setItem("teacherId", data.teacherId);
-        }
-      } catch (error) {
-        console.error("Failed to load Step 1:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadTeacherData();
-  }, []);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Handle input changes
-  |--------------------------------------------------------------------------
-  */
-
-  function handleChange(
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Submit Step 1
-  |--------------------------------------------------------------------------
-  */
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    try {
-      const res = await fetch("/api/teacher/onboarding/step1", {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to save Step 1");
-
-        return;
-      }
-
-      const data = await res.json();
-
-      localStorage.setItem("teacherId", data.teacherId);
-
-      router.push("/teacher/onboarding/step2");
-    } catch (error) {
-      console.error("Step 1 submission error:", error);
-    }
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Loading
-  |--------------------------------------------------------------------------
-  */
+  const { loading, formData, handleChange, handleSubmit } = useTeacherStep1Form();
 
   if (loading) {
     return (
@@ -190,9 +25,7 @@ export default function TeacherStep1() {
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-white rounded-xl shadow-sm border mt-10">
-      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">
-        Registration
-      </h2>
+      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">Registration</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -260,12 +93,7 @@ export default function TeacherStep1() {
             onChange={handleChange}
           />
 
-          <Input
-            name="city"
-            placeholder="City"
-            value={formData.city}
-            onChange={handleChange}
-          />
+          <Input name="city" placeholder="City" value={formData.city} onChange={handleChange} />
 
           <CountrySelect
             name="country"
@@ -314,10 +142,7 @@ export default function TeacherStep1() {
         {/* Criminal Case */}
 
         <div className="w-full md:w-1/2">
-          <CriminalCaseSelect
-            value={formData.criminalCase}
-            onChange={handleChange}
-          />
+          <CriminalCaseSelect value={formData.criminalCase} onChange={handleChange} />
         </div>
 
         {/* Submit */}

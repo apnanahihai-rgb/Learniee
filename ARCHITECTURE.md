@@ -1,5 +1,11 @@
 # Project structure
 
+> **Update (modularization pass):** page components and API routes that had
+> grown into single large files (the Step 2 onboarding page, the admin
+> teacher-review page, and the Step 1/Step 2 onboarding API routes) have been
+> split up. See "Splitting large files" below for the pattern to follow next
+> time a file starts growing past ~150-200 lines.
+
 This project follows a **feature-based (modular) structure** on top of the
 Next.js App Router. The rule of thumb: `src/app` only contains routing —
 everything else lives in a feature module under `src/features`.
@@ -103,3 +109,55 @@ touch actual logic rather than just file location)
 the same `skills/` content — that looks intentional (per-tool config for
 different AI coding assistants), so it was left alone. If it's not
 intentional, you only need to keep one and can delete the other two.
+
+## Splitting large files
+
+When a page or route file grows past ~150-200 lines, split it along these
+lines instead of letting it keep growing:
+
+### Client pages (`"use client"` components)
+
+1. **State + data-fetching → a hook.** Move `useState`/`useEffect`, the
+   fetch calls, and the submit handler into
+   `features/<feature>/hooks/use<Thing>.ts`. The hook returns the values and
+   handlers the page needs (`{ formData, loading, error, handleChange, ... }`).
+2. **Shared/derived types → a types file.** e.g.
+   `features/<feature>/types/<thing>.ts` holds the `FormData` interface, its
+   default/initial value, and any shared handler type aliases.
+3. **JSX sections → components.** Group related form fields/JSX blocks into
+   `features/<feature>/components/.../<Section>.tsx`, each taking the slice
+   of state + change handler it needs as props.
+4. **The page itself** just calls the hook and composes the section
+   components — it should read like a table of contents, not the
+   implementation.
+
+Example: `app/teacher/onboarding/step2/page.tsx` (849 → 86 lines) uses
+`features/teacher/hooks/useTeacherStep2Form.ts` plus five section components
+under `features/teacher/components/onboarding/step2/`.
+
+### API routes
+
+1. **Auth/token parsing → `lib/api-auth.ts`.** Use `requireCognitoAuth(req)`
+   or `requireAdminAuth(req)` instead of re-decoding the JWT in every route.
+   Both return either `{ error }` (a ready-to-return `NextResponse`) or
+   `{ token, payload }`.
+2. **Prisma queries/business logic → a service.** Put the actual
+   create/update/query logic in `features/<feature>/server/<thing>.service.ts`
+   as plain exported functions. Keep create/update field-mapping in ONE
+   shared function so the two code paths can't drift apart.
+3. **The route handler** just does: auth check → parse input → call the
+   service → shape the response. A GET/POST handler should rarely need to
+   exceed ~40 lines.
+
+Example: `app/api/teacher/onboarding/step2/route.ts` (422 → ~90 lines) now
+delegates to `features/teacher/server/step2.service.ts`.
+
+### Still flagged for a future pass (not touched in this round)
+
+- `app/teacher/onboarding/step3/page.tsx` (161 lines) — smaller, but could
+  follow the same hook+sections pattern if it grows further.
+- `features/teacher/components/layout/TeacherSidebar.tsx` (225 lines) and
+  `TeacherNavbar.tsx` (165 lines) — mostly static nav markup; consider
+  extracting nav-item arrays/config if you add more links.
+- `TeacherPersonalInfo.tsx` under `onboarding/step1` is still a 0-byte empty
+  file from the earlier reorg — delete it or fill it in.
