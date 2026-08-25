@@ -10,33 +10,55 @@ interface TokenPayload {
 
 export async function GET(req: Request) {
   try {
-    const token = req.headers.get("cookie")?.match(/idToken=([^;]+)/)?.[1];
+    // -----------------------------------------
+    // Get Cognito ID token
+    // -----------------------------------------
+    const token = req.headers
+      .get("cookie")
+      ?.match(/idToken=([^;]+)/)?.[1];
 
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
+    // -----------------------------------------
+    // Decode token
+    // -----------------------------------------
     const decoded = jwtDecode<TokenPayload>(token);
 
-    /*
-     * Development-level role check.
-     *
-     * IMPORTANT:
-     * Decode-only JWT checks are not production-safe.
-     * Later we should verify the Cognito JWT signature.
-     */
+    // -----------------------------------------
+    // Check admin role
+    // -----------------------------------------
     if (decoded["custom:role"] !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
+    // -----------------------------------------
+    // Get pending teachers
+    // -----------------------------------------
     const teachers = await prisma.teacher.findMany({
       where: {
         approvalStatus: "PENDING",
+
+        // Only show teachers who have
+        // completed onboarding
+        onboardingStatus: "COMPLETED",
       },
+
       include: {
         professionalInfo: true,
-        documents: true,
+
+        // S3 files will be available here
+        // once S3 integration is implemented.
+        files: true,
       },
+
       orderBy: {
         createdAt: "desc",
       },
@@ -46,12 +68,20 @@ export async function GET(req: Request) {
       success: true,
       teachers,
     });
+
   } catch (error) {
-    console.error("Admin teachers error:", error);
+    console.error(
+      "Admin teachers error:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Failed to fetch teachers" },
-      { status: 500 },
+      {
+        error: "Failed to fetch teachers",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

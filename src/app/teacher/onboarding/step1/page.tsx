@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
@@ -13,10 +13,38 @@ import GenderSelect from "@/components/teacher/onboarding/step1/GenderSelect";
 import CriminalCaseSelect from "@/components/teacher/onboarding/step1/CriminalCaseSelect";
 import TeacherMediaPlaceholder from "@/components/teacher/onboarding/step1/TeacherMediaPlaceholder";
 
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+
+  visibleName: string;
+
+  dobDay: string;
+  dobMonth: string;
+  dobYear: string;
+
+  gender: string;
+  nationality: string;
+
+  address: string;
+  city: string;
+  country: string;
+  pincode: string;
+
+  phone: string;
+  whatsapp: string;
+
+  aboutMe: string;
+  criminalCase: string;
+}
+
 export default function TeacherStep1() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState(true);
+
+  const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
     email: "",
@@ -42,12 +70,67 @@ export default function TeacherStep1() {
     criminalCase: "",
   });
 
+  /*
+  |--------------------------------------------------------------------------
+  | Load Cognito + existing RDS data
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    async function loadTeacherData() {
+      try {
+        setLoading(true);
+
+        const res = await fetch("/api/teacher/onboarding/step1", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to load teacher information");
+        }
+
+        const data = await res.json();
+
+        console.log("STEP 1 DATA:", data);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Populate form
+        |--------------------------------------------------------------------------
+        */
+
+        setFormData(data.formData);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Existing Teacher ID
+        |--------------------------------------------------------------------------
+        */
+
+        if (data.teacherId) {
+          localStorage.setItem("teacherId", data.teacherId);
+        }
+      } catch (error) {
+        console.error("Failed to load Step 1:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTeacherData();
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Handle input changes
+  |--------------------------------------------------------------------------
+  */
+
   function handleChange(
     e: React.ChangeEvent<
-      HTMLInputElement |
-      HTMLSelectElement |
-      HTMLTextAreaElement
-    >
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) {
     setFormData((prev) => ({
       ...prev,
@@ -55,60 +138,74 @@ export default function TeacherStep1() {
     }));
   }
 
-  async function handleSubmit(
-    e: React.FormEvent
-  ) {
+  /*
+  |--------------------------------------------------------------------------
+  | Submit Step 1
+  |--------------------------------------------------------------------------
+  */
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch(
-      "/api/teacher/onboarding/step1",
-      {
+    try {
+      const res = await fetch("/api/teacher/onboarding/step1", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to save Step 1");
+
+        return;
       }
-    );
 
-    if (!res.ok) {
-      console.error("Failed to save Step 1");
-      return;
+      const data = await res.json();
+
+      localStorage.setItem("teacherId", data.teacherId);
+
+      router.push("/teacher/onboarding/step2");
+    } catch (error) {
+      console.error("Step 1 submission error:", error);
     }
+  }
 
-    const data = await res.json();
+  /*
+  |--------------------------------------------------------------------------
+  | Loading
+  |--------------------------------------------------------------------------
+  */
 
-    localStorage.setItem(
-      "teacherId",
-      data.teacherId
-    );
-
-    router.push(
-      "/teacher/onboarding/step2"
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading your information...</p>
+      </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-white rounded-xl shadow-sm border mt-10">
-
       <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">
         Registration
       </h2>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6"
-      >
-
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Cognito fields */}
 
           <Input
             name="firstName"
             placeholder="First Name"
             value={formData.firstName}
             onChange={handleChange}
+            disabled
             required
           />
 
@@ -117,6 +214,7 @@ export default function TeacherStep1() {
             placeholder="Last Name"
             value={formData.lastName}
             onChange={handleChange}
+            disabled
             required
           />
 
@@ -126,8 +224,11 @@ export default function TeacherStep1() {
             placeholder="Email"
             value={formData.email}
             onChange={handleChange}
+            disabled
             required
           />
+
+          {/* Editable fields */}
 
           <Input
             name="visibleName"
@@ -136,7 +237,6 @@ export default function TeacherStep1() {
             onChange={handleChange}
           />
 
-          {/* DOB */}
           <DateOfBirthSelect
             day={formData.dobDay}
             month={formData.dobMonth}
@@ -144,13 +244,8 @@ export default function TeacherStep1() {
             onChange={handleChange}
           />
 
-          {/* Gender */}
-          <GenderSelect
-            value={formData.gender}
-            onChange={handleChange}
-          />
+          <GenderSelect value={formData.gender} onChange={handleChange} />
 
-          {/* Nationality */}
           <CountrySelect
             name="nationality"
             value={formData.nationality}
@@ -172,7 +267,6 @@ export default function TeacherStep1() {
             onChange={handleChange}
           />
 
-          {/* Country */}
           <CountrySelect
             name="country"
             value={formData.country}
@@ -200,7 +294,6 @@ export default function TeacherStep1() {
             value={formData.whatsapp}
             onChange={handleChange}
           />
-
         </div>
 
         {/* About */}
@@ -237,7 +330,6 @@ export default function TeacherStep1() {
             Next
           </Button>
         </div>
-
       </form>
     </div>
   );
