@@ -11,14 +11,19 @@ interface DecodedToken {
 }
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get("idToken")?.value;
-  if (!token) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  try {
+    const token = req.cookies.get("idToken")?.value;
+    if (!token) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
 
-  const decoded = jwtDecode(token) as DecodedToken;
+    const decoded = jwtDecode(token) as DecodedToken;
 
-  const parent = await prisma.parentProfile.findUnique({
-    where: { cognitoSub: decoded.sub },
-  });
+    const parent = await prisma.parentProfile.findUnique({
+      where: { cognitoSub: decoded.sub },
+    });
 
-  return NextResponse.json({ onboardingComplete: parent?.onboardingComplete ?? false });
+    return NextResponse.json({ onboardingComplete: parent?.onboardingComplete ?? false });
+  } catch (error) {
+    console.error("Parent onboarding status error:", error);
+    return NextResponse.json({ error: "Failed to check parent onboarding status" }, { status: 500 });
+  }
 }
