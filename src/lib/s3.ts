@@ -41,6 +41,9 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   "image/png",
   "image/jpeg",
   "application/pdf",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
 ] as const;
 
 export const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024; // 50MB, matches the UI copy

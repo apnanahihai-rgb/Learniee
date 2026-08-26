@@ -92,7 +92,7 @@ model Teacher {
   onboardingStatus String                @default("IN_PROGRESS")
   approvalStatus   TeacherApprovalStatus @default(PENDING)
   panCardNumber    String?
-  TeacherDocuments TeacherDocuments?
+
   files            TeacherFile[]
   professionalInfo TeacherProfessional?
 }
@@ -143,20 +143,6 @@ model TeacherFile {
 
   @@index([teacherId])
   @@index([teacherId, type])
-}
-
-model TeacherDocuments {
-  id                    String  @id
-  teacherId             String  @unique
-  videoIntroKey         String?
-  photoKey              String?
-  certificationKey      String?
-  awardsKey             String?
-  dobProofKey           String?
-  addressProofKey       String?
-  qualificationProofKey String?
-  panCardNumber         String?
-  Teacher               Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 }
 
 enum TeacherApprovalStatus {

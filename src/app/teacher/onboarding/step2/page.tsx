@@ -1,18 +1,34 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-
 import { useTeacherStep2Form } from "@/features/teacher/hooks/useTeacherStep2Form";
-
 import ProfessionalBackgroundSection from "@/features/teacher/components/onboarding/step2/ProfessionalBackgroundSection";
 import CurrentWorkSection from "@/features/teacher/components/onboarding/step2/CurrentWorkSection";
 import TeachingPreferencesSection from "@/features/teacher/components/onboarding/step2/TeachingPreferencesSection";
 import EquipmentSkillsSection from "@/features/teacher/components/onboarding/step2/EquipmentSkillsSection";
 import AdditionalInfoAndSocialSection from "@/features/teacher/components/onboarding/step2/AdditionalInfoAndSocialSection";
-
 export default function TeacherStep2() {
-  const { formData, loading, saving, error, handleChange, handleSubmit, goBack } =
-    useTeacherStep2Form();
+  const {
+  formData,
+  loading,
+  saving,
+  error,
+  handleChange,
+  handleSubmit,
+  goBack,
+
+  certificationFiles,
+  awardFiles,
+
+  existingCertificationFiles,
+  existingAwardFiles,
+
+  setCertificationFiles,
+  setAwardFiles,
+
+  certificationError,
+  awardError,
+} = useTeacherStep2Form();
 
   if (loading) {
     return (
@@ -33,7 +49,18 @@ export default function TeacherStep2() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <ProfessionalBackgroundSection formData={formData} onChange={handleChange} />
+        <ProfessionalBackgroundSection
+  formData={formData}
+  onChange={handleChange}
+  certificationFiles={certificationFiles}
+  awardFiles={awardFiles}
+  existingCertificationFiles={existingCertificationFiles}
+  existingAwardFiles={existingAwardFiles}
+  onCertificationChange={setCertificationFiles}
+  onAwardChange={setAwardFiles}
+  certificationError={certificationError}
+  awardError={awardError}
+/>
 
         <CurrentWorkSection formData={formData} onChange={handleChange} />
 

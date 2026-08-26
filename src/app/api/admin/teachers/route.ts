@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
+import { createPresignedDownloadUrl } from "@/lib/s3";
 
 export async function GET(req: Request) {
   try {
@@ -10,23 +11,14 @@ export async function GET(req: Request) {
       return auth.error;
     }
 
-    // -----------------------------------------
-    // Get pending teachers
-    // -----------------------------------------
     const teachers = await prisma.teacher.findMany({
       where: {
         approvalStatus: "PENDING",
-
-        // Only show teachers who have
-        // completed onboarding
         onboardingStatus: "COMPLETED",
       },
 
       include: {
         professionalInfo: true,
-
-        // S3 files will be available here
-        // once S3 integration is implemented.
         files: true,
       },
 
@@ -35,11 +27,40 @@ export async function GET(req: Request) {
       },
     });
 
+    /*
+     * Generate temporary signed URLs for every uploaded file.
+     *
+     * The S3 bucket is private, so the browser cannot directly
+     * access the s3Key. Admin receives a short-lived viewUrl.
+     */
+    const teachersWithFileUrls = await Promise.all(
+      teachers.map(async (teacher) => {
+        const files = await Promise.all(
+          teacher.files.map(async (file) => ({
+            id: file.id,
+            type: file.type,
+            s3Key: file.s3Key,
+            originalFileName: file.originalFileName,
+            mimeType: file.mimeType,
+            fileSize: file.fileSize,
+
+            viewUrl: await createPresignedDownloadUrl(
+              file.s3Key
+            ),
+          }))
+        );
+
+        return {
+          ...teacher,
+          files,
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      teachers,
+      teachers: teachersWithFileUrls,
     });
-
   } catch (error) {
     console.error(
       "Admin teachers error:",

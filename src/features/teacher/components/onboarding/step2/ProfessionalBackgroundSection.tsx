@@ -1,16 +1,52 @@
 import { Input } from "@/components/ui/input";
-import type { Step2ChangeHandler, Step2FormData } from "@/features/teacher/types/step2";
+import type {
+  Step2ChangeHandler,
+  Step2FormData,
+} from "@/features/teacher/types/step2";
+
+import CertificationUpload from "@/features/teacher/components/onboarding/step2/CertificationUpload";
+import AwardUpload from "@/features/teacher/components/onboarding/step2/AwardUpload";
+
+export interface ExistingTeacherFile {
+  id: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSize: number;
+}
 
 interface Props {
   formData: Step2FormData;
   onChange: Step2ChangeHandler;
+
+  certificationFiles: File[];
+  awardFiles: File[];
+
+  existingCertificationFiles: ExistingTeacherFile[];
+  existingAwardFiles: ExistingTeacherFile[];
+
+  onCertificationChange: (files: File[]) => void;
+  onAwardChange: (files: File[]) => void;
+
+  certificationError?: string;
+  awardError?: string;
 }
 
-/**
- * Basic professional info + teaching experience + certification/award
- * upload placeholders (Steps 2 sections 1-3).
- */
-export default function ProfessionalBackgroundSection({ formData, onChange }: Props) {
+export default function ProfessionalBackgroundSection({
+  formData,
+  onChange,
+
+  certificationFiles,
+  awardFiles,
+
+  existingCertificationFiles,
+  existingAwardFiles,
+
+  onCertificationChange,
+  onAwardChange,
+
+  certificationError,
+  awardError,
+}: Props) {
   return (
     <>
       {/* -------------------------------- */}
@@ -43,7 +79,9 @@ export default function ProfessionalBackgroundSection({ formData, onChange }: Pr
       {/* EXPERIENCE */}
       {/* -------------------------------- */}
 
-      <h3 className="font-semibold text-gray-800 mt-6">Experience</h3>
+      <h3 className="font-semibold text-gray-800 mt-6">
+        Experience
+      </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <select
@@ -52,12 +90,29 @@ export default function ProfessionalBackgroundSection({ formData, onChange }: Pr
           onChange={onChange}
           className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
         >
-          <option value="">Overall Teaching Experience</option>
-          <option value="0">Less than 1 year</option>
-          <option value="1-3">1-3 years</option>
-          <option value="3-5">3-5 years</option>
-          <option value="5-10">5-10 years</option>
-          <option value="10+">10+ years</option>
+          <option value="">
+            Overall Teaching Experience
+          </option>
+
+          <option value="0">
+            Less than 1 year
+          </option>
+
+          <option value="1-3">
+            1-3 years
+          </option>
+
+          <option value="3-5">
+            3-5 years
+          </option>
+
+          <option value="5-10">
+            5-10 years
+          </option>
+
+          <option value="10+">
+            10+ years
+          </option>
         </select>
 
         <Input
@@ -76,21 +131,23 @@ export default function ProfessionalBackgroundSection({ formData, onChange }: Pr
       />
 
       {/* -------------------------------- */}
-      {/* FILE PLACEHOLDERS */}
+      {/* CERTIFICATIONS + AWARDS */}
       {/* -------------------------------- */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="border rounded-md p-3 text-sm text-gray-500 bg-gray-50 text-center">
-          Upload Certifications
-          <br />
-          <span className="text-xs">S3 Logic later</span>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <CertificationUpload
+          files={certificationFiles}
+          existingFiles={existingCertificationFiles}
+          onChange={onCertificationChange}
+          error={certificationError}
+        />
 
-        <div className="border rounded-md p-3 text-sm text-gray-500 bg-gray-50 text-center">
-          Upload Awards
-          <br />
-          <span className="text-xs">S3 Logic later</span>
-        </div>
+        <AwardUpload
+          files={awardFiles}
+          existingFiles={existingAwardFiles}
+          onChange={onAwardChange}
+          error={awardError}
+        />
       </div>
     </>
   );
