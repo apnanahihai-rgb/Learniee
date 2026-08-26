@@ -72,5 +72,16 @@ export interface AdminTeacher {
     addressProofKey: string | null;
     qualificationProofKey: string | null;
     panCardNumber: string | null;
+
+    // Short-lived, viewable URLs generated server-side from the
+    // keys above (the S3 bucket is private, so the raw keys on
+    // their own aren't openable in the browser).
+    videoIntroUrl: string | null;
+    photoUrl: string | null;
+    certificationUrl: string | null;
+    awardsUrl: string | null;
+    dobProofUrl: string | null;
+    addressProofUrl: string | null;
+    qualificationProofUrl: string | null;
   } | null;
 }
