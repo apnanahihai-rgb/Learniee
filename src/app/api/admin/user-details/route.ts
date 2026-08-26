@@ -23,14 +23,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: parent });
   }
 
-  if (role === "teacher") {
-    const teacher = await prisma.teacher.findUnique({
-      where: { email },
-      include: { professionalInfo: true, files: true, TeacherDocuments: true },
-    });
-    if (!teacher) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ user: teacher });
+ if (role === "teacher") {
+  const teacher = await prisma.teacher.findUnique({
+    where: { email },
+    include: {
+      professionalInfo: true,
+      files: true,
+    },
+  });
+
+  if (!teacher) {
+    return NextResponse.json(
+      { error: "Not found" },
+      { status: 404 }
+    );
   }
+
+  return NextResponse.json({ user: teacher });
+}
 
   return NextResponse.json({ error: "Invalid role" }, { status: 400 });
 }
