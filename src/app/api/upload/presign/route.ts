@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Unsupported file type. Only PNG, JPG, and PDF are allowed.",
+            "Unsupported file type. Allowed types are PNG, JPG, PDF, and MP4.",
         },
         { status: 400 }
       );

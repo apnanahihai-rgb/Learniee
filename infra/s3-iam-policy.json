@@ -8,7 +8,7 @@
         "s3:PutObject",
         "s3:GetObject"
       ],
-      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+      "Resource": "arn:aws:s3:::learniee-uploads-953483531506-ap-south-1-an/*"
     },
     {
       "Sid": "LearnieeBucketLocation",
@@ -16,7 +16,8 @@
       "Action": [
         "s3:GetBucketLocation"
       ],
-      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME"
+      "Resource": "arn:aws:s3:::learniee-uploads-953483531506-ap-south-1-an"
     }
   ]
 }
+

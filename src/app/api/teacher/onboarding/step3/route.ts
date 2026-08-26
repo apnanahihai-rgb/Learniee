@@ -1,94 +1,214 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import { requireCognitoAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+
+interface Step3FileInput {
+  s3Key: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSize: number;
+}
+
+interface Step3Input {
+  teacherId: string;
+  panCardNumber?: string;
+
+  dobProof?: Step3FileInput;
+  addressProof?: Step3FileInput;
+  qualificationProof?: Step3FileInput;
+}
+
+async function saveTeacherFile(
+  teacherId: string,
+  type:
+    | "DOB_PROOF"
+    | "ADDRESS_PROOF"
+    | "QUALIFICATION_PROOF",
+  file: Step3FileInput,
+) {
+  const existingFile =
+    await prisma.teacherFile.findFirst({
+      where: {
+        teacherId,
+        type,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+  if (existingFile) {
+    return prisma.teacherFile.update({
+      where: {
+        id: existingFile.id,
+      },
+      data: {
+        s3Key: file.s3Key,
+        originalFileName: file.originalFileName,
+        mimeType: file.mimeType,
+        fileSize: file.fileSize,
+      },
+    });
+  }
+
+  return prisma.teacherFile.create({
+    data: {
+      teacherId,
+      type,
+      s3Key: file.s3Key,
+      originalFileName: file.originalFileName,
+      mimeType: file.mimeType,
+      fileSize: file.fileSize,
+    },
+  });
+}
 
 export async function POST(req: Request) {
   try {
-    const data = await req.json();
+    /*
+     * ------------------------------------------------------
+     * 1. Authenticate using Cognito
+     * ------------------------------------------------------
+     */
+    const auth = requireCognitoAuth(req);
+
+    if ("error" in auth) {
+      return auth.error;
+    }
+
+    /*
+     * ------------------------------------------------------
+     * 2. Read request body
+     * ------------------------------------------------------
+     */
+    const data: Step3Input = await req.json();
 
     const {
       teacherId,
       panCardNumber,
-      dobProofKey,
-      addressProofKey,
-      qualificationProofKey,
+      dobProof,
+      addressProof,
+      qualificationProof,
     } = data;
 
     if (!teacherId) {
       return NextResponse.json(
         {
-          error: "Teacher ID missing",
+          error: "Teacher ID missing.",
         },
         {
           status: 400,
-        }
+        },
       );
     }
 
-    // Check that Teacher exists
-    const teacher = await prisma.teacher.findUnique({
-      where: {
-        id: teacherId,
-      },
-    });
+    /*
+     * ------------------------------------------------------
+     * 3. Find teacher belonging to logged-in Cognito user
+     * ------------------------------------------------------
+     */
+    const teacher =
+      await prisma.teacher.findUnique({
+        where: {
+          cognitoId: auth.payload.sub,
+        },
+      });
 
     if (!teacher) {
       return NextResponse.json(
         {
-          error: "Teacher not found",
+          error: "Teacher not found.",
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
-    // Files are uploaded to S3 directly from the browser via a
-    // presigned URL (see /api/upload/presign) before this route is
-    // called, so we only ever receive the resulting object keys
-    // here - never raw file bytes.
-    const hasAnyDocumentKey =
-      dobProofKey || addressProofKey || qualificationProofKey;
-
-    if (hasAnyDocumentKey) {
-      await prisma.teacherDocuments.upsert({
-        where: { teacherId },
-        update: {
-          ...(dobProofKey && { dobProofKey }),
-          ...(addressProofKey && { addressProofKey }),
-          ...(qualificationProofKey && { qualificationProofKey }),
-          ...(panCardNumber && { panCardNumber: panCardNumber.trim() }),
+    /*
+     * ------------------------------------------------------
+     * 4. Security check
+     *
+     * The teacherId sent by the browser must belong to
+     * the authenticated Cognito user.
+     * ------------------------------------------------------
+     */
+    if (teacher.id !== teacherId) {
+      return NextResponse.json(
+        {
+          error:
+            "You are not authorized to update this teacher.",
         },
-        create: {
-          id: randomUUID(),
-          teacherId,
-          dobProofKey: dobProofKey || null,
-          addressProofKey: addressProofKey || null,
-          qualificationProofKey: qualificationProofKey || null,
-          panCardNumber: panCardNumber?.trim() || null,
+        {
+          status: 403,
         },
-      });
+      );
     }
 
-    // Save PAN and complete onboarding.
-    const updatedTeacher = await prisma.teacher.update({
-      where: {
-        id: teacherId,
-      },
+    /*
+     * ------------------------------------------------------
+     * 5. Save PAN number
+     * ------------------------------------------------------
+     */
+    const updatedTeacher =
+      await prisma.teacher.update({
+        where: {
+          id: teacher.id,
+        },
+        data: {
+          panCardNumber:
+            panCardNumber?.trim() || null,
 
-      data: {
-        panCardNumber:
-          panCardNumber?.trim() || null,
+          currentStep: 3,
 
-        currentStep: 3,
+          onboardingStatus: "COMPLETED",
+        },
+      });
 
-        onboardingStatus: "COMPLETED",
+    /*
+     * ------------------------------------------------------
+     * 6. Save DOB proof
+     * ------------------------------------------------------
+     */
+    if (dobProof) {
+      await saveTeacherFile(
+        teacher.id,
+        "DOB_PROOF",
+        dobProof,
+      );
+    }
 
-        // Admin approval is still required.
-        // approvalStatus remains PENDING.
-      },
-    });
+    /*
+     * ------------------------------------------------------
+     * 7. Save Address proof
+     * ------------------------------------------------------
+     */
+    if (addressProof) {
+      await saveTeacherFile(
+        teacher.id,
+        "ADDRESS_PROOF",
+        addressProof,
+      );
+    }
 
+    /*
+     * ------------------------------------------------------
+     * 8. Save Qualification proof
+     * ------------------------------------------------------
+     */
+    if (qualificationProof) {
+      await saveTeacherFile(
+        teacher.id,
+        "QUALIFICATION_PROOF",
+        qualificationProof,
+      );
+    }
+
+    /*
+     * ------------------------------------------------------
+     * 9. Return result
+     * ------------------------------------------------------
+     */
     return NextResponse.json({
       success: true,
 
@@ -106,11 +226,10 @@ export async function POST(req: Request) {
       approvalStatus:
         updatedTeacher.approvalStatus,
     });
-
   } catch (error) {
     console.error(
       "Teacher Step 3 Error:",
-      error
+      error,
     );
 
     return NextResponse.json(
@@ -120,7 +239,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

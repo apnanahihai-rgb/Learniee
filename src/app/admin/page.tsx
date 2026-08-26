@@ -41,7 +41,7 @@ export default function AdminDashboard() {
               View Teachers
             </button>
           </div>
-
+    
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
               Course Approvals

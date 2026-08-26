@@ -20,7 +20,8 @@ export interface AdminTeacher {
   whatsapp: string | null;
   aboutMe: string | null;
   criminalCase: string | null;
-
+  panCardNumber: string | null;
+  onboardingStatus: string;
   onboardingComplete: boolean;
   approvalStatus: string;
   createdAt: string;
@@ -63,25 +64,23 @@ export interface AdminTeacher {
     youtube: string | null;
   } | null;
 
-  documents: {
-    videoIntroKey: string | null;
-    photoKey: string | null;
-    certificationKey: string | null;
-    awardsKey: string | null;
-    dobProofKey: string | null;
-    addressProofKey: string | null;
-    qualificationProofKey: string | null;
-    panCardNumber: string | null;
+ files: Array<{
+  id: string;
 
-    // Short-lived, viewable URLs generated server-side from the
-    // keys above (the S3 bucket is private, so the raw keys on
-    // their own aren't openable in the browser).
-    videoIntroUrl: string | null;
-    photoUrl: string | null;
-    certificationUrl: string | null;
-    awardsUrl: string | null;
-    dobProofUrl: string | null;
-    addressProofUrl: string | null;
-    qualificationProofUrl: string | null;
-  } | null;
+  type:
+    | "PROFILE_PHOTO"
+    | "INTRO_VIDEO"
+    | "CERTIFICATION"
+    | "AWARD"
+    | "DOB_PROOF"
+    | "ADDRESS_PROOF"
+    | "QUALIFICATION_PROOF";
+
+  s3Key: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSize: number;
+
+  viewUrl: string;
+}>;
 }

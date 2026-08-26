@@ -13,7 +13,24 @@ import TeacherMediaPlaceholder from "@/features/teacher/components/onboarding/st
 import { useTeacherStep1Form } from "@/features/teacher/hooks/useTeacherStep1Form";
 
 export default function TeacherStep1() {
-  const { loading, formData, handleChange, handleSubmit } = useTeacherStep1Form();
+  const {
+    loading,
+    submitting,
+    formData,
+    handleChange,
+    handleSubmit,
+
+    profilePhoto,
+    introVideo,
+
+    existingProfilePhoto,
+    existingIntroVideo,
+
+    handleProfilePhotoChange,
+    handleIntroVideoChange,
+
+    fileErrors,
+  } = useTeacherStep1Form();
 
   if (loading) {
     return (
@@ -25,7 +42,9 @@ export default function TeacherStep1() {
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-white rounded-xl shadow-sm border mt-10">
-      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">Registration</h2>
+      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">
+        Registration
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -93,7 +112,12 @@ export default function TeacherStep1() {
             onChange={handleChange}
           />
 
-          <Input name="city" placeholder="City" value={formData.city} onChange={handleChange} />
+          <Input
+            name="city"
+            placeholder="City"
+            value={formData.city}
+            onChange={handleChange}
+          />
 
           <CountrySelect
             name="country"
@@ -137,12 +161,23 @@ export default function TeacherStep1() {
 
         {/* Media */}
 
-        <TeacherMediaPlaceholder />
+        <TeacherMediaPlaceholder
+          profilePhoto={profilePhoto}
+          introVideo={introVideo}
+          existingProfilePhoto={existingProfilePhoto}
+          existingIntroVideo={existingIntroVideo}
+          onProfilePhotoChange={handleProfilePhotoChange}
+          onIntroVideoChange={handleIntroVideoChange}
+          errors={fileErrors}
+        />
 
         {/* Criminal Case */}
 
         <div className="w-full md:w-1/2">
-          <CriminalCaseSelect value={formData.criminalCase} onChange={handleChange} />
+          <CriminalCaseSelect
+            value={formData.criminalCase}
+            onChange={handleChange}
+          />
         </div>
 
         {/* Submit */}
@@ -150,9 +185,10 @@ export default function TeacherStep1() {
         <div className="flex justify-end pt-4">
           <Button
             type="submit"
-            className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full"
+            disabled={submitting}
+            className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full disabled:opacity-60"
           >
-            Next
+            {submitting ? "Uploading..." : "Next"}
           </Button>
         </div>
       </form>
