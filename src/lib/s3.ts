@@ -32,6 +32,7 @@ export const S3_BUCKET = process.env.AWS_S3_BUCKET_NAME as string;
 export const UPLOAD_FOLDERS = {
   TEACHER_DOCUMENTS: "teacher-documents",
   CHILD_PHOTOS: "child-photos",
+  COURSE_MEDIA: "course-media",
 } as const;
 
 export type UploadFolder =

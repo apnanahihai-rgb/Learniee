@@ -205,7 +205,8 @@ model Course {
 
 enum CourseStatus {
   DRAFT
-  ACTIVE
+  UNDER_REVIEW
+  APPROVED
   REJECTED
   INACTIVE
 }

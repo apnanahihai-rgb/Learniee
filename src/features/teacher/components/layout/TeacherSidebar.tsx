@@ -111,14 +111,12 @@ export default function TeacherSidebar({
 
   const handleNavigation = (path: string) => {
     router.push(path);
-
-    // Close sidebar on mobile/tablet
     onClose();
   };
 
   return (
     <>
-      {/* Mobile/Tablet overlay */}
+      {/* Mobile / Tablet overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-40 lg:hidden"
@@ -128,40 +126,38 @@ export default function TeacherSidebar({
 
       <aside
         className={`
-          fixed
-          lg:static
-          top-14
-          left-0
-          z-40
-          w-52
-          h-[calc(100vh-56px)]
-          bg-purple-500
-          rounded-r-2xl
-          px-5
-          py-7
-          text-white
-          overflow-y-auto
+    fixed
+    top-14
+    bottom-0
+    left-0
+    z-40
+    w-52
+    bg-purple-500
+    rounded-r-2xl
+    px-5
+    py-7
+    text-white
+    overflow-y-auto
 
-          transform
-          transition-transform
-          duration-300
-          ease-in-out
+    transform
+    transition-transform
+    duration-300
+    ease-in-out
 
-          ${
-            isOpen
-              ? "translate-x-0"
-              : "-translate-x-full lg:translate-x-0"
-          }
-        `}
+    ${
+      isOpen
+        ? "translate-x-0"
+        : "-translate-x-full lg:translate-x-0"
+    }
+  `}
       >
-
-        {/* Mobile close button */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-5">
-
           <h2 className="text-2xl font-bold text-yellow-300">
             Teacher
           </h2>
 
+          {/* Mobile close button */}
           <button
             type="button"
             onClick={onClose}
@@ -170,20 +166,16 @@ export default function TeacherSidebar({
           >
             <X size={22} />
           </button>
-
         </div>
 
         {/* Menu */}
         <nav className="space-y-1">
-
           {menuItems.map((item) => {
             const Icon = item.icon;
 
             const isActive =
               pathname === item.path ||
-              pathname.startsWith(
-                `${item.path}/`
-              );
+              pathname.startsWith(`${item.path}/`);
 
             return (
               <button
@@ -201,6 +193,7 @@ export default function TeacherSidebar({
                   text-sm
                   py-1
                   transition
+
                   ${
                     isActive
                       ? "text-yellow-300 font-semibold"
@@ -217,9 +210,7 @@ export default function TeacherSidebar({
               </button>
             );
           })}
-
         </nav>
-
       </aside>
     </>
   );
