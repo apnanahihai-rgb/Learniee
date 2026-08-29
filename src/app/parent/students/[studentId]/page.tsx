@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Trash2 } from "lucide-react";
 
 import { useStudentProfile } from "@/features/parent/hooks/useStudentProfile";
+import ChildAvatar from "@/features/parent/components/ChildAvatar";
 
 /**
  * A child's profile hub - everything for one Student in one place.
@@ -61,26 +62,18 @@ export default function StudentProfilePage() {
 
       {/* PROFILE HEADER */}
       <div className="bg-white border rounded-2xl p-6 flex flex-col sm:flex-row gap-6 items-center sm:items-start mb-8">
-        <div className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
-          {student.photoViewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={student.photoViewUrl}
-              alt={displayName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-2xl font-semibold text-gray-400">
-              {student.firstName.charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
+        <ChildAvatar src={student.photoViewUrl} name={displayName} size="lg" />
 
         <div className="flex-1 text-center sm:text-left">
           <h1 className="text-xl font-bold text-gray-800">{displayName}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {[student.standard, student.board].filter(Boolean).join(" · ") ||
-              "No standard/board set"}
+            {[
+              student.age != null ? `Age ${student.age}` : null,
+              student.standard,
+              student.board,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "No details set yet"}
           </p>
         </div>
       </div>

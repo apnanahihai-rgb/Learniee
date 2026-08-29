@@ -28,26 +28,16 @@ export const initialStudentFormData: StudentFormData = {
   learningDifficulties: "",
 };
 
+/** Options for the Gender select in StudentForm. */
+export const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
+
 /**
- * Ordered [field name, label] pairs used to render the form and to
- * keep onboarding Step 2 and this "add student" form from silently
- * drifting apart if a field is ever added or renamed.
+ * Common Indian schooling boards for the Board select in
+ * StudentForm. "Other" reveals a free-text field so this never
+ * blocks a parent whose board isn't listed here.
  */
-export const STUDENT_FORM_FIELDS: Array<{
-  name: keyof StudentFormData;
-  label: string;
-  required?: boolean;
-}> = [
-  { name: "firstName", label: "First name", required: true },
-  { name: "lastName", label: "Last name", required: true },
-  { name: "visibleName", label: "Display name" },
-  { name: "gender", label: "Gender" },
-  { name: "age", label: "Age" },
-  { name: "standard", label: "Standard / Grade" },
-  { name: "board", label: "Board" },
-  { name: "currentSchoolName", label: "Current school name" },
-  { name: "learningDifficulties", label: "Learning difficulties (if any)" },
-];
+export const BOARD_OPTIONS = ["CBSE", "ICSE", "State Board", "IB", "IGCSE"];
+export const BOARD_OTHER = "Other";
 
 /**
  * A single Student profile as returned by GET /api/parent/students.
