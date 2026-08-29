@@ -94,6 +94,7 @@ model Teacher {
   panCardNumber    String?
 
   files            TeacherFile[]
+  courses          Course[]
   professionalInfo TeacherProfessional?
 }
 
@@ -159,4 +160,53 @@ enum TeacherFileType {
   DOB_PROOF
   ADDRESS_PROOF
   QUALIFICATION_PROOF
+}
+
+model Course {
+  id String @id @default(uuid())
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  category String?
+  timeSlot String?
+
+  subject    String?
+  grade      String?
+  board      String?
+  experience String?
+
+  duration  String?
+  type      String?
+  language  String?
+  frequency String?
+
+  courseTitle String?
+  rating      Float?
+  objective   String?
+  description String?
+
+  modules    String?
+  courseTags String?
+  price      Decimal? @db.Decimal(10, 2)
+
+  thumbnailKey  String?
+  introVideoKey String?
+
+  status CourseStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([status])
+  @@index([teacherId, status])
+}
+
+enum CourseStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  INACTIVE
 }

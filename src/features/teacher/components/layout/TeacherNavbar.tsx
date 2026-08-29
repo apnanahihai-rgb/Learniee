@@ -68,7 +68,7 @@ export default function TeacherNavbar({
     }`.trim();
 
   return (
-    <header className="h-14 bg-white shadow-sm flex items-center px-3 sm:px-4 gap-4 relative z-50">
+    <header className="fixed top-0 left-0 right-0 h-14 bg-white shadow-sm flex items-center px-3 sm:px-4 gap-4 z-50">
 
       {/* LEFT */}
       <div className="flex items-center gap-4">
