@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
-import { prisma } from "@/lib/prisma";
-
+import { requireParentId } from "@/features/parent/server/auth";
 import {
   deleteStudentForParent,
   getStudentById,
@@ -22,25 +20,13 @@ export async function GET(
   try {
     const { studentId } = await params;
 
-    const auth = requireCognitoAuth(req);
+    const parent = await requireParentId(req);
 
-    if ("error" in auth) {
-      return auth.error;
+    if ("error" in parent) {
+      return parent.error;
     }
 
-    const parent = await prisma.parentProfile.findUnique({
-      where: { cognitoSub: auth.payload.sub },
-      select: { id: true },
-    });
-
-    if (!parent) {
-      return NextResponse.json(
-        { error: "Complete onboarding first." },
-        { status: 400 },
-      );
-    }
-
-    const student = await getStudentById(parent.id, studentId);
+    const student = await getStudentById(parent.parentId, studentId);
 
     if (!student) {
       return NextResponse.json(
@@ -76,25 +62,13 @@ export async function DELETE(
   try {
     const { studentId } = await params;
 
-    const auth = requireCognitoAuth(req);
+    const parent = await requireParentId(req);
 
-    if ("error" in auth) {
-      return auth.error;
+    if ("error" in parent) {
+      return parent.error;
     }
 
-    const parent = await prisma.parentProfile.findUnique({
-      where: { cognitoSub: auth.payload.sub },
-      select: { id: true },
-    });
-
-    if (!parent) {
-      return NextResponse.json(
-        { error: "Complete onboarding first." },
-        { status: 400 },
-      );
-    }
-
-    const deleted = await deleteStudentForParent(parent.id, studentId);
+    const deleted = await deleteStudentForParent(parent.parentId, studentId);
 
     if (!deleted) {
       return NextResponse.json(

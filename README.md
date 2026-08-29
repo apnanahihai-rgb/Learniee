@@ -1,81 +1,126 @@
 # Learniee
 
-Learniee is an online learning platform built with Next.js, Firebase, and Razorpay for payments. This is the official repository for development.
+Learniee is an EdTech tutoring platform connecting Parents, Teachers,
+Admin, and Accounts. Built with Next.js and AWS.
+
+**Full project documentation (architecture, data model, build plan,
+open decisions, lessons learned) lives outside this repo, in the
+project's knowledge base** - see that doc set for anything not
+covered here. This README only covers what's needed to get the repo
+running locally.
 
 ## Tech Stack
 
-- **Frontend:** React, Next.js (App Router), Tailwind CSS, shadcn/ui
-- **State:** Zustand, React Query
-- **Backend / Hosting:** Firebase (Auth, Firestore, Storage, Cloud Functions, App Hosting)
-- **Payments:** Razorpay
-- **Meetings:** Zoho Meeting API
-- **SMS / OTP:** Fast2SMS
-- **Push Notifications:** Firebase Cloud Messaging
-- **DNS:** Cloudflare
-- **Domain Registrar:** GoDaddy
-- **CI/CD:** GitHub → Firebase App Hosting
+- **Frontend:** React + Next.js 16 (App Router, TypeScript, Server
+  Components by default), Tailwind CSS + shadcn/ui (Base UI
+  primitives, Nova preset)
+- **State:** Zustand (client), React Query (server/async)
+- **Auth:** AWS Cognito
+- **Database:** AWS RDS PostgreSQL, via Prisma 7 (`@prisma/adapter-pg`)
+- **File storage:** Amazon S3 (private bucket, presigned URLs -
+  browser-to-S3 direct upload, files never pass through the server)
+- **Hosting / CI-CD:** Vercel, auto-deploy on push to `master`
+- **Payments:** Razorpay (decided, not yet integrated)
+- **Video meetings:** Jitsi (decided, deployment mode - self-hosted
+  vs. JaaS - still open, not yet integrated)
+- **SMS / OTP:** Fast2SMS (decided, not yet wired; Cognito's email
+  OTP is what signup confirmation and password reset actually use
+  today)
+
+## Git remotes
+
+This repo has two remotes in active use, and they are **not**
+equivalent:
+
+- `origin` → `Urjatalents/learniee` - the **main working repo**. All
+  new development happens here. Push here first, always.
+- `second-origin` → `apnanahihai-rgb/Learniee` - a **backup mirror
+  only**. Kept identical to `origin` via an explicit
+  `git push second-origin master --force`. Never push new work here
+  first, and never `git pull`/`git fetch` from it expecting new
+  work - it should only ever receive a force-sync copy of whatever
+  `origin` already has.
+
+```bash
+# Normal day-to-day work
+git add .
+git commit -m "describe what you changed"
+git push origin master
+
+# Only when you specifically want the mirror to match main
+git push second-origin master --force
+```
+
+If the two ever disagree, treat `origin` as the source of truth:
+back up first (`git branch backup-before-reset`), then
+`git fetch origin && git reset --hard origin/master`, then
+force-sync the mirror as above.
 
 ## Setup
 
-1. Clone the repository
+1. Clone the repository (from `origin`, the main repo):
+   ```bash
+   git clone https://github.com/Urjatalents/learniee.git
+   cd learniee
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+   Always `npm`/`npx` - not `pnpm`, even if pnpm happens to be
+   installed locally.
+3. Copy `.env.example` to `.env.local` (read by the Next.js app) and
+   to `.env` (read by the Prisma CLI - `migrate`/`studio`/`generate`
+   don't read `.env.local`). Fill in real values for each service
+   once it's set up.
+   ```bash
+   cp .env.example .env.local
+   cp .env.example .env
+   ```
+4. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000).
+
+## Environment variables
+
+See `.env.example` for the full list with comments on where each
+one is read and what it's for. Never commit `.env`/`.env.local`, and
+never paste real credentials into a chat session, an issue, or a
+commit message - if a secret is ever exposed that way, rotate it
+immediately rather than just removing it from the code.
+
+## Database (Prisma)
+
 ```bash
-git clone https://github.com/Urjatalents/learniee.git
-```
-2. Move to project directory
-```bash
-cd learniee
-```
-3. Install the dependencies
-```bash
-npm install
-```
-4. Run the dev server
-```bash
-npm run dev
-```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Environment Variables
-
-This project needs a `.env.local` file in the root directory for Firebase, Razorpay, Zoho, and Fast2SMS credentials. This file is gitignored and should never be committed.
-
-```bash
-# Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-NEXT_PUBLIC_FIREBASE_VAPID_KEY=
-
-# Razorpay
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-
-# Zoho Meeting
-ZOHO_CLIENT_ID=
-ZOHO_CLIENT_SECRET=
-ZOHO_REFRESH_TOKEN=
-
-# Fast2SMS
-FAST2SMS_API_KEY=
-
-# AWS S3 (teacher document + child photo uploads)
-AWS_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_S3_BUCKET_NAME=
+npx prisma migrate dev     # create/apply a migration locally
+npx prisma generate        # regenerate the Prisma Client
 ```
 
-Fill these in locally after setting up each service. For production, set the same values as Firebase App Hosting secrets rather than committing them anywhere.
+`npx prisma studio` does not currently work against this project's
+Prisma 7 + `@prisma/adapter-pg` setup - use a disposable Node script
+instead if you need to inspect data directly (see
+`src/lib/prisma.ts` for the client setup pattern to reuse in one).
 
-### S3 bucket setup (teacher documents + child photos)
+**Before pushing any change that touches Prisma-writing code, run a
+real production build, not just `npm run dev`:**
 
-Uploads (teacher DOB/address/qualification proofs in onboarding step 3,
-child photos in parent onboarding step 2) go straight from the browser to
-S3 using short-lived presigned URLs, so files never pass through our
-server. See `src/lib/s3.ts` and `/api/upload/presign`.
+```bash
+npm run build
+```
+
+`next build`'s type-check catches some real bugs that `next dev`
+lets through silently (an unconverted `Decimal` field has bitten
+this project before - always wrap numeric form values in
+`Number(...)` before a Prisma `create`/`update`).
+
+## S3 bucket setup (file uploads)
+
+Teacher documents (step 3), Parent child photos (step 2), and Course
+thumbnails/intro videos all go straight from the browser to S3 via
+short-lived presigned URLs - see `src/lib/s3.ts` and
+`/api/upload/presign`.
 
 One-time bucket setup:
 
@@ -85,81 +130,78 @@ aws s3api create-bucket \
   --region <your-region> \
   --create-bucket-configuration LocationConstraint=<your-region>
 
-# Keep the bucket fully private - we only ever access it via
-# presigned URLs, never a public bucket policy.
+# Keep the bucket fully private - access is always via a presigned
+# URL, never a public bucket policy.
 aws s3api put-public-access-block \
   --bucket <your-bucket-name> \
   --public-access-block-configuration \
   BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 
-# Allow the browser to PUT files directly from our app's origin(s)
+# Allow the browser to PUT files directly from the app's origin(s)
 aws s3api put-bucket-cors \
   --bucket <your-bucket-name> \
   --cors-configuration file://infra/s3-cors.json
 ```
 
 The IAM user/role the app runs as needs at least `s3:PutObject` and
-`s3:GetObject` on `arn:aws:s3:::<your-bucket-name>/*` — see
+`s3:GetObject` on `arn:aws:s3:::<your-bucket-name>/*` - see
 `infra/s3-iam-policy.json`.
 
-## Guidelines
+## Project structure
 
-1. Always pull the latest changes from `master` before you start working (see Precaution below).
-2. Run `npm run lint` before pushing code.
-3. Run `npm install` again if you hit a dependency error.
-4. Keep components inside `src/components`, and add new shadcn components with:
-```bash
-npx shadcn@latest add <component-name>
-```
-
-## Precaution
-
-Before you start coding, always make sure you have the latest code:
-```bash
-git checkout master
-git pull origin master
-```
-
-## Contributing
-
-1. Create a new branch (only once per person):
-```bash
-git checkout -b <your-name>
-```
-If you already have a branch, switch to it instead:
-```bash
-git checkout <your-name>
-```
-2. Stage your changes
-```bash
-git add .
-```
-3. Commit your changes
-```bash
-git commit -m "your message"
-```
-4. Push your changes
-```bash
-git push origin <your-name>
-```
-5. Create a Pull Request (PR)
-   - Go to the GitHub repository page.
-   - Click the "Compare & pull request" button.
-   - Submit your PR against the `master` branch.
-   - Wait for review and merge.
-
-## Project Structure
+`src/app` is routes-only; everything else (components, hooks, types,
+server logic) lives under `src/features/<feature>/...`. Split any
+file that grows past ~150-200 lines.
 
 ```
 learniee/
+├── certs/                 → real AWS RDS CA bundle (public cert, fine to commit)
+├── infra/                 → S3 CORS config + minimum IAM policy
+├── scripts/                → one-off provisioning scripts (e.g. Admin account)
+├── prisma/                 → schema.prisma + migrations
 ├── src/
-│   ├── app/            # App Router pages and layouts
-│   ├── components/
-│   │   └── ui/         # shadcn/ui components
-│   └── lib/             # Utilities, Firebase config, helpers
-├── public/              # Static assets
-├── components.json      # shadcn/ui config
-└── next.config.ts
+│   ├── app/                # ROUTES ONLY - pages + API route handlers
+│   ├── features/           # ALL feature/business logic
+│   │   └── <feature>/
+│   │       ├── components/
+│   │       ├── hooks/
+│   │       ├── server/     # Prisma queries / business logic, kept out of route files
+│   │       └── types/
+│   ├── components/ui/      # shadcn/ui primitives ONLY
+│   └── lib/                 # cross-cutting utilities (db client, auth helpers, S3, cn())
+└── public/
+```
+
+Where a new file goes:
+
+| Kind of file | Location |
+|---|---|
+| A page's route file | `src/app/<route>/page.tsx` - keep it thin |
+| An API route handler | `src/app/api/<domain>/.../route.ts` - **must** be named exactly `route.ts`, or Next.js silently 404s it with no build warning |
+| A component used by one feature | `src/features/<feature>/components/...` |
+| A component used by 2+ features | `src/features/shared/components/...` |
+| A hook/type used by one feature | `src/features/<feature>/hooks/...` or `.../types/...` |
+| Cross-cutting utility | `src/lib/...` |
+
+**API route convention:** auth check → parse input → call a service
+function in `features/<feature>/server/<thing>.service.ts` → shape
+the response. Keep Prisma queries and business logic in the service,
+not the route handler, so two routes touching the same entity can't
+drift apart. See `src/features/parent/server/student.service.ts` for
+a worked example, and `src/features/parent/server/auth.ts` for how
+repeated auth+lookup logic gets shared across routes.
+
+## Contributing
+
+```bash
+git checkout master
+git pull origin master   # always start from the latest main-repo state
+# ...make changes...
+npm run lint
+npm run build             # catches errors npm run dev won't
+git add .
+git commit -m "describe what you changed"
+git push origin master
 ```
 
 ## License

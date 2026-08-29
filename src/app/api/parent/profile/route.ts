@@ -2,6 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCognitoAuth } from "@/lib/api-auth";
 
+/**
+ * GET
+ *
+ * Name/email for the ParentNavbar. Deliberately its own endpoint
+ * rather than reusing `requireParentId` (features/parent/server/
+ * auth.ts) - that helper only selects `{ id: true }`, this route
+ * needs the display fields instead, so keeping them separate avoids
+ * over-fetching on every other parent route just to support this
+ * one navbar.
+ */
 export async function GET(req: Request) {
   try {
     const auth = requireCognitoAuth(req);

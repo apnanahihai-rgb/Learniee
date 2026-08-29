@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtDecode } from "jwt-decode";
 import { prisma } from "@/lib/prisma";
 import { createPresignedDownloadUrl } from "@/lib/s3";
+import { parseAge } from "@/lib/utils";
 
 interface DecodedToken {
   sub: string;
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
       lastName: body.lastName,
       visibleName: body.visibleName,
       gender: body.gender,
-      age: body.age ? parseInt(body.age) : null,
+      age: parseAge(body.age),
       standard: body.standard,
       board: body.board,
       currentSchoolName: body.currentSchoolName,

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
-import { prisma } from "@/lib/prisma";
-
+import { requireParentId } from "@/features/parent/server/auth";
 import {
   createStudentForParent,
   getStudentsForParent,
@@ -16,25 +14,13 @@ import {
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const parent = await requireParentId(req);
 
-    if ("error" in auth) {
-      return auth.error;
+    if ("error" in parent) {
+      return parent.error;
     }
 
-    const parent = await prisma.parentProfile.findUnique({
-      where: { cognitoSub: auth.payload.sub },
-      select: { id: true },
-    });
-
-    if (!parent) {
-      return NextResponse.json(
-        { error: "Complete onboarding first." },
-        { status: 400 },
-      );
-    }
-
-    const students = await getStudentsForParent(parent.id);
+    const students = await getStudentsForParent(parent.parentId);
 
     return NextResponse.json({ success: true, students });
   } catch (error) {
@@ -57,22 +43,10 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const parent = await requireParentId(req);
 
-    if ("error" in auth) {
-      return auth.error;
-    }
-
-    const parent = await prisma.parentProfile.findUnique({
-      where: { cognitoSub: auth.payload.sub },
-      select: { id: true },
-    });
-
-    if (!parent) {
-      return NextResponse.json(
-        { error: "Complete onboarding first." },
-        { status: 400 },
-      );
+    if ("error" in parent) {
+      return parent.error;
     }
 
     const input: StudentFormInput = await req.json();
@@ -84,7 +58,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const student = await createStudentForParent(parent.id, input);
+    const student = await createStudentForParent(parent.parentId, input);
 
     return NextResponse.json(
       { success: true, studentId: student.id },

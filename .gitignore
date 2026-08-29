@@ -41,4 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# ad hoc patch files generated for review - never meant to be committed
+*.patch
+
 /src/generated/prisma

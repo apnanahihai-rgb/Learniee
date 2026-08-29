@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createPresignedDownloadUrl } from "@/lib/s3";
+import { parseAge } from "@/lib/utils";
 
 /**
  * Raw request-body shape POSTed from the "add student" form.
@@ -44,7 +45,7 @@ export async function createStudentForParent(
       lastName: input.lastName,
       visibleName: input.visibleName || null,
       gender: input.gender || null,
-      age: input.age ? parseInt(input.age, 10) || null : null,
+      age: parseAge(input.age),
       standard: input.standard || null,
       board: input.board || null,
       currentSchoolName: input.currentSchoolName || null,
