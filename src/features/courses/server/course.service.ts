@@ -49,7 +49,7 @@ function buildCourseData(input: CourseFormInput) {
 
     modules: input.modules || null,
     courseTags: input.courseTags || null,
-    price: input.price || null,
+    price: input.price ? Number(input.price) : null,
 
     thumbnailKey: input.thumbnailKey || null,
     introVideoKey: input.introVideoKey || null,

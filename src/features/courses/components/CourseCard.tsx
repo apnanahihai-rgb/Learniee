@@ -172,10 +172,15 @@ export default function CourseCard({
       videoRef.current
         .play()
         .catch((error) => {
-          console.error(
-            "Video autoplay error:",
-            error,
-          );
+          // AbortError fires when hovering on/off quickly interrupts
+          // an in-flight play() with pause() — expected browser
+          // behavior, not a real failure. See: https://goo.gl/LdLk22
+          if (error?.name !== "AbortError") {
+            console.error(
+              "Video autoplay error:",
+              error,
+            );
+          }
         });
     } else {
       videoRef.current.pause();
