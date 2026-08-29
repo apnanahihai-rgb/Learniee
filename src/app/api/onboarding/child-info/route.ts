@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtDecode } from "jwt-decode";
 import { prisma } from "@/lib/prisma";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 import { parseAge } from "@/lib/utils";
-
-interface DecodedToken {
-  sub: string;
-  email?: string;
-  given_name?: string;
-  family_name?: string;
-  phone_number?: string;
-}
+import { requireCognitoAuth } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get("idToken")?.value;
-  if (!token) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  const auth = requireCognitoAuth(req);
 
-  const decoded = jwtDecode(token) as DecodedToken;
+  if ("error" in auth) {
+    return auth.error;
+  }
+
   const body = await req.json();
 
   const parent = await prisma.parentProfile.findUnique({
-    where: { cognitoSub: decoded.sub },
+    where: { cognitoSub: auth.payload.sub },
   });
   if (!parent) return NextResponse.json({ error: "Complete step 1 first" }, { status: 400 });
 

@@ -91,6 +91,18 @@ never paste real credentials into a chat session, an issue, or a
 commit message - if a secret is ever exposed that way, rotate it
 immediately rather than just removing it from the code.
 
+## Tests
+
+```bash
+npm test
+```
+
+A minimal Vitest setup — currently covers the pure helpers in
+`src/lib/utils.ts` (e.g. `parseAge`). Not comprehensive; add
+coverage as new business logic (Enrollment, Wallet, the Profits
+calculation) gets built, since that's exactly the kind of money-
+adjacent logic that's expensive to get wrong silently.
+
 ## Database (Prisma)
 
 ```bash

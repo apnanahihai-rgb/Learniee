@@ -64,6 +64,8 @@ model Student {
   photoUrl             String?
   createdAt            DateTime      @default(now())
   parent               ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
 }
 
 model Teacher {

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtDecode } from "jwt-decode";
 
 import { prisma } from "@/lib/prisma";
 
@@ -12,10 +11,6 @@ import {
 } from "@/lib/s3";
 
 import { requireCognitoAuth } from "@/lib/api-auth";
-
-interface DecodedToken {
-  sub: string;
-}
 
 const FOLDER_VALUES = Object.values(UPLOAD_FOLDERS);
 
@@ -32,8 +27,9 @@ function isUploadFolder(value: unknown): value is UploadFolder {
  * Supported folders:
  *
  * teacher-documents
- *   → Existing teacher onboarding upload flow.
- *   → Uses the client-supplied teacherId.
+ *   → Requires Cognito auth. Teacher is identified from
+ *     auth.payload.sub - the browser's teacherId is no longer
+ *     trusted (see security fix note below).
  *
  * course-media
  *   → Uses Cognito authentication.
@@ -50,7 +46,6 @@ export async function POST(req: NextRequest) {
       folder,
       fileName,
       contentType,
-      teacherId,
     } = body ?? {};
 
     // -----------------------------------------
@@ -112,28 +107,28 @@ export async function POST(req: NextRequest) {
       UPLOAD_FOLDERS.TEACHER_DOCUMENTS
     ) {
       /*
-       * IMPORTANT:
-       * Keep the existing teacher-document
-       * flow unchanged.
+       * SECURITY FIX (see 07-LESSONS-LEARNED.md): this branch used
+       * to trust a client-supplied `teacherId` with no auth check
+       * at all, which let anyone request a presigned write into
+       * ANY teacher's `teacher-documents/<teacherId>/...` prefix.
+       * Now identical to the COURSE_MEDIA branch below - the
+       * teacherId is derived from the caller's own verified
+       * session, never taken from the request body.
        */
 
-      if (
-        !teacherId ||
-        typeof teacherId !== "string"
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "teacherId is required for document uploads",
-          },
-          { status: 400 },
-        );
+      const auth = requireCognitoAuth(req);
+
+      if ("error" in auth) {
+        return auth.error;
       }
 
       const teacher =
         await prisma.teacher.findUnique({
           where: {
-            id: teacherId,
+            cognitoId: auth.payload.sub,
+          },
+          select: {
+            id: true,
           },
         });
 
@@ -198,29 +193,20 @@ export async function POST(req: NextRequest) {
       /*
        * Existing child-photo flow.
        *
-       * Parent is identified through the
-       * idToken cookie, not client input.
+       * Parent is identified through Cognito auth,
+       * not client input.
        */
 
-      const token =
-        req.cookies.get("idToken")?.value;
+      const auth = requireCognitoAuth(req);
 
-      if (!token) {
-        return NextResponse.json(
-          {
-            error: "Not logged in",
-          },
-          { status: 401 },
-        );
+      if ("error" in auth) {
+        return auth.error;
       }
-
-      const decoded =
-        jwtDecode(token) as DecodedToken;
 
       const parent =
         await prisma.parentProfile.findUnique({
           where: {
-            cognitoSub: decoded.sub,
+            cognitoSub: auth.payload.sub,
           },
         });
 

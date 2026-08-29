@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtDecode } from "jwt-decode";
 import { prisma } from "@/lib/prisma";
+import { requireCognitoAuth, type CognitoTokenPayload } from "@/lib/api-auth";
 
-interface DecodedToken {
-  sub: string;
-  email?: string;
-  given_name?: string;
-  family_name?: string;
+interface ParentInfoTokenPayload extends CognitoTokenPayload {
   phone_number?: string;
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get("idToken")?.value;
-  if (!token) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  const auth = requireCognitoAuth<ParentInfoTokenPayload>(req);
 
-  const decoded = jwtDecode(token) as DecodedToken;
+  if ("error" in auth) {
+    return auth.error;
+  }
+
+  const { payload } = auth;
   const body = await req.json();
 
   await prisma.parentProfile.upsert({
-    where: { cognitoSub: decoded.sub },
+    where: { cognitoSub: payload.sub },
     update: body,
     create: {
-      cognitoSub: decoded.sub,
-      email: decoded.email,
-      firstName: decoded.given_name ?? "",
-      lastName: decoded.family_name ?? "",
-      phone: decoded.phone_number ?? "",
+      cognitoSub: payload.sub,
+      email: payload.email,
+      firstName: payload.given_name ?? "",
+      lastName: payload.family_name ?? "",
+      phone: payload.phone_number ?? "",
       ...body,
     },
   });

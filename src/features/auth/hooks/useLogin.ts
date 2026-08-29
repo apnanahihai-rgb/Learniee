@@ -54,8 +54,6 @@ export function useLogin() {
 
           const role = session.getIdToken().payload["custom:role"];
 
-          console.log("ROLE FROM TOKEN:", role);
-
           // -----------------------------
           // PARENT LOGIN
           // -----------------------------
@@ -80,9 +78,6 @@ export function useLogin() {
           // -----------------------------
           // TEACHER LOGIN
           // -----------------------------
-          // -----------------------------
-          // TEACHER LOGIN
-          // -----------------------------
           if (role === "teacher") {
             const res = await fetch("/api/teacher/onboarding/status");
 
@@ -91,8 +86,6 @@ export function useLogin() {
             }
 
             const data = await res.json();
-
-            console.log("TEACHER STATUS:", data);
 
             // -----------------------------
             // ONBOARDING NOT COMPLETE

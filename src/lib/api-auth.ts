@@ -59,6 +59,17 @@ export function requireCognitoAuth<T extends CognitoTokenPayload = CognitoTokenP
       return { error: unauthorizedResponse("Invalid Cognito token.") };
     }
 
+    // Same caveat as the decode itself: this checks the token's
+    // `exp` claim but does NOT verify the Cognito signature (see
+    // 06-OPEN-DECISIONS.md #21). Without this check, a stale but
+    // still-decodable idToken cookie would authenticate forever
+    // instead of forcing a re-login once it actually expires.
+    const exp = (payload as { exp?: number }).exp;
+
+    if (typeof exp !== "number" || exp * 1000 <= Date.now()) {
+      return { error: unauthorizedResponse("Session expired. Please login again.") };
+    }
+
     return { token, payload };
   } catch {
     return { error: unauthorizedResponse("Invalid Cognito token.") };

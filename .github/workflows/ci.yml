@@ -1,0 +1,59 @@
+name: CI
+
+# Runs on every push and PR to master (both origin/Urjatalents and
+# a PR opened against this mirror). Two things this project has
+# been bitten by more than once (see 07-LESSONS-LEARNED.md) are
+# errors that only show up in `next build`, not `next dev` - this
+# workflow exists specifically to catch those automatically instead
+# of relying on remembering to run the build locally before pushing.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          # prisma generate only needs a syntactically valid
+          # connection string to load prisma.config.ts - it never
+          # actually connects to a database. Real DB access is
+          # never needed just to build the app. If your Prisma
+          # version does require a reachable DB even for generate,
+          # add a real DATABASE_URL as a repo secret instead of
+          # this placeholder.
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+
+      - name: Lint
+        # NOTE: this repo currently has ~15 pre-existing lint
+        # errors (mostly react-hooks/set-state-in-effect in the
+        # Teacher onboarding hooks/components - see the code-review
+        # notes in 07-LESSONS-LEARNED.md) that predate this
+        # workflow and aren't fixed here. Non-blocking for now so
+        # CI is useful immediately; flip continue-on-error to false
+        # once that cleanup lands.
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Test
+        run: npm test
+
+      - name: Build (production)
+        run: npm run build
+        env:
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
