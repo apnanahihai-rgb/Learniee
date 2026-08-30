@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { prisma } from "@/lib/prisma";
-
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   UPLOAD_FOLDERS,
@@ -9,16 +6,12 @@ import {
   buildS3Key,
   createPresignedUploadUrl,
 } from "@/lib/s3";
-
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { resolveUploadOwnerId } from "@/lib/uploadOwnerResolver";
 
 const FOLDER_VALUES = Object.values(UPLOAD_FOLDERS);
 
 function isUploadFolder(value: unknown): value is UploadFolder {
-  return (
-    typeof value === "string" &&
-    (FOLDER_VALUES as string[]).includes(value)
-  );
+  return typeof value === "string" && (FOLDER_VALUES as string[]).includes(value);
 }
 
 /**
@@ -26,238 +19,47 @@ function isUploadFolder(value: unknown): value is UploadFolder {
  *
  * Supported folders:
  *
- * teacher-documents
+ * teacher-documents / course-media
  *   → Requires Cognito auth. Teacher is identified from
- *     auth.payload.sub - the browser's teacherId is no longer
- *     trusted (see security fix note below).
- *
- * course-media
- *   → Uses Cognito authentication.
- *   → Teacher is identified from auth.payload.sub.
+ *     auth.payload.sub - the browser's teacherId is not trusted
+ *     (see the security fix note in 07-LESSONS-LEARNED.md).
  *
  * child-photos
  *   → Uses the parent's idToken cookie.
+ *
+ * See lib/uploadOwnerResolver.ts for the actual owner-lookup logic.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
-    const {
-      folder,
-      fileName,
-      contentType,
-    } = body ?? {};
-
-    // -----------------------------------------
-    // Validate folder
-    // -----------------------------------------
+    const { folder, fileName, contentType } = body ?? {};
 
     if (!isUploadFolder(folder)) {
+      return NextResponse.json({ error: "Invalid or missing folder" }, { status: 400 });
+    }
+
+    if (!fileName || typeof fileName !== "string") {
+      return NextResponse.json({ error: "fileName is required" }, { status: 400 });
+    }
+
+    if (!contentType || !ALLOWED_UPLOAD_MIME_TYPES.includes(contentType)) {
       return NextResponse.json(
-        {
-          error: "Invalid or missing folder",
-        },
+        { error: "Unsupported file type. Allowed types are PNG, JPG, PDF, and MP4." },
         { status: 400 },
       );
     }
 
-    // -----------------------------------------
-    // Validate filename
-    // -----------------------------------------
-
-    if (
-      !fileName ||
-      typeof fileName !== "string"
-    ) {
-      return NextResponse.json(
-        {
-          error: "fileName is required",
-        },
-        { status: 400 },
-      );
+    const owner = await resolveUploadOwnerId(folder, req);
+    if ("error" in owner) {
+      return owner.error;
     }
 
-    // -----------------------------------------
-    // Validate content type
-    // -----------------------------------------
+    const key = buildS3Key(folder, owner.ownerId, fileName);
+    const uploadUrl = await createPresignedUploadUrl(key, contentType);
 
-    if (
-      !contentType ||
-      !ALLOWED_UPLOAD_MIME_TYPES.includes(
-        contentType,
-      )
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Unsupported file type. Allowed types are PNG, JPG, PDF, and MP4.",
-        },
-        { status: 400 },
-      );
-    }
-
-    let ownerId: string;
-
-    // =========================================
-    // TEACHER DOCUMENTS
-    // =========================================
-
-    if (
-      folder ===
-      UPLOAD_FOLDERS.TEACHER_DOCUMENTS
-    ) {
-      /*
-       * SECURITY FIX (see 07-LESSONS-LEARNED.md): this branch used
-       * to trust a client-supplied `teacherId` with no auth check
-       * at all, which let anyone request a presigned write into
-       * ANY teacher's `teacher-documents/<teacherId>/...` prefix.
-       * Now identical to the COURSE_MEDIA branch below - the
-       * teacherId is derived from the caller's own verified
-       * session, never taken from the request body.
-       */
-
-      const auth = requireCognitoAuth(req);
-
-      if ("error" in auth) {
-        return auth.error;
-      }
-
-      const teacher =
-        await prisma.teacher.findUnique({
-          where: {
-            cognitoId: auth.payload.sub,
-          },
-          select: {
-            id: true,
-          },
-        });
-
-      if (!teacher) {
-        return NextResponse.json(
-          {
-            error: "Teacher not found",
-          },
-          { status: 404 },
-        );
-      }
-
-      ownerId = teacher.id;
-    }
-
-    // =========================================
-    // COURSE MEDIA
-    // =========================================
-
-    else if (
-      folder === UPLOAD_FOLDERS.COURSE_MEDIA
-    ) {
-      /*
-       * Course uploads use Cognito authentication.
-       *
-       * We do NOT trust teacherId from the browser.
-       */
-
-      const auth = requireCognitoAuth(req);
-
-      if ("error" in auth) {
-        return auth.error;
-      }
-
-      const teacher =
-        await prisma.teacher.findUnique({
-          where: {
-            cognitoId: auth.payload.sub,
-          },
-          select: {
-            id: true,
-          },
-        });
-
-      if (!teacher) {
-        return NextResponse.json(
-          {
-            error: "Teacher not found",
-          },
-          { status: 404 },
-        );
-      }
-
-      ownerId = teacher.id;
-    }
-
-    // =========================================
-    // CHILD PHOTOS
-    // =========================================
-
-    else {
-      /*
-       * Existing child-photo flow.
-       *
-       * Parent is identified through Cognito auth,
-       * not client input.
-       */
-
-      const auth = requireCognitoAuth(req);
-
-      if ("error" in auth) {
-        return auth.error;
-      }
-
-      const parent =
-        await prisma.parentProfile.findUnique({
-          where: {
-            cognitoSub: auth.payload.sub,
-          },
-        });
-
-      if (!parent) {
-        return NextResponse.json(
-          {
-            error: "Complete step 1 first",
-          },
-          { status: 400 },
-        );
-      }
-
-      ownerId = parent.id;
-    }
-
-    // =========================================
-    // BUILD S3 KEY
-    // =========================================
-
-    const key = buildS3Key(
-      folder,
-      ownerId,
-      fileName,
-    );
-
-    // =========================================
-    // CREATE PRESIGNED URL
-    // =========================================
-
-    const uploadUrl =
-      await createPresignedUploadUrl(
-        key,
-        contentType,
-      );
-
-    return NextResponse.json({
-      uploadUrl,
-      key,
-    });
+    return NextResponse.json({ uploadUrl, key });
   } catch (error) {
-    console.error(
-      "Presign upload error:",
-      error,
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Failed to create upload URL",
-      },
-      { status: 500 },
-    );
+    console.error("Presign upload error:", error);
+    return NextResponse.json({ error: "Failed to create upload URL" }, { status: 500 });
   }
 }

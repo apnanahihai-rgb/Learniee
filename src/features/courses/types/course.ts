@@ -45,3 +45,20 @@ export const initialCourseFormData: CourseFormData = {
   courseTags: "",
   price: "",
 };
+
+/**
+ * Shape used by CourseCard (Teacher's own course list) — a subset of
+ * the full Course record returned by GET /api/teacher/course.
+ */
+export interface TeacherCourseSummary {
+  id: string;
+  courseTitle: string | null;
+  subject: string | null;
+  grade: string | null;
+  board: string | null;
+  type: string | null;
+  price: string | null;
+  thumbnailKey: string | null;
+  introVideoKey: string | null;
+  createdAt: string;
+}

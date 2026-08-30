@@ -76,3 +76,84 @@ export const initialStep2FormData: Step2FormData = {
 export type Step2ChangeHandler = (
   e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
 ) => void;
+
+/**
+ * Server-side save payload: the same fields as Step2FormData plus the
+ * optional uploaded files. Extends rather than re-declaring the field
+ * list, which used to be duplicated verbatim in step2.service.ts.
+ */
+export interface Step2FormInput extends Step2FormData {
+  certifications?: import("@/features/teacher/server/teacherFile.service").TeacherFileInput[];
+  awards?: import("@/features/teacher/server/teacherFile.service").TeacherFileInput[];
+}
+
+/**
+ * Maps the API's `professionalInfo` record (nullable fields) onto the
+ * client form shape (empty-string/false defaults). Extracted out of
+ * useTeacherStep2Form.ts's load effect to keep that hook shorter.
+ */
+export function mapProfessionalInfoToFormData(professionalInfo: {
+  referredBy?: string | null;
+  qualifications?: string | null;
+  overallExperience?: string | null;
+  comfortableLanguage?: string | null;
+  schoolsTaught?: string | null;
+  workingInSchool?: boolean | null;
+  schoolName?: string | null;
+  workingInAcademy?: boolean | null;
+  academyName?: string | null;
+  homeTuitionArea?: string | null;
+  studentsTaught?: string | null;
+  canTakeHomeTuition?: string | null;
+  hoursPerDay?: string | null;
+  haveOwnNotes?: string | null;
+  canMakePresentations?: string | null;
+  provideHomework?: string | null;
+  conductPTM?: string | null;
+  hasLaptop?: boolean | null;
+  hasPenTab?: boolean | null;
+  proficientInEnglish?: boolean | null;
+  additionalInfo?: string | null;
+  facebook?: string | null;
+  linkedin?: string | null;
+  instagram?: string | null;
+  youtube?: string | null;
+  notWithOtherAcademy?: boolean | null;
+}): Step2FormData {
+  return {
+    referredBy: professionalInfo.referredBy ?? "",
+    qualifications: professionalInfo.qualifications ?? "",
+    overallExperience: professionalInfo.overallExperience ?? "",
+    comfortableLanguage: professionalInfo.comfortableLanguage ?? "",
+    schoolsTaught: professionalInfo.schoolsTaught ?? "",
+
+    workingInSchool: professionalInfo.workingInSchool ?? false,
+    schoolName: professionalInfo.schoolName ?? "",
+
+    workingInAcademy: professionalInfo.workingInAcademy ?? false,
+    academyName: professionalInfo.academyName ?? "",
+
+    homeTuitionArea: professionalInfo.homeTuitionArea ?? "",
+    studentsTaught: professionalInfo.studentsTaught ?? "",
+    canTakeHomeTuition: professionalInfo.canTakeHomeTuition ?? "",
+    hoursPerDay: professionalInfo.hoursPerDay ?? "",
+
+    haveOwnNotes: professionalInfo.haveOwnNotes ?? "",
+    canMakePresentations: professionalInfo.canMakePresentations ?? "",
+    provideHomework: professionalInfo.provideHomework ?? "",
+    conductPTM: professionalInfo.conductPTM ?? "",
+
+    hasLaptop: professionalInfo.hasLaptop ?? false,
+    hasPenTab: professionalInfo.hasPenTab ?? false,
+    proficientInEnglish: professionalInfo.proficientInEnglish ?? false,
+
+    additionalInfo: professionalInfo.additionalInfo ?? "",
+
+    facebook: professionalInfo.facebook ?? "",
+    linkedin: professionalInfo.linkedin ?? "",
+    instagram: professionalInfo.instagram ?? "",
+    youtube: professionalInfo.youtube ?? "",
+
+    notWithOtherAcademy: professionalInfo.notWithOtherAcademy ?? false,
+  };
+}
