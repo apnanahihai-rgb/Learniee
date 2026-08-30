@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Info, Sparkles, Users2, BookOpenCheck } from "lucide-react";
 
 import { useApprovedCourses } from "@/features/parent/hooks/useApprovedCourses";
@@ -203,7 +204,9 @@ export default function ParentHome() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {courses.map((course) => (
-              <CourseCard key={course.id} course={course} />
+              <Link key={course.id} href={`/parent/courses/${course.id}`}>
+                <CourseCard course={course} />
+              </Link>
             ))}
           </div>
         )}
