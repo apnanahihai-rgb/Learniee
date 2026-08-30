@@ -13,7 +13,6 @@ import LearnerSwitcher, {
   type LearnerFilter,
 } from "@/features/parent/components/LearnerSwitcher";
 import ChildFocusCard from "@/features/parent/components/ChildFocusCard";
-import DemoCouponBanner from "@/features/parent/components/DemoCouponBanner";
 
 export default function ParentHome() {
   const { courses, loading, error } = useApprovedCourses();
@@ -85,11 +84,6 @@ export default function ParentHome() {
           <BookOpenCheck size={56} className="text-white/70" strokeWidth={1.3} />
         </div>
       </div>
-
-      {/* DEMO COUPON BALANCE — account-level, not per child, see
-          06-OPEN-DECISIONS.md #26. Actual booking happens on a
-          course's detail page (BookingPanel). */}
-      <DemoCouponBanner />
 
       {/* YOUR CHILDREN — full grid when "All" is active, a single
           focused summary when one child is selected in the switcher */}

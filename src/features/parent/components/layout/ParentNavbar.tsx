@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { Menu, Bell, Search, GraduationCap } from "lucide-react";
 
+import DemoCouponButton from "@/features/parent/components/layout/DemoCouponButton";
+
 interface Parent {
   firstName: string;
   lastName: string;
@@ -105,6 +107,11 @@ export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand"
           />
         </div>
+
+        {/* Demo coupons — balance, buy more, upcoming demos.
+            Moved here from the dashboard (Aug 30, 2026); see
+            DemoCouponButton.tsx. */}
+        <DemoCouponButton />
 
         {/* Notification — static for now. Notification Center
             (grouped buckets, admin toggle, subscribe/unsubscribe)
