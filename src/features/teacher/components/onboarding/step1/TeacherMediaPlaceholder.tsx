@@ -82,9 +82,13 @@ export default function TeacherMediaPlaceholder({
       {/* ================================================== */}
 
       <div>
-        <label className="block text-sm font-semibold text-gray-800 mb-2">
-          Video Introduction
+        <label className="block text-sm font-semibold text-gray-800 mb-1">
+          Video Introduction <span className="text-red-600">*</span>
         </label>
+
+        <p className="text-xs text-gray-500 mb-2">
+          Required — this is what parents see first on your course pages.
+        </p>
 
         <label
           htmlFor="intro-video"

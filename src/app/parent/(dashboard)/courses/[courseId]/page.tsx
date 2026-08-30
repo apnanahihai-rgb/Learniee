@@ -13,15 +13,21 @@ import ReviewsSection from "@/features/parent/components/course-detail/ReviewsSe
 import OtherCoursesByTeacher from "@/features/parent/components/course-detail/OtherCoursesByTeacher";
 
 /**
- * Full course-detail page for a Parent: course media, details,
- * teacher profile, a date/time booking preview, sample reviews,
- * and other courses by the same teacher. Reachable by clicking a
- * course card on /parent.
+ * Full course-detail page for a Parent: course media, the
+ * teacher's profile (video-forward — see TeacherProfileCard),
+ * course details, a date/time booking preview wired to real demo
+ * booking, sample reviews, and other courses by the same teacher.
+ * Reachable by clicking a course card on /parent.
  *
- * Demo/Enrollment booking is UI-only for now (see BookingPanel) —
- * Enrollment and DemoCoupon aren't modeled yet. Reviews are also
- * UI-only placeholder content (see ReviewsSection) — Reviews are
- * Month 2 scope, not MVP.
+ * The teacher's intro video is deliberately shown right under the
+ * course media, ahead of the course details — teachers and their
+ * courses are the platform's core selling point, so "meet the
+ * teacher" shouldn't be buried below the fold.
+ *
+ * Demo booking is wired to the real DemoCoupon backend (see
+ * BookingPanel). Enrollment booking is still UI-only — Enrollment
+ * isn't modeled yet. Reviews are also UI-only placeholder content
+ * (see ReviewsSection) — Reviews are Month 2 scope, not MVP.
  */
 export default function CourseDetailPage() {
   const params = useParams<{ courseId: string }>();
@@ -77,16 +83,25 @@ export default function CourseDetailPage() {
             introVideoUrl={course.introVideoUrl}
           />
 
-          <CourseInfoSection course={course} />
-
+          {/* Teacher video moved up here, right after the course
+              media — teachers are the unique selling point, so
+              "meet the teacher" is no longer buried below the
+              course details. */}
           <TeacherProfileCard teacher={course.teacher} />
+
+          <CourseInfoSection course={course} />
 
           <ReviewsSection />
         </div>
 
         {/* BOOKING SIDEBAR */}
         <div className="lg:col-span-1">
-          <BookingPanel price={course.price} />
+          <BookingPanel
+            price={course.price}
+            teacherId={course.teacherId}
+            courseId={course.id}
+            subject={course.subject}
+          />
         </div>
       </div>
 

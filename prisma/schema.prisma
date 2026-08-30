@@ -37,6 +37,7 @@ model ParentProfile {
   onboardingComplete  Boolean   @default(false)
   createdAt           DateTime  @default(now())
   students            Student[]
+  demoCoupon          DemoCoupon?
 }
 
 model Admin {
@@ -64,6 +65,7 @@ model Student {
   photoUrl             String?
   createdAt            DateTime      @default(now())
   parent               ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  demoBookings         DemoBooking[]
 
   @@index([parentId])
 }
@@ -98,6 +100,7 @@ model Teacher {
   files            TeacherFile[]
   courses          Course[]
   professionalInfo TeacherProfessional?
+  demoBookings     DemoBooking[]
 }
 
 model TeacherProfessional {
@@ -200,6 +203,8 @@ model Course {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  demoBookings DemoBooking[]
+
   @@index([teacherId])
   @@index([status])
   @@index([teacherId, status])
@@ -211,4 +216,73 @@ enum CourseStatus {
   APPROVED
   REJECTED
   INACTIVE
+}
+
+/// Every ParentProfile gets exactly one DemoCoupon row, lazily
+/// created the first time their balance is checked (see
+/// getOrCreateDemoCoupon() in demoCoupon.service.ts). This is
+/// account-level, not per-child: 06-OPEN-DECISIONS.md #26 — 2 free
+/// demos total, shared across every Student under one parent, then
+/// a flat ₹100 each after that.
+model DemoCoupon {
+  id          String   @id @default(uuid())
+  parentId    String   @unique
+  parent      ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  totalIssued Int      @default(2)
+  usedCount   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    DemoBooking[]
+}
+
+/// One row per booked demo session. `subject` defaults to "" (never
+/// null) specifically so the (teacherId, subject, studentId) unique
+/// constraint below reliably enforces the "at most 1 demo per
+/// teacher+subject+child" cap from 06-OPEN-DECISIONS.md #26 —
+/// Postgres treats multiple NULLs as distinct in a unique index,
+/// which would silently defeat this cap for any course with no
+/// subject set.
+model DemoBooking {
+  id String @id @default(uuid())
+
+  demoCouponId String
+  demoCoupon   DemoCoupon @relation(fields: [demoCouponId], references: [id], onDelete: Cascade)
+
+  // Denormalized alongside demoCouponId purely so
+  // getDemoBookingsForParent() can filter directly on parentId
+  // without an extra join — not declared as its own Prisma relation.
+  parentId String
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  subject String @default("")
+
+  isPaid Boolean  @default(false)
+  amount Decimal? @db.Decimal(10, 2)
+  status DemoBookingStatus @default(CONFIRMED)
+
+  scheduledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, subject, studentId])
+  @@index([parentId])
+}
+
+enum DemoBookingStatus {
+  CONFIRMED
+  PENDING_PAYMENT
+  COMPLETED
+  CANCELLED
 }

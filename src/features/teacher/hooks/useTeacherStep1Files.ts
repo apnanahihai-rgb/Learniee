@@ -52,6 +52,25 @@ export function useTeacherStep1Files() {
     setIntroVideoRaw(error ? null : file);
   }
 
+  /**
+   * A video introduction is now required for every teacher (not
+   * optional) — parents see this on the course-detail page and
+   * it's the platform's unique selling point. Called from
+   * useTeacherStep1Form.ts's handleSubmit when neither a newly
+   * selected file nor a previously-uploaded video exists yet.
+   * Reuses the same fileErrors.introVideo slot that
+   * handleIntroVideoChange already renders in
+   * TeacherMediaPlaceholder, so selecting a valid video afterwards
+   * clears this the same way any other file error would.
+   */
+  function markIntroVideoRequired() {
+    setFileErrors((prev) => ({
+      ...prev,
+      introVideo:
+        "A video introduction is required — parents see this on your course pages.",
+    }));
+  }
+
   function loadExisting(files?: {
     profilePhoto?: ExistingStep1File | null;
     introVideo?: ExistingStep1File | null;
@@ -68,6 +87,7 @@ export function useTeacherStep1Files() {
     fileErrors,
     handleProfilePhotoChange,
     handleIntroVideoChange,
+    markIntroVideoRequired,
     loadExisting,
   };
 }

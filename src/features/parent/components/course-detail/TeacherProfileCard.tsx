@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { MapPin, PlayCircle } from "lucide-react";
+import { MapPin, Video } from "lucide-react";
 
 import ChildAvatar from "@/features/parent/components/ChildAvatar";
 import type { ParentCourseDetailTeacher } from "@/features/parent/types/courseDetail";
@@ -10,9 +9,17 @@ interface Props {
   teacher: ParentCourseDetailTeacher;
 }
 
+/**
+ * "Meet the teacher" — the teacher's own intro video is now always
+ * rendered inline, not hidden behind a "Watch teacher intro" click.
+ * Teacher onboarding requires this video going forward (see
+ * useTeacherStep1Form.ts), so parents should always see it here
+ * without an extra tap — teachers are the platform's unique
+ * selling point. Teachers who onboarded before the video became
+ * mandatory may still have no video on file; that case falls back
+ * to a plain notice instead of an empty gap.
+ */
 export default function TeacherProfileCard({ teacher }: Props) {
-  const [showVideo, setShowVideo] = useState(false);
-
   const teacherName =
     teacher.visibleName || `${teacher.firstName} ${teacher.lastName}`.trim();
 
@@ -38,27 +45,21 @@ export default function TeacherProfileCard({ teacher }: Props) {
               {location}
             </p>
           )}
-
-          {teacher.introVideoUrl && !showVideo && (
-            <button
-              type="button"
-              onClick={() => setShowVideo(true)}
-              className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-brand bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-colors"
-            >
-              <PlayCircle size={14} />
-              Watch teacher intro
-            </button>
-          )}
         </div>
       </div>
 
-      {teacher.introVideoUrl && showVideo && (
+      {teacher.introVideoUrl ? (
         <video
           src={teacher.introVideoUrl}
           controls
-          autoPlay
+          playsInline
           className="w-full mt-4 rounded-2xl bg-black aspect-video object-cover"
         />
+      ) : (
+        <div className="flex items-center gap-2 mt-4 text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-200 rounded-2xl px-3 py-3">
+          <Video size={14} className="flex-shrink-0" />
+          This teacher hasn&apos;t uploaded a video introduction yet.
+        </div>
       )}
 
       {teacher.aboutMe && (

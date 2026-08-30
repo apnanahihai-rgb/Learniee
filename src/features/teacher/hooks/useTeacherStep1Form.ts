@@ -78,6 +78,15 @@ export function useTeacherStep1Form() {
       return;
     }
 
+    // A video introduction is now mandatory — not optional. Block
+    // advancing to Step 2 if there's neither a newly selected video
+    // nor one already on file from a previous session. See
+    // useTeacherStep1Files.ts's markIntroVideoRequired().
+    if (!files.introVideo && !files.existingIntroVideo) {
+      files.markIntroVideoRequired();
+      return;
+    }
+
     setSubmitting(true);
 
     try {
