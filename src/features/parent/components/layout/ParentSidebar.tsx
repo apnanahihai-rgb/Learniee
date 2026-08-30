@@ -86,12 +86,27 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
         type="button"
         onClick={() => handleNavigation(item.path)}
         className={`
-          w-full flex items-center gap-2 text-left text-sm py-1 transition
-          ${isActive ? "text-yellow-300 font-semibold" : "text-white hover:text-yellow-200"}
+          group w-full flex items-center gap-3 text-left text-sm py-2 px-3 rounded-xl transition-all
+          ${
+            isActive
+              ? "bg-white text-brand-dark font-bold shadow-playful"
+              : "text-white/85 hover:bg-white/10 hover:text-white"
+          }
         `}
       >
-        <Icon size={15} strokeWidth={1.8} />
-        <span>{item.label}</span>
+        <span
+          className={`
+            w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+            ${
+              isActive
+                ? "bg-brand-yellow text-violet-900"
+                : "bg-white/10 text-white group-hover:bg-white/20"
+            }
+          `}
+        >
+          <Icon size={14} strokeWidth={2} />
+        </span>
+        <span className="truncate">{item.label}</span>
       </button>
     );
   };
@@ -101,38 +116,46 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
       {/* Mobile / Tablet overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          className="fixed inset-0 bg-violet-950/40 backdrop-blur-[2px] z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
       <aside
         className={`
-          fixed top-14 bottom-0 left-0 z-40 w-56
-          bg-purple-500 rounded-r-2xl px-5 py-7 text-white overflow-y-auto
+          fixed top-16 bottom-0 left-0 z-40 w-64
+          bg-gradient-to-b from-brand-light to-brand-dark
+          rounded-r-[2rem] px-4 py-6 text-white overflow-y-auto
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold text-yellow-300">Parent</h2>
+        <div className="flex items-center justify-between mb-6 px-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">
+              Welcome back
+            </p>
+            <h2 className="font-heading text-2xl font-bold text-brand-yellow leading-tight">
+              Parent Hub
+            </h2>
+          </div>
 
           {/* Mobile close button */}
           <button
             type="button"
             onClick={onClose}
-            className="lg:hidden text-white hover:text-yellow-200"
+            className="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
             aria-label="Close menu"
           >
-            <X size={22} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Menu */}
         <nav className="space-y-1">{menuItems.map(renderItem)}</nav>
 
-        <div className="mt-6 pt-4 border-t border-purple-400 space-y-1">
+        <div className="mt-4 pt-4 border-t border-white/15 space-y-1">
           {bottomItems.map(renderItem)}
         </div>
       </aside>

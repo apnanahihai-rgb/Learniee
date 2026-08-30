@@ -52,12 +52,12 @@ export default function LearnerSwitcher({ students, active, onSelect }: Props) {
 
       <Link
         href="/parent/students/new"
-        className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border border-dashed border-gray-300 text-gray-500 hover:text-violet-600 hover:border-violet-300 transition-colors flex-shrink-0"
+        className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border-2 border-dashed border-violet-200 text-violet-400 hover:text-brand hover:border-brand-light transition-colors flex-shrink-0"
       >
-        <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+        <span className="w-8 h-8 rounded-full bg-violet-50 flex items-center justify-center flex-shrink-0">
           <Plus size={16} />
         </span>
-        <span className="text-sm font-medium whitespace-nowrap">Add a learner</span>
+        <span className="text-sm font-bold whitespace-nowrap">Add a learner</span>
       </Link>
     </div>
   );
@@ -82,16 +82,16 @@ function Tab({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border transition-colors flex-shrink-0 ${
+      className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border-2 transition-all flex-shrink-0 ${
         active
-          ? "bg-violet-600 border-violet-600 text-white"
-          : "bg-white border-gray-200 text-gray-700 hover:border-violet-300"
+          ? "bg-brand border-brand text-white shadow-playful"
+          : "bg-white border-violet-100 text-gray-700 hover:border-brand-light"
       }`}
     >
       {avatar ?? (
         <span
           className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-            active ? "bg-white/20" : "bg-gray-100 text-gray-500"
+            active ? "bg-white/20" : "bg-violet-50 text-brand"
           }`}
         >
           {icon}
@@ -99,7 +99,7 @@ function Tab({
       )}
 
       <span className="text-left leading-tight">
-        <span className="block text-sm font-semibold whitespace-nowrap">{label}</span>
+        <span className="block text-sm font-bold whitespace-nowrap">{label}</span>
         {subtitle && (
           <span className={`block text-[11px] font-normal whitespace-nowrap ${active ? "text-white/80" : "text-gray-400"}`}>
             {subtitle}

@@ -1,8 +1,27 @@
-import { Star, UserCircle } from "lucide-react";
+import { Star, BookOpen } from "lucide-react";
 import type { ParentCourse } from "@/features/parent/types/course";
 
 interface Props {
   course: ParentCourse;
+}
+
+// A handful of pastel subject-chip colors, picked deterministically
+// from the subject string so the same subject always gets the same
+// color without needing a fixed subject -> color map to maintain.
+const SUBJECT_CHIP_STYLES = [
+  "bg-violet-100 text-violet-700",
+  "bg-rose-100 text-rose-700",
+  "bg-amber-100 text-amber-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-sky-100 text-sky-700",
+];
+
+function chipStyleFor(label: string) {
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) {
+    hash = label.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return SUBJECT_CHIP_STYLES[Math.abs(hash) % SUBJECT_CHIP_STYLES.length];
 }
 
 export default function CourseCard({ course }: Props) {
@@ -10,10 +29,12 @@ export default function CourseCard({ course }: Props) {
     course.teacher.visibleName ||
     `${course.teacher.firstName} ${course.teacher.lastName}`.trim();
 
+  const teacherInitial = (teacherName || "T").trim().charAt(0).toUpperCase();
+
   return (
-    <div className="bg-white border rounded-xl shadow-sm overflow-hidden w-full max-w-[240px]">
+    <div className="group bg-white border border-violet-100 rounded-3xl shadow-sm overflow-hidden flex flex-col shadow-playful-hover">
       {/* THUMBNAIL */}
-      <div className="h-32 bg-gray-100 relative overflow-hidden">
+      <div className="h-32 bg-gradient-to-br from-violet-100 to-violet-50 relative overflow-hidden flex-shrink-0">
         {course.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -23,61 +44,74 @@ export default function CourseCard({ course }: Props) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-sm text-gray-400">Course Thumbnail</p>
+            <BookOpen size={30} className="text-violet-300" strokeWidth={1.5} />
           </div>
+        )}
+
+        {course.subject && (
+          <span
+            className={`absolute top-2.5 left-2.5 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm ${chipStyleFor(
+              course.subject
+            )}`}
+          >
+            {course.subject}
+          </span>
         )}
       </div>
 
       {/* CONTENT */}
-      <div className="p-4">
-        <h3 className="text-sm font-semibold text-gray-800 leading-snug">
+      <div className="p-4 flex flex-col flex-1">
+        <h3 className="font-heading text-sm font-bold text-gray-800 leading-snug line-clamp-2">
           {course.courseTitle || "Untitled Course"}
         </h3>
 
-        {course.subject && (
-          <p className="text-xs text-gray-400 mt-0.5">{course.subject}</p>
-        )}
-
         {/* Teacher */}
         <div className="flex items-center gap-2 mt-3">
-          <UserCircle size={22} className="text-gray-400" strokeWidth={1.5} />
+          <span className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-brand flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
+            {teacherInitial}
+          </span>
 
-          <div className="leading-tight">
-            <p className="text-xs font-medium text-gray-700">
+          <div className="leading-tight min-w-0">
+            <p className="text-xs font-semibold text-gray-700 truncate">
               {teacherName || "Teacher"}
             </p>
             <p className="text-[11px] text-gray-400">Group Class</p>
           </div>
-        </div>
 
-        {/* Rating — from the teacher-entered Course.rating field.
-            No Review/Rating entity exists yet (Month 2, see
-            02-ARCHITECTURE.md deferred list), so this is not a
-            parent/aggregate rating, just what's on the course record. */}
-        {course.rating != null && (
-          <div className="flex items-center gap-1 mt-2">
-            <Star size={13} className="text-yellow-400 fill-yellow-400" />
-            <span className="text-xs text-gray-600">{course.rating.toFixed(1)}</span>
-          </div>
-        )}
+          {/* Rating — from the teacher-entered Course.rating field.
+              No Review/Rating entity exists yet (Month 2, see
+              02-ARCHITECTURE.md deferred list), so this is not a
+              parent/aggregate rating, just what's on the course record. */}
+          {course.rating != null && (
+            <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+              <Star size={13} className="text-brand-yellow fill-brand-yellow" />
+              <span className="text-xs font-semibold text-gray-600">
+                {course.rating.toFixed(1)}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Enrollment isn't built yet (Enrollment isn't modeled in
             Prisma — see 03-DATA-MODEL.md / 01-PROJECT-STATUS.md).
             This stays disabled until that's built, matching the
             same disabled/"Coming Soon" pattern used on the Admin
             dashboard's placeholder card. */}
-        <div className="flex items-center justify-between mt-4">
-          {course.price && (
-            <span className="text-xs font-medium text-gray-600">
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-violet-50">
+          {course.price ? (
+            <span className="text-sm font-bold text-gray-800">
               ₹{course.price}
+              <span className="text-[11px] font-medium text-gray-400">/mo</span>
             </span>
+          ) : (
+            <span />
           )}
 
           <button
             type="button"
             disabled
             title="Enrollment isn't available yet"
-            className="ml-auto text-xs font-semibold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-md cursor-not-allowed"
+            className="ml-auto text-xs font-bold text-gray-400 bg-gray-100 px-4 py-1.5 rounded-full cursor-not-allowed"
           >
             JOIN
           </button>

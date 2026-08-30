@@ -30,7 +30,7 @@ export default function ChildAvatar({ src, name, size = "md", className = "" }: 
 
   return (
     <div
-      className={`${SIZE_CLASSES[size]} rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-violet-500 to-purple-600 text-white font-semibold shadow-sm ${RING_CLASSES[size]} ${className}`}
+      className={`${SIZE_CLASSES[size]} rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-brand-light to-brand-dark text-white font-heading font-bold shadow-sm ${RING_CLASSES[size]} ${className}`}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element

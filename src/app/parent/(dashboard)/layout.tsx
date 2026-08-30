@@ -13,7 +13,7 @@ export default function ParentLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-violet-50/40">
       {/* Fixed Navbar */}
       <ParentNavbar onMenuClick={() => setSidebarOpen((prev) => !prev)} />
 
@@ -24,7 +24,7 @@ export default function ParentLayout({
       />
 
       {/* Page Content */}
-      <main className="min-h-screen pt-14 lg:ml-56 bg-gray-50">
+      <main className="min-h-screen pt-16 lg:pl-64 bg-gradient-to-b from-violet-50 via-white to-white">
         {children}
       </main>
     </div>

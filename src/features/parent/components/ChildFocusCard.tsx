@@ -23,11 +23,11 @@ export default function ChildFocusCard({ student }: Props) {
   ].filter(Boolean);
 
   return (
-    <div className="bg-white border rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
+    <div className="bg-white border border-violet-100 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 mb-10 shadow-sm">
       <ChildAvatar src={student.photoViewUrl} name={displayName} size="md" />
 
       <div className="flex-1 min-w-0">
-        <h2 className="text-lg font-semibold text-gray-800">{displayName}</h2>
+        <h2 className="font-heading text-lg font-bold text-gray-800">{displayName}</h2>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
           {details.length > 0 ? (
@@ -50,7 +50,7 @@ export default function ChildFocusCard({ student }: Props) {
 
       <Link
         href={`/parent/students/${student.id}`}
-        className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-700 flex-shrink-0"
+        className="inline-flex items-center gap-1 text-sm font-bold text-brand hover:text-brand-dark flex-shrink-0"
       >
         View full profile <ChevronRight size={15} />
       </Link>

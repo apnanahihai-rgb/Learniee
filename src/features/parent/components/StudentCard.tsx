@@ -43,7 +43,7 @@ export default function StudentCard({ student }: Props) {
   return (
     <Link
       href={`/parent/students/${student.id}`}
-      className="group bg-white border rounded-2xl shadow-sm overflow-hidden hover:shadow-lg hover:border-violet-300 hover:-translate-y-0.5 transition-all duration-200"
+      className="group bg-white border border-violet-100 rounded-3xl overflow-hidden shadow-playful-hover"
     >
       <div
         className={`relative h-32 flex items-center justify-center overflow-hidden ${
@@ -60,20 +60,20 @@ export default function StudentCard({ student }: Props) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-4xl font-bold text-white/90">
+          <span className="text-4xl font-heading font-bold text-white/90">
             {student.firstName.charAt(0).toUpperCase()}
           </span>
         )}
 
         {student.age != null && (
-          <span className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-700 px-2 py-0.5 rounded-full shadow-sm">
+          <span className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-sm text-[11px] font-bold text-brand-dark px-2.5 py-0.5 rounded-full shadow-sm">
             Age {student.age}
           </span>
         )}
       </div>
 
       <div className="p-4">
-        <h3 className="font-semibold text-gray-800 truncate">{displayName}</h3>
+        <h3 className="font-heading font-bold text-gray-800 truncate">{displayName}</h3>
 
         <p className="flex items-center gap-1 text-xs text-gray-500 mt-1 truncate min-h-[1rem]">
           {subtitle ? (
@@ -86,7 +86,7 @@ export default function StudentCard({ student }: Props) {
           )}
         </p>
 
-        <p className="flex items-center gap-0.5 text-xs font-medium text-violet-600 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <p className="flex items-center gap-0.5 text-xs font-bold text-brand mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
           View profile <ChevronRight size={13} />
         </p>
       </div>

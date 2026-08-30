@@ -1,137 +1,173 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { uploadFileToS3 } from "@/lib/uploadFileToS3";
 
-const fields = [
-  "firstName", "lastName", "visibleName", "gender", "age",
-  "standard", "board", "currentSchoolName", "learningDifficulties",
-];
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
-const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
-const MAX_FILE_SIZE_MB = 50;
+import { Input } from "@/components/ui/input";
+import SelectField from "@/features/shared/components/SelectField";
+
+import FormSection from "@/features/parent/components/onboarding/FormSection";
+import FormField from "@/features/parent/components/onboarding/FormField";
+import ChildPhotoUpload from "@/features/parent/components/onboarding/step2/ChildPhotoUpload";
+import { useParentStep2Form } from "@/features/parent/hooks/useParentStep2Form";
+import { GENDER_OPTIONS, STANDARD_OPTIONS, BOARD_OPTIONS } from "@/features/parent/constants/onboardingOptions";
 
 export default function Step2() {
-  const [form, setForm] = useState<Record<string, string>>(
-    Object.fromEntries(fields.map((f) => [f, ""]))
-  );
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoError, setPhotoError] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
-
-  function handlePhotoSelect(file: File | null) {
-    setPhotoError("");
-
-    if (!file) {
-      setPhoto(null);
-      return;
-    }
-
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setPhotoError("Only PNG, JPG, or PDF files are allowed");
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setPhotoError(`File must be under ${MAX_FILE_SIZE_MB}MB`);
-      return;
-    }
-
-    setPhoto(file);
-  }
-
-  async function handleNext(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
-
-    try {
-      let photoKey: string | undefined;
-
-      if (photo) {
-        photoKey = await uploadFileToS3({
-          file: photo,
-          folder: "child-photos",
-        });
-      }
-
-      const res = await fetch("/api/onboarding/child-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, photoKey }),
-      });
-
-      if (!res.ok) {
-        setError("Something went wrong. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-
-      router.push("/parent/onboarding/step3");
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
-      );
-      setSubmitting(false);
-    }
-  }
+  const {
+    formData,
+    photo,
+    photoError,
+    submitting,
+    error,
+    handleChange,
+    handlePhotoSelect,
+    handleSubmit,
+  } = useParentStep2Form();
 
   return (
-    <form onSubmit={handleNext} className="max-w-md mx-auto mt-10 space-y-3">
-      <h1 className="text-xl font-bold text-center">Child Information</h1>
-      {fields.map((key) => (
-        <input
-          key={key}
-          required
-          placeholder={key}
-          value={form[key]}
-          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-          className="border p-2 w-full"
-        />
-      ))}
-
-      <div>
-        <label
-          htmlFor="child-photo"
-          className="border-2 border-dashed rounded p-4 flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
+    <>
+      <div className="mb-6">
+        <Link
+          href="/parent/onboarding/step1"
+          className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-violet-600 mb-3"
         >
-          <input
-            id="child-photo"
-            type="file"
-            accept=".png,.jpg,.jpeg,.pdf"
-            className="hidden"
-            onChange={(e) =>
-              handlePhotoSelect(e.target.files?.[0] ?? null)
-            }
-          />
-          {photo ? (
-            <p className="text-sm font-medium text-violet-600 break-all">
-              {photo.name}
-            </p>
-          ) : (
-            <p className="text-sm">Upload child&apos;s photo</p>
-          )}
-          <p className="text-xs mt-1">
-            Max file size: {MAX_FILE_SIZE_MB}MB | Supported: PNG, JPG, PDF
-          </p>
-        </label>
-        {photoError && (
-          <p className="text-red-600 text-xs mt-1">{photoError}</p>
-        )}
+          <ArrowLeft className="size-3.5" />
+          Back
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">Child Information</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          A few details about the child who&apos;ll be learning on Learnie.
+        </p>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="bg-violet-600 text-white p-2 w-full rounded disabled:opacity-60"
-      >
-        {submitting ? "Uploading..." : "Next"}
-      </button>
-    </form>
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <FormSection title="Basic details">
+          <FormField label="First Name" htmlFor="firstName" required>
+            <Input
+              id="firstName"
+              name="firstName"
+              placeholder="e.g. Aarav"
+              value={formData.firstName}
+              onChange={handleChange}
+              required
+            />
+          </FormField>
+
+          <FormField label="Last Name" htmlFor="lastName" required>
+            <Input
+              id="lastName"
+              name="lastName"
+              placeholder="e.g. Sharma"
+              value={formData.lastName}
+              onChange={handleChange}
+              required
+            />
+          </FormField>
+
+          <FormField
+            label="Display Name"
+            htmlFor="visibleName"
+            required
+            helperText="Shown to teachers instead of the full legal name"
+          >
+            <Input
+              id="visibleName"
+              name="visibleName"
+              placeholder="e.g. Aarav S."
+              value={formData.visibleName}
+              onChange={handleChange}
+              required
+            />
+          </FormField>
+
+          <FormField label="Gender" required>
+            <SelectField
+              name="gender"
+              value={formData.gender}
+              placeholder="Select gender"
+              options={GENDER_OPTIONS}
+              onChange={handleChange}
+            />
+          </FormField>
+
+          <FormField label="Age" htmlFor="age" required>
+            <Input
+              id="age"
+              name="age"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={25}
+              placeholder="e.g. 10"
+              value={formData.age}
+              onChange={handleChange}
+              required
+            />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="School">
+          <FormField label="Standard / Grade" required>
+            <SelectField
+              name="standard"
+              value={formData.standard}
+              placeholder="Select standard"
+              options={STANDARD_OPTIONS}
+              onChange={handleChange}
+            />
+          </FormField>
+
+          <FormField label="Board" required>
+            <SelectField
+              name="board"
+              value={formData.board}
+              placeholder="Select board"
+              options={BOARD_OPTIONS}
+              onChange={handleChange}
+            />
+          </FormField>
+
+          <FormField label="Current School Name" htmlFor="currentSchoolName" required fullWidth>
+            <Input
+              id="currentSchoolName"
+              name="currentSchoolName"
+              placeholder="e.g. Delhi Public School"
+              value={formData.currentSchoolName}
+              onChange={handleChange}
+              required
+            />
+          </FormField>
+
+          <FormField
+            label="Learning Difficulties"
+            htmlFor="learningDifficulties"
+            helperText="Optional — helps teachers plan lessons. Leave blank if none."
+            fullWidth
+          >
+            <textarea
+              id="learningDifficulties"
+              name="learningDifficulties"
+              rows={2}
+              placeholder="e.g. Dyslexia, ADHD, none"
+              value={formData.learningDifficulties}
+              onChange={handleChange}
+              className="w-full border rounded-md px-3 py-2 text-sm text-gray-600 placeholder:text-gray-400 resize-none"
+            />
+          </FormField>
+
+          <ChildPhotoUpload photo={photo} error={photoError} onSelect={handlePhotoSelect} />
+        </FormSection>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm py-2.5 w-full rounded-lg transition-colors disabled:opacity-60"
+        >
+          {submitting ? "Uploading..." : "Continue"}
+        </button>
+      </form>
+    </>
   );
 }
