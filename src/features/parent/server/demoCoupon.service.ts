@@ -66,7 +66,13 @@ export interface CreateDemoBookingInput {
   teacherId: string;
   courseId: string;
   subject?: string | null;
-  scheduledAt?: string | null;
+  /**
+   * Required (route.ts rejects a missing value before this is
+   * even called) — a demo can't be arranged without a specific
+   * time, so this is no longer treated as optional the way it
+   * briefly was.
+   */
+  scheduledAt: string;
 }
 
 /**
@@ -75,6 +81,9 @@ export interface CreateDemoBookingInput {
  *
  * - Confirms the Student belongs to the requesting parent (same
  *   not-found-vs-not-yours guard as student.service.ts).
+ * - Requires a valid, future `scheduledAt` — a demo can't be
+ *   arranged without picking a specific date and time first
+ *   (enforced in route.ts and again here).
  * - Enforces the 1-demo-per-(teacher, subject, child) cap from
  *   06-OPEN-DECISIONS.md #26 via the DemoBooking model's compound
  *   unique constraint.
@@ -107,6 +116,26 @@ export async function createDemoBooking(
 
   if (!course) {
     throw new DemoBookingError("Course not found.", 404);
+  }
+
+  // Belt-and-suspenders: route.ts already rejects a missing
+  // scheduledAt, but validate the actual value here too so a
+  // malformed or past timestamp can't slip through as a "confirmed"
+  // booking that no one can actually show up for.
+  const scheduledDate = new Date(input.scheduledAt);
+
+  if (Number.isNaN(scheduledDate.getTime())) {
+    throw new DemoBookingError(
+      "That doesn't look like a valid date and time — pick again.",
+      400,
+    );
+  }
+
+  if (scheduledDate.getTime() < Date.now()) {
+    throw new DemoBookingError(
+      "Pick a date and time in the future for the demo.",
+      400,
+    );
   }
 
   const subject = (input.subject ?? course.subject ?? "").trim();
@@ -152,7 +181,7 @@ export async function createDemoBooking(
         status: hasFreeDemo
           ? DemoBookingStatus.CONFIRMED
           : DemoBookingStatus.PENDING_PAYMENT,
-        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+        scheduledAt: scheduledDate,
       },
     });
   });

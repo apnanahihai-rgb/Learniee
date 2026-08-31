@@ -32,11 +32,17 @@ function formatSelection(date: Date | null, hour: number | null) {
 }
 
 /**
- * Session-booking panel. "Book Demo" is now wired to the real
+ * Session-booking panel. "Book Demo" is wired to the real
  * DemoCoupon backend (06-OPEN-DECISIONS.md #26): every account
  * gets 2 free demo sessions total — shared across every child, not
  * 2 per child — then a flat ₹100 each, capped at 1 demo per
  * (teacher, subject, child).
+ *
+ * Picking a date and time from BookingCalendar is required before
+ * "Book Demo" is enabled — a demo can't be arranged without a
+ * specific slot, so the button stays disabled and the request is
+ * also rejected server-side (see demoCoupon.service.ts) if no
+ * scheduledAt is sent.
  *
  * "Enroll Now" stays disabled — Enrollment still isn't modeled
  * (03-DATA-MODEL.md), same reasoning as before.
@@ -71,19 +77,23 @@ export default function BookingPanel({
       return;
     }
 
+    // A demo has to be arranged for a specific time — date and
+    // time selection is now required, not optional, before booking.
+    if (!selectedDate || selectedHour == null) {
+      setBookingError(
+        "Pick a date and time from the calendar below before booking.",
+      );
+      return;
+    }
+
     setBooking(true);
     setBookingError("");
     setBookingSuccess(null);
 
     try {
-      const scheduledAt =
-        selectedDate && selectedHour != null
-          ? (() => {
-              const withTime = new Date(selectedDate);
-              withTime.setHours(selectedHour, 0, 0, 0);
-              return withTime.toISOString();
-            })()
-          : null;
+      const withTime = new Date(selectedDate);
+      withTime.setHours(selectedHour, 0, 0, 0);
+      const scheduledAt = withTime.toISOString();
 
       const res = await fetch("/api/parent/demo-bookings", {
         method: "POST",
@@ -202,7 +212,18 @@ export default function BookingPanel({
         <button
           type="button"
           onClick={handleBookDemo}
-          disabled={booking || studentsLoading || students.length === 0}
+          disabled={
+            booking ||
+            studentsLoading ||
+            students.length === 0 ||
+            !selectedDate ||
+            selectedHour == null
+          }
+          title={
+            !selectedDate || selectedHour == null
+              ? "Pick a date and time first"
+              : undefined
+          }
           className="w-full text-sm font-bold text-white bg-brand px-4 py-2.5 rounded-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
         >
           {booking && <Loader2 size={14} className="animate-spin" />}
@@ -229,9 +250,11 @@ export default function BookingPanel({
         <Info size={13} className="flex-shrink-0 mt-0.5" />
         <span>
           Every account gets 2 free demo sessions in total (not per child) —
-          after that, each demo is a flat ₹100. Enrollment booking is still
-          being built; this calendar previews what picking a session will
-          look like once it&apos;s live.
+          after that, each demo is a flat ₹100. Pick a date and time above
+          so the session can actually be arranged — bookings without a
+          time aren&apos;t accepted. Enrollment booking is still being
+          built; this calendar previews what picking a session will look
+          like once it&apos;s live.
         </span>
       </div>
     </div>

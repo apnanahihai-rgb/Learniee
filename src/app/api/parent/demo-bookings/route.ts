@@ -62,6 +62,16 @@ export async function POST(req: Request) {
       );
     }
 
+    // A demo has to be arranged for a specific time — don't accept
+    // a booking with no scheduledAt. (Requested change: date/time
+    // selection is now mandatory before booking, not optional.)
+    if (!input.scheduledAt) {
+      return NextResponse.json(
+        { error: "Pick a date and time for the demo before booking." },
+        { status: 400 },
+      );
+    }
+
     const result = await createDemoBooking(parent.parentId, input);
 
     return NextResponse.json({ success: true, ...result }, { status: 201 });

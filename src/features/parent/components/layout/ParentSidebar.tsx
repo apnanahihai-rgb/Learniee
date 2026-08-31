@@ -2,8 +2,6 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import {
-  SlidersHorizontal,
-  Bell,
   Settings,
   Share2,
   Video,
@@ -14,24 +12,22 @@ import {
   RefreshCw,
   CreditCard,
   Home,
-  Newspaper,
-  HelpCircle,
   FolderOpen,
-  FileText,
   ClipboardCheck,
-  Lightbulb,
-  ShoppingBag,
   GraduationCap,
   Star,
   User,
   AlertCircle,
-  Gift,
   X,
 } from "lucide-react";
 
+// Note (removed per request): Preference, Notification, Gift, Go Live,
+// Learnie Mall, Suggestions, Transcripts, FAQs, and Blogs were dropped
+// from this menu — none of those pages are built yet (see
+// 02-ARCHITECTURE.md's Deliberately Deferred list / 06-OPEN-DECISIONS.md
+// #6), and the links were just placeholders 404'ing for visual parity
+// with the Figma mockup. Re-add here if/when those screens get built.
 const menuItems = [
-  { label: "Preference", path: "/parent/preference", icon: SlidersHorizontal },
-  { label: "Notification", path: "/parent/notification", icon: Bell },
   { label: "Settings", path: "/parent/settings", icon: Settings },
   { label: "Referral", path: "/parent/referral", icon: Share2 },
   { label: "Free Demo", path: "/parent/free-demo", icon: Video },
@@ -42,22 +38,12 @@ const menuItems = [
   { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
   { label: "Payments", path: "/parent/payments", icon: CreditCard },
   { label: "Home Tuitions", path: "/parent/home-tuitions", icon: Home },
-  { label: "Blogs", path: "/parent/blogs", icon: Newspaper },
-  { label: "FAQs", path: "/parent/faqs", icon: HelpCircle },
   { label: "Resources", path: "/parent/resources", icon: FolderOpen },
-  { label: "Transcripts", path: "/parent/transcripts", icon: FileText },
   { label: "Home works/tests", path: "/parent/homework-tests", icon: ClipboardCheck },
-  { label: "Suggestions", path: "/parent/suggestions", icon: Lightbulb },
-  { label: "Learnie Mall", path: "/parent/learnie-mall", icon: ShoppingBag },
   { label: "Teacher", path: "/parent/teachers", icon: GraduationCap },
   { label: "Reviews", path: "/parent/reviews", icon: Star },
   { label: "Profile", path: "/parent/profile", icon: User },
   { label: "Complain", path: "/parent/complain", icon: AlertCircle },
-];
-
-const bottomItems = [
-  { label: "Gift", path: "/parent/gift", icon: Gift },
-  { label: "Go Live", path: "/parent/go-live", icon: Video },
 ];
 
 interface ParentSidebarProps {
@@ -154,10 +140,6 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
 
         {/* Menu */}
         <nav className="space-y-1">{menuItems.map(renderItem)}</nav>
-
-        <div className="mt-4 pt-4 border-t border-white/15 space-y-1">
-          {bottomItems.map(renderItem)}
-        </div>
       </aside>
     </>
   );

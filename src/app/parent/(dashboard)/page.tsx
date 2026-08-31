@@ -2,17 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Info, Sparkles, Users2, BookOpenCheck } from "lucide-react";
+import { Info, Sparkles, BookOpenCheck } from "lucide-react";
 
 import { useApprovedCourses } from "@/features/parent/hooks/useApprovedCourses";
 import { useStudents } from "@/features/parent/hooks/useStudents";
 import CourseCard from "@/features/parent/components/CourseCard";
-import StudentCard from "@/features/parent/components/StudentCard";
-import AddChildCard from "@/features/parent/components/AddChildCard";
 import LearnerSwitcher, {
   type LearnerFilter,
 } from "@/features/parent/components/LearnerSwitcher";
-import ChildFocusCard from "@/features/parent/components/ChildFocusCard";
 
 export default function ParentHome() {
   const { courses, loading, error } = useApprovedCourses();
@@ -41,13 +38,23 @@ export default function ParentHome() {
         </p>
       </div>
 
-      {/* LEARNER SWITCHER */}
-      {!studentsLoading && students.length > 0 && (
-        <LearnerSwitcher
-          students={students}
-          active={activeLearner}
-          onSelect={setActiveLearner}
-        />
+      {/* LEARNER SWITCHER — highlighted card directly below the
+          navbar; this is now the only "Your Children" surface on
+          the dashboard, replacing the old center-page grid/focus
+          card (see LearnerSwitcher.tsx). Always rendered (even
+          while loading or with zero children) so "Add a learner"
+          is reachable no matter what. */}
+      <LearnerSwitcher
+        students={students}
+        active={activeLearner}
+        onSelect={setActiveLearner}
+        loading={studentsLoading}
+      />
+
+      {studentsError && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-2xl mb-8 text-sm border border-red-100">
+          {studentsError}
+        </div>
       )}
 
       {/* HERO */}
@@ -84,71 +91,6 @@ export default function ParentHome() {
           <BookOpenCheck size={56} className="text-white/70" strokeWidth={1.3} />
         </div>
       </div>
-
-      {/* YOUR CHILDREN — full grid when "All" is active, a single
-          focused summary when one child is selected in the switcher */}
-      {activeStudent ? (
-        <ChildFocusCard student={activeStudent} />
-      ) : (
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-start gap-3">
-              <span className="w-9 h-9 rounded-xl bg-violet-100 text-brand flex items-center justify-center flex-shrink-0">
-                <Users2 size={18} />
-              </span>
-              <div>
-                <h2 className="font-heading text-lg font-bold text-gray-800 flex items-center gap-2">
-                  Your Children
-                  {!studentsLoading && students.length > 0 && (
-                    <span className="text-xs font-bold text-brand bg-violet-100 px-2 py-0.5 rounded-full">
-                      {students.length}
-                    </span>
-                  )}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Manage each child&apos;s profile, and enroll them in
-                  classes once you find the right course below.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {studentsError && (
-            <div className="bg-red-50 text-red-600 p-4 rounded-2xl mb-4 text-sm border border-red-100">
-              {studentsError}
-            </div>
-          )}
-
-          {studentsLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl border border-violet-100 bg-violet-50/60 animate-pulse min-h-[13.5rem]"
-                />
-              ))}
-            </div>
-          ) : students.length === 0 ? (
-            <div className="bg-white border-2 border-dashed border-violet-200 rounded-3xl p-8 text-center">
-              <p className="text-gray-500 mb-4">
-                You haven&apos;t added a child profile yet — add one to start
-                browsing and (soon) enrolling them in courses.
-              </p>
-              <div className="max-w-[220px] mx-auto">
-                <AddChildCard />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {students.map((student) => (
-                <StudentCard key={student.id} student={student} />
-              ))}
-
-              <AddChildCard />
-            </div>
-          )}
-        </section>
-      )}
 
       {/* ACTIVE COURSES */}
       <section>
