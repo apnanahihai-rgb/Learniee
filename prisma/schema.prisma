@@ -7,8 +7,8 @@ datasource db {
 }
 
 model ParentProfile {
-  id                  String    @id @default(uuid())
-  cognitoSub          String    @unique
+  id                  String      @id @default(uuid())
+  cognitoSub          String      @unique
   firstName           String
   lastName            String
   visibleName         String?
@@ -23,7 +23,7 @@ model ParentProfile {
   timezone            String?
   phone               String
   whatsappNumber      String?
-  email               String    @unique
+  email               String      @unique
   relationToStudent   String?
   childStatus         String?
   onlineTuition       String?
@@ -34,8 +34,8 @@ model ParentProfile {
   preferredLanguage   String?
   howDidYouHear       String?
   suggestions         String?
-  onboardingComplete  Boolean   @default(false)
-  createdAt           DateTime  @default(now())
+  onboardingComplete  Boolean     @default(false)
+  createdAt           DateTime    @default(now())
   students            Student[]
   demoCoupon          DemoCoupon?
 }
@@ -97,6 +97,7 @@ model Teacher {
   onboardingStatus String                @default("IN_PROGRESS")
   approvalStatus   TeacherApprovalStatus @default(PENDING)
   panCardNumber    String?
+  TeacherDocuments TeacherDocuments?
 
   files            TeacherFile[]
   courses          Course[]
@@ -245,17 +246,17 @@ enum CourseStatus {
 /// demos total, shared across every Student under one parent, then
 /// a flat ₹100 each after that.
 model DemoCoupon {
-  id          String   @id @default(uuid())
-  parentId    String   @unique
-  parent      ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  id       String        @id @default(uuid())
+  parentId String        @unique
+  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
-  totalIssued Int      @default(2)
-  usedCount   Int      @default(0)
+  totalIssued Int @default(2)
+  usedCount   Int @default(0)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  bookings    DemoBooking[]
+  bookings DemoBooking[]
 }
 
 /// One row per booked demo session. `subject` defaults to "" (never
@@ -287,8 +288,8 @@ model DemoBooking {
 
   subject String @default("")
 
-  isPaid Boolean  @default(false)
-  amount Decimal? @db.Decimal(10, 2)
+  isPaid Boolean           @default(false)
+  amount Decimal?          @db.Decimal(10, 2)
   status DemoBookingStatus @default(CONFIRMED)
 
   scheduledAt DateTime?
