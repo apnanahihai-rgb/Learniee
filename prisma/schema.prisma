@@ -66,6 +66,7 @@ model Student {
   createdAt            DateTime      @default(now())
   parent               ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
   demoBookings         DemoBooking[]
+  enrollments          Enrollment[]
 
   @@index([parentId])
 }
@@ -101,6 +102,7 @@ model Teacher {
   courses          Course[]
   professionalInfo TeacherProfessional?
   demoBookings     DemoBooking[]
+  enrollments      Enrollment[]
 }
 
 model TeacherProfessional {
@@ -149,6 +151,20 @@ model TeacherFile {
 
   @@index([teacherId])
   @@index([teacherId, type])
+}
+
+model TeacherDocuments {
+  id                    String  @id
+  teacherId             String  @unique
+  videoIntroKey         String?
+  photoKey              String?
+  certificationKey      String?
+  awardsKey             String?
+  dobProofKey           String?
+  addressProofKey       String?
+  qualificationProofKey String?
+  panCardNumber         String?
+  Teacher               Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 }
 
 enum TeacherApprovalStatus {
@@ -203,7 +219,11 @@ model Course {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  ageGroup        String?
+  rejectionReason String?
+
   demoBookings DemoBooking[]
+  enrollments  Enrollment[]
 
   @@index([teacherId])
   @@index([status])
@@ -284,5 +304,89 @@ enum DemoBookingStatus {
   CONFIRMED
   PENDING_PAYMENT
   COMPLETED
+  CANCELLED
+}
+
+/// Cycle-based Enrollment (03-DATA-MODEL.md's "Enrollment (extended
+/// with cycle/approval logic)" section). This captures ONLY what's
+/// knowable/calculable at enrollment time — everything payment-side
+/// (Transaction_Date, actual gateway ref, etc.) is deliberately left
+/// out until Razorpay is integrated (02-ARCHITECTURE.md). Parent
+/// name / child name / teacher name are NOT duplicated here — they
+/// live on ParentProfile/Student/Teacher and should be joined in at
+/// read time (e.g. for the future Tuition Ledger), same pattern as
+/// everywhere else in this schema.
+///
+/// `parentId` is denormalized alongside `studentId`, same reasoning
+/// as `DemoBooking.parentId` — lets Accounts-side queries filter
+/// directly on parentId without an extra join through Student.
+///
+/// Pricing formula used by enrollment.service.ts (flagged back as an
+/// assumption in 06-OPEN-DECISIONS.md — nothing in the docs actually
+/// states how Course.price maps to a per-session vs. monthly rate,
+/// so this is a judgment call pending sign-off, not a settled rule):
+///   ratePerSession = Course.price (teacher's per-session rate)
+///   monthlyRate    = ratePerSession * sessionsPerMonth
+///   totalAmount    = monthlyRate * noOfMonths
+///   dueDate        = cycleStartDate + 1 month
+///
+/// Dual approval (approveByAdmin()/approveByTeacher(), tiebreaker on
+/// disagreement) is intentionally NOT built here — 06-OPEN-DECISIONS.md
+/// #2 is still open and explicitly blocking, so `status` only tracks
+/// state, not the decision logic. Every new Enrollment starts at
+/// PENDING_APPROVAL until that workflow gets built.
+model Enrollment {
+  id String @id @default(uuid())
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  parentId String
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  subject String?
+
+  // Cycle rule (updated Aug 31, 2026, supersedes 06-OPEN-DECISIONS.md
+  // #25's old fixed 4/8/12/24/30 set): min 4, max 31 (1/day for the
+  // longest month) — enforced in enrollment.service.ts, not just
+  // trusted from the client.
+  sessionsPerMonth Int
+  noOfMonths       Int @default(1)
+
+  // System-calculated, never manually entered (03-DATA-MODEL.md).
+  ratePerSession Decimal @db.Decimal(10, 2)
+  monthlyRate    Decimal @db.Decimal(10, 2)
+  totalAmount    Decimal @db.Decimal(10, 2)
+
+  cycleStartDate DateTime
+  dueDate        DateTime
+
+  // DECIDED (#27): 45 days with no class taken -> auto-lapse.
+  // Reactivation/pre-warning still open (#34, non-blocking for MVP).
+  // Null until the first ClassSession is built and marked complete.
+  lastClassAt DateTime?
+
+  status EnrollmentStatus @default(PENDING_APPROVAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([teacherId])
+  @@index([courseId])
+  @@index([studentId])
+}
+
+enum EnrollmentStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ACTIVE
+  LAPSED
   CANCELLED
 }

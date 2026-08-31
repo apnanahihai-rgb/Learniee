@@ -16,6 +16,13 @@ interface Props {
  * to actually watch. Falls back to the thumbnail (or a plain icon
  * placeholder) only for courses created before the video became
  * mandatory and that genuinely have no video on file.
+ *
+ * Fixed (Aug 31, 2026): teachers upload these videos in whatever
+ * orientation they recorded them in — a portrait phone recording
+ * inside a 16:9 `object-cover` box was cropping most of the frame
+ * out. Switched to `object-contain` on a black backdrop so the
+ * full video always shows (letterboxed/pillarboxed as needed)
+ * instead of cropping unpredictably.
  */
 export default function CourseMediaPanel({
   courseTitle,
@@ -23,14 +30,20 @@ export default function CourseMediaPanel({
   introVideoUrl,
 }: Props) {
   return (
-    <div className="relative aspect-video w-full rounded-3xl overflow-hidden bg-gradient-to-br from-violet-100 to-violet-50 border border-violet-100 shadow-sm">
+    <div
+      className={`relative aspect-video w-full rounded-3xl overflow-hidden border border-violet-100 shadow-sm ${
+        introVideoUrl
+          ? "bg-black"
+          : "bg-gradient-to-br from-violet-100 to-violet-50"
+      }`}
+    >
       {introVideoUrl ? (
         <video
           src={introVideoUrl}
           poster={thumbnailUrl ?? undefined}
           controls
           playsInline
-          className="absolute inset-0 w-full h-full object-cover bg-black"
+          className="absolute inset-0 w-full h-full object-contain"
         />
       ) : thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element

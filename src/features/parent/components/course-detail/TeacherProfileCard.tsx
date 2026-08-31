@@ -18,6 +18,14 @@ interface Props {
  * selling point. Teachers who onboarded before the video became
  * mandatory may still have no video on file; that case falls back
  * to a plain notice instead of an empty gap.
+ *
+ * Fixed (Aug 31, 2026): teacher intro videos are commonly recorded
+ * on a phone in portrait, or at a different aspect ratio than the
+ * course video. Forcing that into a fixed 16:9 `object-cover` box
+ * cropped out most of the frame — the video looked broken even
+ * though it wasn't. Switched to a max-height container with
+ * `object-contain` on a black backdrop so the whole video is
+ * always visible, letterboxed/pillarboxed instead of cropped.
  */
 export default function TeacherProfileCard({ teacher }: Props) {
   const teacherName =
@@ -49,12 +57,14 @@ export default function TeacherProfileCard({ teacher }: Props) {
       </div>
 
       {teacher.introVideoUrl ? (
-        <video
-          src={teacher.introVideoUrl}
-          controls
-          playsInline
-          className="w-full mt-4 rounded-2xl bg-black aspect-video object-cover"
-        />
+        <div className="relative w-full mt-4 rounded-2xl overflow-hidden bg-black h-56 sm:h-64">
+          <video
+            src={teacher.introVideoUrl}
+            controls
+            playsInline
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        </div>
       ) : (
         <div className="flex items-center gap-2 mt-4 text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-200 rounded-2xl px-3 py-3">
           <Video size={14} className="flex-shrink-0" />
