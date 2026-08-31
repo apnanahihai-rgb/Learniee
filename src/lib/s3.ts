@@ -47,8 +47,6 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   "video/quicktime",
 ] as const;
 
-export const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024; // 50MB, matches the UI copy
-
 /**
  * Builds a namespaced, unguessable object key. We never trust the
  * client-supplied file name for the key itself (only for the

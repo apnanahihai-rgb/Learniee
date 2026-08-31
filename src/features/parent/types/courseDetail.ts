@@ -1,5 +1,3 @@
-import type { ParentCourse } from "@/features/parent/types/course";
-
 export interface ParentCourseDetailTeacher {
   id: string;
   firstName: string;
@@ -47,8 +45,3 @@ export interface ParentCourseDetail {
   teacher: ParentCourseDetailTeacher;
 }
 
-export interface ParentCourseDetailResponse {
-  success: true;
-  course: ParentCourseDetail;
-  otherCourses: ParentCourse[];
-}

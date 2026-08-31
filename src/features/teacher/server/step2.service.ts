@@ -3,7 +3,6 @@ import { createTeacherFiles } from "@/features/teacher/server/teacherFile.servic
 import type { Step2FormInput } from "@/features/teacher/types/step2";
 
 export type { Step2FormInput } from "@/features/teacher/types/step2";
-export type { TeacherFileInput as Step2FileData } from "@/features/teacher/server/teacherFile.service";
 
 /**
  * Shapes the raw form input into the Prisma data object shared by

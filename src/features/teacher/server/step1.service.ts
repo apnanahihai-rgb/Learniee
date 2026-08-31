@@ -12,7 +12,6 @@ export type {
   Step1FileInput,
   Step1FormData,
 } from "@/features/teacher/types/step1";
-export type { TeacherFileInput as Step1FileData } from "@/features/teacher/server/teacherFile.service";
 
 /**
  * Loads Step 1 information and existing Step 1 files.

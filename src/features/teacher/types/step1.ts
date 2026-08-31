@@ -32,9 +32,6 @@ export interface CognitoProfile {
   email: string;
 }
 
-/** @deprecated use TeacherFileInput from teacherFile.service instead */
-export type Step1FileData = TeacherFileInput;
-
 export interface Step1FileInput {
   profilePhoto?: TeacherFileInput;
   introVideo?: TeacherFileInput;

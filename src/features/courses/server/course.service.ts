@@ -87,14 +87,3 @@ export async function getTeacherCourses(
   });
 }
 
-export async function getCourseById(
-  courseId: string,
-  teacherId: string,
-) {
-  return prisma.course.findFirst({
-    where: {
-      id: courseId,
-      teacherId,
-    },
-  });
-}
