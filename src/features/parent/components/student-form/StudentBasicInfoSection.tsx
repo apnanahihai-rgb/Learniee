@@ -1,6 +1,8 @@
 "use client";
 
 import { Labeled, inputClass } from "@/features/parent/components/student-form/Labeled";
+import SectionCard from "@/features/parent/components/student-form/SectionCard";
+import { User } from "lucide-react";
 import { GENDER_OPTIONS, type StudentFormData } from "@/features/parent/types/student";
 import { MIN_AGE, MAX_AGE } from "@/features/parent/hooks/useStudentForm";
 
@@ -17,11 +19,7 @@ interface StudentBasicInfoSectionProps {
 
 export default function StudentBasicInfoSection({ field }: StudentBasicInfoSectionProps) {
   return (
-    <div>
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-        Basic info
-      </h2>
-
+    <SectionCard icon={User} title="Basic info">
       <div className="grid grid-cols-2 gap-3">
         <Labeled label="First name" required>
           <input required placeholder="e.g. Aron" {...field("firstName")} className={inputClass} />
@@ -58,6 +56,6 @@ export default function StudentBasicInfoSection({ field }: StudentBasicInfoSecti
           />
         </Labeled>
       </div>
-    </div>
+    </SectionCard>
   );
 }

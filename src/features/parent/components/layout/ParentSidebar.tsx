@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import {
+  LayoutDashboard,
   Settings,
   Share2,
   Video,
@@ -19,31 +20,69 @@ import {
   User,
   AlertCircle,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
-// Note (removed per request): Preference, Notification, Gift, Go Live,
-// Learnie Mall, Suggestions, Transcripts, FAQs, and Blogs were dropped
-// from this menu — none of those pages are built yet (see
+interface MenuItem {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+}
+
+interface MenuSection {
+  label: string;
+  items: MenuItem[];
+}
+
+// Grouped + reordered per request (Aug 31, 2026): "Home" was
+// previously missing entirely from the sidebar — on mobile the
+// navbar's HOME button is hidden (`hidden sm:block`), so there was
+// no way back to /parent except browser back. It's now the first
+// item here, always visible regardless of screen size.
+//
+// Note (still true): Preference, Notification, Gift, Go Live,
+// Learnie Mall, Suggestions, Transcripts, FAQs, and Blogs stay
+// removed — none of those pages are built yet (see
 // 02-ARCHITECTURE.md's Deliberately Deferred list / 06-OPEN-DECISIONS.md
-// #6), and the links were just placeholders 404'ing for visual parity
-// with the Figma mockup. Re-add here if/when those screens get built.
-const menuItems = [
-  { label: "Settings", path: "/parent/settings", icon: Settings },
-  { label: "Referral", path: "/parent/referral", icon: Share2 },
-  { label: "Free Demo", path: "/parent/free-demo", icon: Video },
-  { label: "Chat", path: "/parent/chat", icon: MessageCircle },
-  { label: "Courses", path: "/parent/courses", icon: BookOpen },
-  { label: "Calendar", path: "/parent/calendar", icon: Calendar },
-  { label: "Favorites", path: "/parent/favorites", icon: Heart },
-  { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
-  { label: "Payments", path: "/parent/payments", icon: CreditCard },
-  { label: "Home Tuitions", path: "/parent/home-tuitions", icon: Home },
-  { label: "Resources", path: "/parent/resources", icon: FolderOpen },
-  { label: "Home works/tests", path: "/parent/homework-tests", icon: ClipboardCheck },
-  { label: "Teacher", path: "/parent/teachers", icon: GraduationCap },
-  { label: "Reviews", path: "/parent/reviews", icon: Star },
-  { label: "Profile", path: "/parent/profile", icon: User },
-  { label: "Complain", path: "/parent/complain", icon: AlertCircle },
+// #6).
+const menuSections: MenuSection[] = [
+  {
+    label: "Main",
+    items: [
+      { label: "Home", path: "/parent", icon: LayoutDashboard },
+      { label: "Courses", path: "/parent/courses", icon: BookOpen },
+      { label: "Free Demo", path: "/parent/free-demo", icon: Video },
+      { label: "Calendar", path: "/parent/calendar", icon: Calendar },
+    ],
+  },
+  {
+    label: "My Learning",
+    items: [
+      { label: "Home works/tests", path: "/parent/homework-tests", icon: ClipboardCheck },
+      { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
+      { label: "Payments", path: "/parent/payments", icon: CreditCard },
+      { label: "Favorites", path: "/parent/favorites", icon: Heart },
+    ],
+  },
+  {
+    label: "Discover",
+    items: [
+      { label: "Teacher", path: "/parent/teachers", icon: GraduationCap },
+      { label: "Home Tuitions", path: "/parent/home-tuitions", icon: Home },
+      { label: "Resources", path: "/parent/resources", icon: FolderOpen },
+      { label: "Reviews", path: "/parent/reviews", icon: Star },
+    ],
+  },
+  {
+    label: "Account & Support",
+    items: [
+      { label: "Chat", path: "/parent/chat", icon: MessageCircle },
+      { label: "Referral", path: "/parent/referral", icon: Share2 },
+      { label: "Profile", path: "/parent/profile", icon: User },
+      { label: "Settings", path: "/parent/settings", icon: Settings },
+      { label: "Complain", path: "/parent/complain", icon: AlertCircle },
+    ],
+  },
 ];
 
 interface ParentSidebarProps {
@@ -60,11 +99,13 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
     onClose();
   };
 
-  const renderItem = (item: (typeof menuItems)[number]) => {
+  const renderItem = (item: MenuItem) => {
     const Icon = item.icon;
 
     const isActive =
-      pathname === item.path || pathname.startsWith(`${item.path}/`);
+      item.path === "/parent"
+        ? pathname === "/parent"
+        : pathname === item.path || pathname.startsWith(`${item.path}/`);
 
     return (
       <button
@@ -138,8 +179,20 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
           </button>
         </div>
 
-        {/* Menu */}
-        <nav className="space-y-1">{menuItems.map(renderItem)}</nav>
+        {/* Menu, grouped into labelled sections instead of one long
+            undifferentiated list — makes it easier to scan/find an
+            item, and keeps related actions (e.g. Reschedule/Payments)
+            visually together. */}
+        <nav className="space-y-5">
+          {menuSections.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                {section.label}
+              </p>
+              <div className="space-y-1">{section.items.map(renderItem)}</div>
+            </div>
+          ))}
+        </nav>
       </aside>
     </>
   );

@@ -70,15 +70,20 @@ export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
           <Menu size={18} />
         </button>
 
-        {/* Logo */}
-        <div className="flex items-center gap-2">
+        {/* Logo — clickable back to the dashboard, same as HOME */}
+        <button
+          type="button"
+          onClick={() => router.push("/parent")}
+          className="flex items-center gap-2"
+          aria-label="Go to dashboard"
+        >
           <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-brand-light to-brand flex items-center justify-center text-white shadow-playful flex-shrink-0">
             <GraduationCap size={18} />
           </span>
           <span className="font-heading text-lg font-bold text-gray-800 tracking-tight">
             Learn<span className="text-brand">ie</span>
           </span>
-        </div>
+        </button>
       </div>
 
       {/* RIGHT */}

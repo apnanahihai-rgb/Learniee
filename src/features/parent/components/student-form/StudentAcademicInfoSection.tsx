@@ -1,6 +1,8 @@
 "use client";
 
 import { Labeled, inputClass } from "@/features/parent/components/student-form/Labeled";
+import SectionCard from "@/features/parent/components/student-form/SectionCard";
+import { GraduationCap } from "lucide-react";
 import {
   BOARD_OPTIONS,
   BOARD_OTHER,
@@ -28,11 +30,7 @@ export default function StudentAcademicInfoSection({
   onBoardPresetChange,
 }: StudentAcademicInfoSectionProps) {
   return (
-    <div>
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-        Academic info
-      </h2>
-
+    <SectionCard icon={GraduationCap} title="Academic info">
       <Labeled label="Standard / Grade">
         <input placeholder="e.g. 8th Grade" {...field("standard")} className={inputClass} />
       </Labeled>
@@ -67,6 +65,6 @@ export default function StudentAcademicInfoSection({
           className={inputClass}
         />
       </Labeled>
-    </div>
+    </SectionCard>
   );
 }

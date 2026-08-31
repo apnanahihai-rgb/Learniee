@@ -20,13 +20,13 @@ export default function StudentPhotoField({
   onPhotoSelect,
 }: StudentPhotoFieldProps) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 p-5">
       <div className="relative">
         <ChildAvatar src={photoPreviewUrl} name={firstName || "?"} size="lg" />
 
         <label
           htmlFor="student-photo"
-          className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center cursor-pointer hover:bg-violet-700 transition-colors shadow-sm ring-2 ring-white"
+          className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center cursor-pointer hover:bg-brand-dark transition-colors shadow-sm ring-2 ring-white"
           title="Upload a photo"
         >
           <Camera size={15} />
@@ -41,7 +41,7 @@ export default function StudentPhotoField({
       </div>
 
       {photo && !photo.type.startsWith("image/") && (
-        <div className="flex items-center gap-1.5 mt-3 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">
+        <div className="flex items-center gap-1.5 mt-3 text-xs text-gray-600 bg-white px-2.5 py-1 rounded-full border border-violet-100">
           <FileText size={13} />
           <span className="max-w-[12rem] truncate">{photo.name}</span>
           <button
@@ -54,7 +54,7 @@ export default function StudentPhotoField({
         </div>
       )}
 
-      <p className="text-xs text-gray-400 mt-2">
+      <p className="text-xs text-gray-400 mt-3">
         Max file size: {MAX_FILE_SIZE_MB}MB · PNG, JPG, or PDF
       </p>
       {photoError && <p className="text-red-600 text-xs mt-1">{photoError}</p>}
