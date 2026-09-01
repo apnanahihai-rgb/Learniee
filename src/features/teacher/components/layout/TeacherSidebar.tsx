@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   LogOut,
   Video,
+  MessageCircle,
   X,
 } from "lucide-react";
 
@@ -44,6 +45,11 @@ const menuItems = [
     label: "Course Management",
     path: "/teacher/course-management",
     icon: BookOpen,
+  },
+  {
+    label: "Chat",
+    path: "/teacher/chat",
+    icon: MessageCircle,
   },
   {
     label: "Vacancy",

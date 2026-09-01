@@ -1,0 +1,106 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { ChatMessage } from "@/features/chat/types/chat";
+
+const MESSAGE_POLL_MS = 4000;
+
+/**
+ * Fetches and polls a single room's messages via `messagesEndpoint`
+ * (e.g. `/api/parent/chat/<roomId>/messages`), using the `after`
+ * query param so each poll only asks for messages newer than the
+ * last one already held — see the matching GET routes.
+ *
+ * No WebSocket/SSE here on purpose: the app is Next.js Route
+ * Handlers on Vercel (serverless), which doesn't hold a persistent
+ * connection open. Plain polling reuses the existing stack instead
+ * of introducing a new realtime-infra decision (e.g. Pusher/Ably)
+ * that isn't in 02-ARCHITECTURE.md yet — worth revisiting there if
+ * chat volume ever makes 4s latency feel too slow.
+ *
+ * `canSend: false` (Admin's read-only view) skips polling for new
+ * messages beyond the initial load reason to keep this simple, and
+ * `sendMessage` is a no-op guarded by `canSend`.
+ */
+export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const lastTimestampRef = useRef<string | null>(null);
+
+  const poll = useCallback(async () => {
+    try {
+      const after = lastTimestampRef.current;
+      const url = after
+        ? `${messagesEndpoint}?after=${encodeURIComponent(after)}`
+        : messagesEndpoint;
+
+      const res = await fetch(url, { method: "GET", cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load messages.");
+      }
+
+      const incoming: ChatMessage[] = data.messages ?? [];
+
+      if (incoming.length > 0) {
+        setMessages((prev) => (after ? [...prev, ...incoming] : incoming));
+        lastTimestampRef.current = incoming[incoming.length - 1].createdAt;
+      }
+
+      setError("");
+    } catch (err) {
+      console.error("Load chat messages error:", err);
+      setError(err instanceof Error ? err.message : "Failed to load messages.");
+    } finally {
+      setLoading(false);
+    }
+  }, [messagesEndpoint]);
+
+  useEffect(() => {
+    setLoading(true);
+    setMessages([]);
+    lastTimestampRef.current = null;
+
+    poll();
+
+    const interval = setInterval(poll, MESSAGE_POLL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messagesEndpoint]);
+
+  async function sendMessage(body: string) {
+    if (!canSend) return;
+
+    try {
+      setSending(true);
+      setError("");
+
+      const res = await fetch(messagesEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send message.");
+      }
+
+      setMessages((prev) => [...prev, data.message]);
+      lastTimestampRef.current = data.message.createdAt;
+    } catch (err) {
+      console.error("Send chat message error:", err);
+      setError(err instanceof Error ? err.message : "Failed to send message.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return { messages, loading, error, sending, sendMessage };
+}

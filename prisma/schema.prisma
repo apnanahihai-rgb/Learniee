@@ -38,6 +38,7 @@ model ParentProfile {
   createdAt           DateTime    @default(now())
   students            Student[]
   demoCoupon          DemoCoupon?
+  chatRooms           ChatRoom[]
 }
 
 model Admin {
@@ -67,6 +68,7 @@ model Student {
   parent               ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
   demoBookings         DemoBooking[]
   enrollments          Enrollment[]
+  chatRooms            ChatRoom[]
 
   @@index([parentId])
 }
@@ -104,6 +106,7 @@ model Teacher {
   professionalInfo TeacherProfessional?
   demoBookings     DemoBooking[]
   enrollments      Enrollment[]
+  chatRooms        ChatRoom[]
 }
 
 model TeacherProfessional {
@@ -225,6 +228,7 @@ model Course {
 
   demoBookings DemoBooking[]
   enrollments  Enrollment[]
+  chatRooms    ChatRoom[]
 
   @@index([teacherId])
   @@index([status])
@@ -377,6 +381,13 @@ model Enrollment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One chat room per enrollment (a specific parent+teacher+course+
+  // child combination) — see ChatRoom's doc-comment below for why
+  // this is gated on Enrollment existing rather than on
+  // EnrollmentStatus == APPROVED (dual-approval workflow, #2, isn't
+  // built yet, so nothing can reach APPROVED today).
+  chatRoom ChatRoom?
+
   @@index([parentId])
   @@index([teacherId])
   @@index([courseId])
@@ -390,4 +401,87 @@ enum EnrollmentStatus {
   ACTIVE
   LAPSED
   CANCELLED
+}
+
+/// One chat room per Enrollment — i.e. one per (parent, teacher,
+/// course, child) combination. From the Teacher's side this reads as
+/// "a separate chat room per child"; from the Parent's side, "a
+/// separate chat room per teacher+course" — both are the same
+/// underlying 1:1-with-Enrollment shape, per the request that
+/// prompted this feature.
+///
+/// **Gating decision (flagged back per project convention — judgment
+/// call, not a settled rule):** `Enrollment.status` starts at
+/// `PENDING_APPROVAL` and stays there until the dual-approval
+/// workflow (06-OPEN-DECISIONS.md #2) is built — which doesn't exist
+/// yet. Gating chat strictly on `APPROVED`/`ACTIVE` would mean no
+/// chat room could ever open today. Instead, a ChatRoom is created
+/// alongside every new Enrollment regardless of status (see
+/// enrollment.service.ts), EXCEPT `REJECTED`/`CANCELLED` enrollments
+/// don't get a working chat (the room can still exist for Admin's
+/// record, but Parent/Teacher sending is blocked — see
+/// chat.service.ts's `assertRoomIsActive`). Revisit this once dual
+/// approval is built — the more correct long-term rule is probably
+/// "chat opens once Enrollment reaches APPROVED/ACTIVE."
+model ChatRoom {
+  id String @id @default(uuid())
+
+  enrollmentId String     @unique
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  // Denormalized alongside enrollmentId, same reasoning as
+  // DemoBooking.parentId / Enrollment.parentId elsewhere in this
+  // schema — lets each role's room-list query filter directly
+  // without an extra join through Enrollment.
+  parentId  String
+  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  lastMessageAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([parentId])
+  @@index([teacherId])
+  @@index([courseId])
+  @@index([studentId])
+  @@index([lastMessageAt])
+}
+
+/// `senderId` stores the ParentProfile.id or Teacher.id of whoever
+/// sent the message — not the raw Cognito `sub` — so Admin's
+/// moderation view can join straight to a display name without
+/// re-decoding a token. `senderRole` disambiguates which table
+/// `senderId` points into (there's no single generic `User` table
+/// yet — see 03-DATA-MODEL.md).
+model ChatMessage {
+  id String @id @default(uuid())
+
+  chatRoomId String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+
+  senderRole ChatSenderRole
+  senderId   String
+
+  body String @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([chatRoomId, createdAt])
+}
+
+enum ChatSenderRole {
+  PARENT
+  TEACHER
 }

@@ -147,6 +147,19 @@ export async function createEnrollment(
       cycleStartDate,
       dueDate,
       status: EnrollmentStatus.PENDING_APPROVAL,
+      // Every Enrollment gets exactly one ChatRoom, created in the
+      // same write. Gating rationale (why this isn't restricted to
+      // EnrollmentStatus.APPROVED) is documented on the ChatRoom
+      // model in schema.prisma — short version: dual approval (#2)
+      // isn't built yet, so nothing can reach APPROVED today.
+      chatRoom: {
+        create: {
+          parentId,
+          teacherId: input.teacherId,
+          courseId: input.courseId,
+          studentId: input.studentId,
+        },
+      },
     },
   });
 

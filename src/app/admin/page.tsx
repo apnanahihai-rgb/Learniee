@@ -59,6 +59,21 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
+              Chat Monitor
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              View any parent ↔ teacher conversation, read-only.
+            </p>
+            <button
+              onClick={() => router.push("/admin/chat")}
+              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              View Chats
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800">
               Manage Users
             </h3>
             <p className="text-sm text-gray-500 mt-2">
