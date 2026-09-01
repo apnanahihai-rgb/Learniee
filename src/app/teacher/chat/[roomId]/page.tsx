@@ -6,8 +6,8 @@ import { useChatRooms } from "@/features/chat/hooks/useChatRooms";
 import { useChatMessages } from "@/features/chat/hooks/useChatMessages";
 import { displayName } from "@/features/chat/types/chat";
 import ChatWindow from "@/features/chat/components/ChatWindow";
+import { SENDABLE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
 
-const SENDABLE_STATUSES = new Set(["PENDING_APPROVAL", "APPROVED", "ACTIVE", "LAPSED"]);
 
 export default function TeacherChatRoomPage({
   params,
@@ -24,7 +24,7 @@ export default function TeacherChatRoomPage({
     true,
   );
 
-  const canSend = !room || SENDABLE_STATUSES.has(room.enrollment.status);
+  const canSend = !room || SENDABLE_ENROLLMENT_STATUSES.has(room.enrollment.status);
 
   return (
     <ChatWindow

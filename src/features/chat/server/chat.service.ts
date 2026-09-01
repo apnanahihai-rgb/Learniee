@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ChatSenderRole } from "@prisma/client";
+import { SENDABLE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
 
 export class ChatError extends Error {
   status: number;
@@ -14,14 +15,10 @@ export class ChatError extends Error {
  * Enrollment statuses that still allow new messages. A rejected or
  * cancelled enrollment keeps its ChatRoom (and message history) around
  * for Admin's record, but Parent/Teacher can no longer send into it —
- * see the gating note on the ChatRoom model in schema.prisma.
+ * see the gating note on the ChatRoom model in schema.prisma. Shared
+ * with the dual-approval workflow's status list so this never drifts
+ * out of sync with what states actually exist.
  */
-const SENDABLE_ENROLLMENT_STATUSES = new Set([
-  "PENDING_APPROVAL",
-  "APPROVED",
-  "ACTIVE",
-  "LAPSED",
-]);
 
 const roomListSelect = {
   id: true,

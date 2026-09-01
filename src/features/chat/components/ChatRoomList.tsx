@@ -4,15 +4,10 @@ import { useRouter } from "next/navigation";
 
 import type { ChatRoomSummary } from "@/features/chat/types/chat";
 import { displayName } from "@/features/chat/types/chat";
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDING_APPROVAL: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-green-100 text-green-700",
-  ACTIVE: "bg-green-100 text-green-700",
-  LAPSED: "bg-gray-200 text-gray-600",
-  REJECTED: "bg-red-100 text-red-700",
-  CANCELLED: "bg-red-100 text-red-700",
-};
+import {
+  getEnrollmentStatusLabel,
+  getEnrollmentStatusStyle,
+} from "@/features/shared/utils/enrollmentStatus";
 
 function formatTimestamp(value: string | null) {
   if (!value) return "No messages yet";
@@ -77,7 +72,8 @@ export default function ChatRoomList({
             ? `${room.course.courseTitle ?? "Untitled course"} · ${displayName(room.student)}`
             : `Child: ${displayName(room.student)}`;
 
-        const statusStyle = STATUS_STYLES[room.enrollment.status] ?? "bg-gray-100 text-gray-600";
+        const statusStyle = getEnrollmentStatusStyle(room.enrollment.status);
+        const statusLabel = getEnrollmentStatusLabel(room.enrollment.status, viewerRole);
 
         return (
           <button
@@ -93,7 +89,7 @@ export default function ChatRoomList({
 
             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle}`}>
-                {room.enrollment.status.replace("_", " ")}
+                {statusLabel}
               </span>
               <span className="text-xs text-gray-400">
                 {formatTimestamp(room.lastMessageAt)}

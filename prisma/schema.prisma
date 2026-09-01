@@ -39,6 +39,7 @@ model ParentProfile {
   students            Student[]
   demoCoupon          DemoCoupon?
   chatRooms           ChatRoom[]
+  enrollments         Enrollment[]
 }
 
 model Admin {
@@ -344,11 +345,13 @@ enum DemoBookingStatus {
 ///   totalAmount    = monthlyRate * noOfMonths
 ///   dueDate        = cycleStartDate + 1 month
 ///
-/// Dual approval (approveByAdmin()/approveByTeacher(), tiebreaker on
-/// disagreement) is intentionally NOT built here — 06-OPEN-DECISIONS.md
-/// #2 is still open and explicitly blocking, so `status` only tracks
-/// state, not the decision logic. Every new Enrollment starts at
-/// PENDING_APPROVAL until that workflow gets built.
+/// Sequential dual-approval (resolves 06-OPEN-DECISIONS.md #2, per
+/// direct clarification Sep 1, 2026): Teacher reviews first, then
+/// Admin has final say. Every new Enrollment starts at
+/// PENDING_TEACHER_APPROVAL (payment already happened by this point).
+/// See `status`'s own doc-comment below and
+/// src/features/shared/server/enrollmentApproval.service.ts for the
+/// full state machine.
 model Enrollment {
   id String @id @default(uuid())
 
@@ -356,6 +359,12 @@ model Enrollment {
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   parentId String
+  // Added alongside the dual-approval workflow — Teacher/Admin
+  // approval queues need the parent's name/email/phone, and a plain
+  // denormalized ID with no relation couldn't be `include`d. Every
+  // existing row already has a valid parentId, so this is additive
+  // and safe against live data.
+  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
   teacherId String
   teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -399,7 +408,39 @@ model Enrollment {
   // Null until the first ClassSession is built and marked complete.
   lastClassAt DateTime?
 
-  status EnrollmentStatus @default(PENDING_APPROVAL)
+  // Sequential dual-approval (resolves #2, per direct clarification
+  // Sep 1, 2026): Teacher reviews first — approve as-is, revise the
+  // cycle, or reject. Once the Teacher side is settled (either
+  // approved outright, or a revision the Parent has reconfirmed),
+  // it moves to Admin. Admin has final say: reject here is terminal
+  // (REJECTED), it does not bounce back to Teacher. Parent-facing
+  // copy NEVER mentions Admin by name (see status-label helper) —
+  // "pending" reads as "waiting for teacher approval" the whole way
+  // through, per direct instruction.
+  status EnrollmentStatus @default(PENDING_TEACHER_APPROVAL)
+
+  teacherApprovedAt DateTime?
+  adminApprovedAt   DateTime?
+
+  rejectedBy       String? // "TEACHER" | "ADMIN"
+  rejectionReason  String?
+
+  // Teacher-proposed schedule/cycle revision. `revisedByTeacher`
+  // flips true the first time a Teacher revises; `revisionNote` is
+  // the Teacher's own explanation, shown to the Parent alongside
+  // the Confirm/Decline choice. Discussion itself happens in the
+  // enrollment's ChatRoom (the sole Parent<->Teacher channel) —
+  // this note is just a short heads-up, not the full conversation.
+  revisedByTeacher Boolean @default(false)
+  revisionNote     String?
+
+  // Set true if a Teacher's revision changed sessionsPerMonth (and
+  // therefore monthlyRate/totalAmount) away from what was actually
+  // charged via Razorpay (`amountPaid`, still untouched/historical).
+  // No automatic extra charge or refund happens — flagged for Admin
+  // to see and reconcile manually before final approval. Revising
+  // only cycleStartDate never sets this (no cost impact).
+  pricingChangedAfterPayment Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -418,10 +459,20 @@ model Enrollment {
 }
 
 enum EnrollmentStatus {
+  // Legacy — no longer written by new code (kept so any existing
+  // rows in this status still deserialize/display fine; see
+  // 07-LESSONS-LEARNED.md re: never drop enum values that live data
+  // may already be using).
   PENDING_APPROVAL
   APPROVED
-  REJECTED
-  ACTIVE
+
+  // Sequential dual-approval flow (resolves #2):
+  PENDING_TEACHER_APPROVAL     // paid, waiting on Teacher
+  PENDING_PARENT_RECONFIRMATION // Teacher revised the cycle/date, waiting on Parent
+  PENDING_ADMIN_APPROVAL       // Teacher side settled, waiting on Admin
+
+  REJECTED   // terminal — set by either Teacher or Admin (see rejectedBy)
+  ACTIVE     // both approvals done — lectures can be scheduled
   LAPSED
   CANCELLED
 }
@@ -433,19 +484,15 @@ enum EnrollmentStatus {
 /// underlying 1:1-with-Enrollment shape, per the request that
 /// prompted this feature.
 ///
-/// **Gating decision (flagged back per project convention — judgment
-/// call, not a settled rule):** `Enrollment.status` starts at
-/// `PENDING_APPROVAL` and stays there until the dual-approval
-/// workflow (06-OPEN-DECISIONS.md #2) is built — which doesn't exist
-/// yet. Gating chat strictly on `APPROVED`/`ACTIVE` would mean no
-/// chat room could ever open today. Instead, a ChatRoom is created
-/// alongside every new Enrollment regardless of status (see
-/// enrollment.service.ts), EXCEPT `REJECTED`/`CANCELLED` enrollments
-/// don't get a working chat (the room can still exist for Admin's
+/// **Gating decision:** a ChatRoom is deliberately created alongside
+/// *every* new Enrollment, not gated on `APPROVED`/`ACTIVE` — the
+/// chat room IS the channel Teacher/Parent use to work out the
+/// dual-approval flow itself (revisions, discussion), so it has to
+/// exist from PENDING_TEACHER_APPROVAL onward, not after approval
+/// finishes. See enrollmentApproval.service.ts for the full flow.
+/// `REJECTED`/`CANCELLED` enrollments keep their room for Admin's
 /// record, but Parent/Teacher sending is blocked — see
-/// chat.service.ts's `assertRoomIsActive`). Revisit this once dual
-/// approval is built — the more correct long-term rule is probably
-/// "chat opens once Enrollment reaches APPROVED/ACTIVE."
+/// chat.service.ts's `SENDABLE_ENROLLMENT_STATUSES`.
 model ChatRoom {
   id String @id @default(uuid())
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarCheck, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarCheck, CheckCircle2, Info, Loader2, MessageCircle } from "lucide-react";
 
 import BookingCalendar from "@/features/parent/components/course-detail/BookingCalendar";
 import { useStudents } from "@/features/parent/hooks/useStudents";
@@ -100,9 +101,11 @@ function openRazorpayCheckout(options: {
  *   (sessions/month + months) auto-calculates rate/monthly-rate/
  *   total, then opens Razorpay Checkout for the full amount. The
  *   Enrollment row is only created after payment is verified
- *   server-side — see enrollment.service.ts. Dual approval (Teacher
- *   + Admin) still isn't built (06-OPEN-DECISIONS.md #2 is open),
- *   so a paid enrollment still starts as "Pending approval".
+ *   server-side — see enrollment.service.ts. A paid enrollment then
+ *   enters the sequential dual-approval flow (Teacher, then Admin —
+ *   resolves 06-OPEN-DECISIONS.md #2). Parent-facing copy always
+ *   frames this as "waiting for teacher approval", never mentioning
+ *   Admin by name, per direct instruction.
  *
  * All amounts are INR — Razorpay's "International Payments" account
  * setting is what lets a non-Indian card pay this same INR amount;
@@ -130,7 +133,9 @@ export default function BookingPanel({
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState("");
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
+  const [enrollChatRoomId, setEnrollChatRoomId] = useState<string | null>(null);
 
+  const router = useRouter();
   const { students, loading: studentsLoading } = useStudents();
   const {
     balance,
@@ -334,8 +339,9 @@ export default function BookingPanel({
       }
 
       setEnrollSuccess(
-        "Payment received — enrollment created and pending Teacher and Admin approval.",
+        "Payment successful! Your enrollment is on its way — you can connect with your teacher over chat any time.",
       );
+      setEnrollChatRoomId(verifyData.enrollment?.chatRoom?.id ?? null);
     } catch (err) {
       setEnrollError(err instanceof Error ? err.message : "Failed to enroll.");
     } finally {
@@ -543,9 +549,22 @@ export default function BookingPanel({
         )}
 
         {enrollSuccess && (
-          <div className="flex items-start gap-2 text-xs text-emerald-600 font-semibold mb-2">
-            <CheckCircle2 size={14} className="flex-shrink-0 mt-0.5" />
-            {enrollSuccess}
+          <div className="mb-2">
+            <div className="flex items-start gap-2 text-xs text-emerald-600 font-semibold">
+              <CheckCircle2 size={14} className="flex-shrink-0 mt-0.5" />
+              {enrollSuccess}
+            </div>
+
+            {enrollChatRoomId && (
+              <button
+                type="button"
+                onClick={() => router.push(`/parent/chat/${enrollChatRoomId}`)}
+                className="mt-2 w-full flex items-center justify-center gap-2 text-xs font-bold text-brand-dark bg-violet-50 hover:bg-violet-100 px-4 py-2 rounded-full transition-colors"
+              >
+                <MessageCircle size={14} />
+                Chat with your teacher
+              </button>
+            )}
           </div>
         )}
 
@@ -570,7 +589,9 @@ export default function BookingPanel({
         <p className="flex items-start gap-2 mt-3 text-[11px] text-gray-400 leading-relaxed">
           <Info size={13} className="flex-shrink-0 mt-0.5" />
           Payment is collected via Razorpay before your enrollment is
-          created. After that, Teacher and Admin approval come next.
+          created. After that, it&apos;s waiting for teacher approval —
+          you&apos;ll be able to track it and chat with your teacher from
+          &quot;My Enrollments&quot;.
         </p>
       </div>
     </div>

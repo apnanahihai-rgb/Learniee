@@ -59,6 +59,21 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
+              Enrollment Approvals
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              Review enrollments the teacher has already approved.
+            </p>
+            <button
+              onClick={() => router.push("/admin/enrollments")}
+              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              View Enrollments
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800">
               Chat Monitor
             </h3>
             <p className="text-sm text-gray-500 mt-2">

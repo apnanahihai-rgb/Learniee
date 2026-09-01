@@ -228,6 +228,7 @@ export async function verifyEnrollmentPayment(
 ) {
   const existing = await prisma.enrollment.findUnique({
     where: { razorpayOrderId: input.razorpayOrderId },
+    include: { chatRoom: { select: { id: true } } },
   });
 
   if (existing) {
@@ -287,15 +288,16 @@ export async function verifyEnrollmentPayment(
       totalAmount: priced.totalAmount,
       cycleStartDate: priced.cycleStartDate,
       dueDate: priced.dueDate,
-      status: EnrollmentStatus.PENDING_APPROVAL,
+      // Payment already succeeded by this point — go straight into
+      // the Teacher's review queue (resolves #2's sequential flow).
+      status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
       razorpayOrderId: input.razorpayOrderId,
       razorpayPaymentId: input.razorpayPaymentId,
       amountPaid: priced.totalAmount,
       // Every Enrollment gets exactly one ChatRoom, created in the
-      // same write. Gating rationale (why this isn't restricted to
-      // EnrollmentStatus.APPROVED) is documented on the ChatRoom
-      // model in schema.prisma — short version: dual approval (#2)
-      // isn't built yet, so nothing can reach APPROVED today.
+      // same write — it's the sole Parent<->Teacher communication
+      // channel throughout the whole approval flow, so it needs to
+      // exist from the moment payment clears.
       chatRoom: {
         create: {
           parentId,
@@ -305,6 +307,10 @@ export async function verifyEnrollmentPayment(
         },
       },
     },
+    // Included so the client can immediately offer "chat with your
+    // teacher" right after payment confirmation without a second
+    // round trip.
+    include: { chatRoom: { select: { id: true } } },
   });
 
   return enrollment;
@@ -387,7 +393,7 @@ export async function reconcileEnrollmentFromWebhook(
       totalAmount: priced.totalAmount,
       cycleStartDate: priced.cycleStartDate,
       dueDate: priced.dueDate,
-      status: EnrollmentStatus.PENDING_APPROVAL,
+      status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
       razorpayOrderId: orderId,
       razorpayPaymentId: paymentId,
       amountPaid: priced.totalAmount,
@@ -428,6 +434,9 @@ export async function getEnrollmentsForParent(parentId: string) {
       },
       course: {
         select: { id: true, courseTitle: true },
+      },
+      chatRoom: {
+        select: { id: true },
       },
     },
   });

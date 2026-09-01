@@ -15,6 +15,7 @@ import {
   Home,
   FolderOpen,
   ClipboardCheck,
+  ListChecks,
   GraduationCap,
   Star,
   User,
@@ -58,6 +59,7 @@ const menuSections: MenuSection[] = [
   {
     label: "My Learning",
     items: [
+      { label: "My Enrollments", path: "/parent/enrollments", icon: ListChecks },
       { label: "Home works/tests", path: "/parent/homework-tests", icon: ClipboardCheck },
       { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
       { label: "Payments", path: "/parent/payments", icon: CreditCard },
