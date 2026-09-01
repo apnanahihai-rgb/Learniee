@@ -296,6 +296,15 @@ model DemoBooking {
   amount Decimal?          @db.Decimal(10, 2)
   status DemoBookingStatus @default(CONFIRMED)
 
+  // Razorpay fields — only set for the paid (3rd+) demo path. Free
+  // demos never touch Razorpay at all, so these stay null for them.
+  // `razorpayOrderId` is unique so verifyDemoPayment() can be called
+  // more than once for the same order (e.g. a retried client
+  // request) without creating a second DemoBooking row.
+  razorpayOrderId   String?   @unique
+  razorpayPaymentId String?   @unique
+  paidAt            DateTime?
+
   scheduledAt DateTime?
 
   createdAt DateTime @default(now())
@@ -370,6 +379,20 @@ model Enrollment {
 
   cycleStartDate DateTime
   dueDate        DateTime
+
+  // Payment gate (06-OPEN-DECISIONS.md #36, resolved: Enrollment
+  // creation now blocks on payment rather than allowing an unpaid
+  // row). An Enrollment row is only ever written by
+  // verifyEnrollmentPayment() AFTER Razorpay confirms the charge —
+  // so these are required, not optional, and every Enrollment that
+  // exists is by definition paid. `amountPaid` is captured
+  // separately from `totalAmount` (even though they should always
+  // match) so a future partial-payment/refund scenario has
+  // somewhere to diverge without a schema change.
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String   @unique
+  amountPaid        Decimal  @db.Decimal(10, 2)
+  paidAt            DateTime @default(now())
 
   // DECIDED (#27): 45 days with no class taken -> auto-lapse.
   // Reactivation/pre-warning still open (#34, non-blocking for MVP).

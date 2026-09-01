@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireParentId } from "@/features/parent/server/auth";
-import {
-  createEnrollment,
-  getEnrollmentsForParent,
-  EnrollmentError,
-  type CreateEnrollmentInput,
-} from "@/features/parent/server/enrollment.service";
+import { getEnrollmentsForParent } from "@/features/parent/server/enrollment.service";
 
 /**
  * GET
@@ -41,54 +36,23 @@ export async function GET(req: Request) {
 /**
  * POST
  *
- * Creates a cycle-based Enrollment for one of the parent's children
- * in an approved course. Captures only what's knowable right now
- * (cycle length, session count, the system-calculated rate/total/
- * due-date) — payment fields arrive later once Razorpay is wired
- * in, and dual approval (Teacher + Admin) isn't built yet either
- * (06-OPEN-DECISIONS.md #2 is still open) — see
- * enrollment.service.ts for both.
+ * REMOVED (resolves 06-OPEN-DECISIONS.md #36): Enrollment creation
+ * now requires a completed Razorpay payment, so a direct
+ * "create with no charge" POST no longer exists. Use:
+ *   1. POST /api/parent/enrollments/order  — prices + creates a
+ *      Razorpay order
+ *   2. POST /api/parent/enrollments/verify — verifies payment and
+ *      creates the Enrollment row
+ * Kept as a 410 here (rather than deleting the export) so any old
+ * client build still gets a clear, actionable error instead of a
+ * generic 404.
  */
-export async function POST(req: Request) {
-  try {
-    const parent = await requireParentId(req);
-
-    if ("error" in parent) {
-      return parent.error;
-    }
-
-    const input: CreateEnrollmentInput = await req.json();
-
-    if (!input.studentId || !input.teacherId || !input.courseId) {
-      return NextResponse.json(
-        { error: "studentId, teacherId, and courseId are required." },
-        { status: 400 },
-      );
-    }
-
-    if (!input.sessionsPerMonth) {
-      return NextResponse.json(
-        { error: "Pick a sessions-per-month cycle before enrolling." },
-        { status: 400 },
-      );
-    }
-
-    const enrollment = await createEnrollment(parent.parentId, input);
-
-    return NextResponse.json({ success: true, enrollment }, { status: 201 });
-  } catch (error) {
-    if (error instanceof EnrollmentError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      );
-    }
-
-    console.error("Parent enrollments POST error:", error);
-
-    return NextResponse.json(
-      { error: "Failed to create enrollment." },
-      { status: 500 },
-    );
-  }
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        "Direct enrollment is no longer supported — pay first via /api/parent/enrollments/order then /api/parent/enrollments/verify.",
+    },
+    { status: 410 },
+  );
 }

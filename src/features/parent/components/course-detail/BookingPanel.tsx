@@ -6,6 +6,10 @@ import { CalendarCheck, CheckCircle2, Info, Loader2 } from "lucide-react";
 import BookingCalendar from "@/features/parent/components/course-detail/BookingCalendar";
 import { useStudents } from "@/features/parent/hooks/useStudents";
 import { useDemoCoupons } from "@/features/parent/hooks/useDemoCoupons";
+import {
+  loadRazorpayCheckout,
+  type RazorpayCheckoutOptions,
+} from "@/lib/loadRazorpayCheckout";
 
 interface Props {
   price: string | null;
@@ -39,27 +43,71 @@ function formatSelection(date: Date | null, hour: number | null) {
 }
 
 /**
- * Session-booking panel. "Book Demo" is wired to the real
- * DemoCoupon backend (06-OPEN-DECISIONS.md #26): every account
- * gets 2 free demo sessions total — shared across every child, not
- * 2 per child — then a flat ₹100 each, capped at 1 demo per
- * (teacher, subject, child).
+ * Opens Razorpay Checkout against a server-created order and
+ * resolves with the payment result once the user completes (or
+ * abandons) it. Both "Book Demo" (once free demos run out) and
+ * "Enroll Now" use this same helper — only the order/verify
+ * endpoints differ.
+ */
+function openRazorpayCheckout(options: {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  name: string;
+  description: string;
+}): Promise<{
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+} | null> {
+  return new Promise((resolve, reject) => {
+    loadRazorpayCheckout().then((loaded) => {
+      if (!loaded || !window.Razorpay) {
+        reject(new Error("Couldn't load the payment window. Check your connection and try again."));
+        return;
+      }
+
+      const checkoutOptions: RazorpayCheckoutOptions = {
+        key: options.keyId,
+        amount: options.amount,
+        currency: options.currency,
+        order_id: options.orderId,
+        name: "Learnie",
+        description: options.description,
+        theme: { color: "#9347FF" },
+        handler: (response) => resolve(response),
+        modal: {
+          ondismiss: () => resolve(null),
+        },
+      };
+
+      const instance = new window.Razorpay!(checkoutOptions);
+      instance.open();
+    });
+  });
+}
+
+/**
+ * Session-booking panel. Both "Book Demo" and "Enroll Now" are
+ * payment-gated (Razorpay) end to end:
  *
- * Picking a date and time from BookingCalendar is required before
- * "Book Demo" is enabled — a demo can't be arranged without a
- * specific slot, so the button stays disabled and the request is
- * also rejected server-side (see demoCoupon.service.ts) if no
- * scheduledAt is sent.
+ * - "Book Demo": free while the account still has one of its 2 free
+ *   demos (06-OPEN-DECISIONS.md #26) — no payment involved. Once
+ *   those are used, this opens Razorpay Checkout for the flat ₹100
+ *   fee before the booking is created.
+ * - "Enroll Now": always payment-gated. Picking a cycle
+ *   (sessions/month + months) auto-calculates rate/monthly-rate/
+ *   total, then opens Razorpay Checkout for the full amount. The
+ *   Enrollment row is only created after payment is verified
+ *   server-side — see enrollment.service.ts. Dual approval (Teacher
+ *   + Admin) still isn't built (06-OPEN-DECISIONS.md #2 is open),
+ *   so a paid enrollment still starts as "Pending approval".
  *
- * "Enroll Now" is wired to the real Enrollment backend
- * (enrollment.service.ts): picking a cycle (sessions/month + number
- * of months) auto-calculates rate/monthly-rate/total, same as
- * 03-DATA-MODEL.md describes — nothing is entered manually.
- * Payment isn't integrated yet (Razorpay, 02-ARCHITECTURE.md), so
- * this only creates the Enrollment row for Accounts to bill against
- * later; dual approval (Teacher + Admin) also isn't built yet
- * (06-OPEN-DECISIONS.md #2 is still open), so every new enrollment
- * starts as "Pending approval".
+ * All amounts are INR — Razorpay's "International Payments" account
+ * setting is what lets a non-Indian card pay this same INR amount;
+ * the cardholder's own bank/network does the conversion and any
+ * forex fee lands on them, not on Learnie.
  */
 export default function BookingPanel({
   price,
@@ -132,30 +180,81 @@ export default function BookingPanel({
       withTime.setHours(selectedHour, 0, 0, 0);
       const scheduledAt = withTime.toISOString();
 
-      const res = await fetch("/api/parent/demo-bookings", {
+      const payload = {
+        studentId: selectedStudentId,
+        teacherId,
+        courseId,
+        subject,
+        scheduledAt,
+      };
+
+      if (remainingFree > 0) {
+        // Free demo — no Razorpay involved.
+        const res = await fetch("/api/parent/demo-bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to book demo.");
+        }
+
+        setBookingSuccess(
+          "Free demo booked! We'll be in touch to confirm the time.",
+        );
+        reloadBalance();
+        return;
+      }
+
+      // Paid demo — create a Razorpay order, open Checkout, verify.
+      const orderRes = await fetch("/api/parent/demo-bookings/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || "Failed to start payment.");
+      }
+
+      const result = await openRazorpayCheckout({
+        orderId: orderData.orderId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        keyId: orderData.keyId,
+        name: "Demo session",
+        description: `Demo — ₹${paidDemoPrice}`,
+      });
+
+      if (!result) {
+        // User closed the payment window without paying.
+        setBookingError("Payment cancelled — no charge was made.");
+        return;
+      }
+
+      const verifyRes = await fetch("/api/parent/demo-bookings/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: selectedStudentId,
-          teacherId,
-          courseId,
-          subject,
-          scheduledAt,
+          ...payload,
+          razorpayOrderId: result.razorpay_order_id,
+          razorpayPaymentId: result.razorpay_payment_id,
+          razorpaySignature: result.razorpay_signature,
         }),
       });
 
-      const data = await res.json();
+      const verifyData = await verifyRes.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to book demo.");
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Payment succeeded but booking could not be confirmed — contact support.");
       }
 
-      setBookingSuccess(
-        data.usedFreeCoupon
-          ? "Free demo booked! We'll be in touch to confirm the time."
-          : `Demo booked — ₹${paidDemoPrice} will be collected before the session (online payment collection is coming soon).`,
-      );
-
+      setBookingSuccess(`Payment received — demo booked for ₹${paidDemoPrice}.`);
       reloadBalance();
     } catch (err) {
       setBookingError(
@@ -182,27 +281,60 @@ export default function BookingPanel({
     setEnrollSuccess(null);
 
     try {
-      const res = await fetch("/api/parent/enrollments", {
+      const payload = {
+        studentId: selectedStudentId,
+        teacherId,
+        courseId,
+        subject,
+        sessionsPerMonth,
+        noOfMonths,
+      };
+
+      const orderRes = await fetch("/api/parent/enrollments/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || "Failed to start payment.");
+      }
+
+      const result = await openRazorpayCheckout({
+        orderId: orderData.orderId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        keyId: orderData.keyId,
+        name: "Course enrollment",
+        description: `Enrollment — ₹${orderData.pricing.totalAmount.toLocaleString("en-IN")}`,
+      });
+
+      if (!result) {
+        setEnrollError("Payment cancelled — no charge was made.");
+        return;
+      }
+
+      const verifyRes = await fetch("/api/parent/enrollments/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: selectedStudentId,
-          teacherId,
-          courseId,
-          subject,
-          sessionsPerMonth,
-          noOfMonths,
+          ...payload,
+          razorpayOrderId: result.razorpay_order_id,
+          razorpayPaymentId: result.razorpay_payment_id,
+          razorpaySignature: result.razorpay_signature,
         }),
       });
 
-      const data = await res.json();
+      const verifyData = await verifyRes.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to enroll.");
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Payment succeeded but enrollment could not be confirmed — contact support.");
       }
 
       setEnrollSuccess(
-        "Enrollment created — it's now pending Teacher and Admin approval. Payment collection is coming soon.",
+        "Payment received — enrollment created and pending Teacher and Admin approval.",
       );
     } catch (err) {
       setEnrollError(err instanceof Error ? err.message : "Failed to enroll.");
@@ -221,10 +353,6 @@ export default function BookingPanel({
         {price && (
           <span className="text-sm font-bold text-gray-800">
             ₹{price}
-            {/* Was "/mo" — changed to "/session" to match the rate
-                enrollment.service.ts actually calculates against.
-                Flagged in 06-OPEN-DECISIONS.md as an assumption
-                pending sign-off, not a settled label. */}
             <span className="text-[11px] font-medium text-gray-400">
               /session
             </span>
@@ -318,7 +446,7 @@ export default function BookingPanel({
           {booking && <Loader2 size={14} className="animate-spin" />}
           {remainingFree > 0
             ? "Book Free Demo"
-            : `Book Demo — ₹${paidDemoPrice}`}
+            : `Pay & Book Demo — ₹${paidDemoPrice}`}
         </button>
       </div>
 
@@ -326,9 +454,9 @@ export default function BookingPanel({
         <Info size={13} className="flex-shrink-0 mt-0.5" />
         <span>
           Every account gets 2 free demo sessions in total (not per child) —
-          after that, each demo is a flat ₹100. Pick a date and time above
-          so the session can actually be arranged — bookings without a
-          time aren&apos;t accepted.
+          after that, each demo is a flat ₹100, collected via Razorpay before
+          the booking is confirmed. Pick a date and time above so the session
+          can actually be arranged.
         </span>
       </div>
 
@@ -337,11 +465,11 @@ export default function BookingPanel({
           06-OPEN-DECISIONS.md #25 fixed set) + a number of months.
           Rate/monthly-rate/total are always calculated server-side
           in enrollment.service.ts; this preview is client-side only
-          so the parent sees the total before submitting. Payment
-          collection isn't wired in yet, and dual approval (Teacher +
-          Admin, #2 still open) hasn't been built either — this only
-          creates the Enrollment row, which starts "Pending
-          approval". */}
+          so the parent sees the total before paying. Payment via
+          Razorpay is required before the Enrollment row is created
+          (resolves 06-OPEN-DECISIONS.md #36); dual approval (Teacher
+          + Admin, #2 still open) hasn't been built either, so a paid
+          enrollment starts "Pending approval". */}
       <div className="mt-6 pt-5 border-t border-violet-50">
         <h3 className="font-heading text-sm font-bold text-gray-800 mb-3">
           Enroll in this course
@@ -434,14 +562,15 @@ export default function BookingPanel({
           className="w-full text-sm font-bold text-white bg-brand-dark px-4 py-2.5 rounded-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
         >
           {enrolling && <Loader2 size={14} className="animate-spin" />}
-          Enroll Now
+          {pricePreview
+            ? `Pay ₹${pricePreview.totalAmount.toLocaleString("en-IN")} & Enroll`
+            : "Enroll Now"}
         </button>
 
         <p className="flex items-start gap-2 mt-3 text-[11px] text-gray-400 leading-relaxed">
           <Info size={13} className="flex-shrink-0 mt-0.5" />
-          Payment collection isn&apos;t live yet, so enrolling now just
-          reserves your cycle — Teacher and Admin approval, then payment,
-          come next.
+          Payment is collected via Razorpay before your enrollment is
+          created. After that, Teacher and Admin approval come next.
         </p>
       </div>
     </div>

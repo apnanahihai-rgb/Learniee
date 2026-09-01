@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { DemoBookingStatus } from "@prisma/client";
+import {
+  getRazorpayClient,
+  rupeesToPaise,
+  verifyCheckoutSignature,
+} from "@/lib/razorpay";
 
 /**
  * DECIDED (06-OPEN-DECISIONS.md #26): every ParentProfile gets 2
@@ -75,28 +80,22 @@ export interface CreateDemoBookingInput {
   scheduledAt: string;
 }
 
+interface ValidatedDemoBooking {
+  studentId: string;
+  subject: string;
+  scheduledDate: Date;
+}
+
 /**
- * Books a demo session for one child, with one teacher, for one
- * course/subject.
- *
- * - Confirms the Student belongs to the requesting parent (same
- *   not-found-vs-not-yours guard as student.service.ts).
- * - Requires a valid, future `scheduledAt` — a demo can't be
- *   arranged without picking a specific date and time first
- *   (enforced in route.ts and again here).
- * - Enforces the 1-demo-per-(teacher, subject, child) cap from
- *   06-OPEN-DECISIONS.md #26 via the DemoBooking model's compound
- *   unique constraint.
- * - Consumes a free coupon if the account has one left; otherwise
- *   records the booking as a flat ₹100 charge. Razorpay isn't
- *   integrated yet (02-ARCHITECTURE.md), so a paid demo is recorded
- *   as PENDING_PAYMENT rather than actually collecting payment —
- *   wire this to a real charge once the gateway exists.
+ * Shared validation for both the free-demo path and the paid-demo
+ * Razorpay order/verify path — student ownership, course existence,
+ * a valid future `scheduledAt`, and the 1-per-(teacher, subject,
+ * child) cap.
  */
-export async function createDemoBooking(
+async function validateDemoBooking(
   parentId: string,
   input: CreateDemoBookingInput,
-) {
+): Promise<ValidatedDemoBooking> {
   const student = await prisma.student.findFirst({
     where: { id: input.studentId, parentId },
     select: { id: true },
@@ -118,10 +117,6 @@ export async function createDemoBooking(
     throw new DemoBookingError("Course not found.", 404);
   }
 
-  // Belt-and-suspenders: route.ts already rejects a missing
-  // scheduledAt, but validate the actual value here too so a
-  // malformed or past timestamp can't slip through as a "confirmed"
-  // booking that no one can actually show up for.
   const scheduledDate = new Date(input.scheduledAt);
 
   if (Number.isNaN(scheduledDate.getTime())) {
@@ -157,39 +152,271 @@ export async function createDemoBooking(
     );
   }
 
+  return { studentId: input.studentId, subject, scheduledDate };
+}
+
+/**
+ * Books a FREE demo session (account still has one of its 2 free
+ * demos left). No Razorpay involvement at all — this only ever
+ * writes a `CONFIRMED` booking with `isPaid: false`.
+ *
+ * Throws if no free demo remains — callers (route.ts) should check
+ * `getDemoCouponBalance()` first and route to the paid order/verify
+ * flow below instead.
+ */
+export async function createFreeDemoBooking(
+  parentId: string,
+  input: CreateDemoBookingInput,
+) {
+  const validated = await validateDemoBooking(parentId, input);
   const coupon = await getOrCreateDemoCoupon(parentId);
-  const hasFreeDemo = coupon.usedCount < coupon.totalIssued;
+
+  if (coupon.usedCount >= coupon.totalIssued) {
+    throw new DemoBookingError(
+      "No free demos left on this account — pay to book this demo instead.",
+      402,
+    );
+  }
 
   const booking = await prisma.$transaction(async (tx) => {
-    if (hasFreeDemo) {
-      await tx.demoCoupon.update({
-        where: { id: coupon.id },
-        data: { usedCount: { increment: 1 } },
-      });
-    }
+    await tx.demoCoupon.update({
+      where: { id: coupon.id },
+      data: { usedCount: { increment: 1 } },
+    });
 
     return tx.demoBooking.create({
       data: {
         demoCouponId: coupon.id,
         parentId,
-        studentId: input.studentId,
+        studentId: validated.studentId,
         teacherId: input.teacherId,
         courseId: input.courseId,
-        subject,
-        isPaid: !hasFreeDemo,
-        amount: hasFreeDemo ? null : PAID_DEMO_PRICE,
-        status: hasFreeDemo
-          ? DemoBookingStatus.CONFIRMED
-          : DemoBookingStatus.PENDING_PAYMENT,
-        scheduledAt: scheduledDate,
+        subject: validated.subject,
+        isPaid: false,
+        amount: null,
+        status: DemoBookingStatus.CONFIRMED,
+        scheduledAt: validated.scheduledDate,
       },
     });
   });
 
-  return {
-    booking,
-    usedFreeCoupon: hasFreeDemo,
-  };
+  return { booking, usedFreeCoupon: true };
+}
+
+/**
+ * Step 1 of the paid-demo flow (used once the account's 2 free
+ * demos are used up). Validates everything a booking needs, then
+ * creates a Razorpay Order for the flat ₹100 fee. Nothing is
+ * written to the DB yet — same reasoning as
+ * enrollment.service.ts's createEnrollmentOrder().
+ */
+export async function createDemoBookingOrder(
+  parentId: string,
+  input: CreateDemoBookingInput,
+) {
+  const validated = await validateDemoBooking(parentId, input);
+  const coupon = await getOrCreateDemoCoupon(parentId);
+
+  if (coupon.usedCount < coupon.totalIssued) {
+    throw new DemoBookingError(
+      "This account still has a free demo available — use the free booking flow instead of paying.",
+      400,
+    );
+  }
+
+  const razorpay = getRazorpayClient();
+
+  const order = await razorpay.orders.create({
+    amount: rupeesToPaise(PAID_DEMO_PRICE),
+    currency: "INR",
+    receipt: `demo_${Date.now()}`,
+    // Full enough to reconstruct the DemoBooking from the webhook
+    // alone (src/app/api/webhooks/razorpay/route.ts) if the client
+    // never calls /verify.
+    notes: {
+      kind: "demo_booking",
+      parentId,
+      studentId: validated.studentId,
+      teacherId: input.teacherId,
+      courseId: input.courseId,
+      subject: validated.subject,
+      scheduledAt: validated.scheduledDate.toISOString(),
+    },
+  });
+
+  return { order, amount: PAID_DEMO_PRICE };
+}
+
+export interface VerifyDemoBookingPaymentInput extends CreateDemoBookingInput {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}
+
+/**
+ * Step 2 of the paid-demo flow. Same pattern as
+ * verifyEnrollmentPayment(): re-verify the checkout signature,
+ * re-fetch the order from Razorpay directly, re-validate the
+ * booking (student ownership, no duplicate, future time still
+ * holds), and only then write the DemoBooking row.
+ *
+ * Idempotent on `razorpayOrderId` (unique in the schema).
+ *
+ * Edge case worth knowing about: if the (teacher, subject, child)
+ * slot got taken by a different booking in the gap between order
+ * creation and payment completing, this throws a 409 AFTER the
+ * money has already been captured by Razorpay — that booking can't
+ * be created, so it needs a manual refund. Flagged rather than
+ * silently swallowed.
+ */
+export async function verifyDemoBookingPayment(
+  parentId: string,
+  input: VerifyDemoBookingPaymentInput,
+) {
+  const existing = await prisma.demoBooking.findUnique({
+    where: { razorpayOrderId: input.razorpayOrderId },
+  });
+
+  if (existing) {
+    return { booking: existing, usedFreeCoupon: false };
+  }
+
+  const signatureOk = verifyCheckoutSignature({
+    orderId: input.razorpayOrderId,
+    paymentId: input.razorpayPaymentId,
+    signature: input.razorpaySignature,
+  });
+
+  if (!signatureOk) {
+    throw new DemoBookingError(
+      "Payment verification failed. If money was deducted, it will be auto-refunded — contact support if it isn't reversed within a few days.",
+      400,
+    );
+  }
+
+  const validated = await validateDemoBooking(parentId, input);
+
+  const razorpay = getRazorpayClient();
+  const order = await razorpay.orders.fetch(input.razorpayOrderId);
+
+  if (order.status !== "paid") {
+    throw new DemoBookingError(
+      `Payment isn't complete yet (status: ${order.status}). Please retry the payment.`,
+      402,
+    );
+  }
+
+  if (Number(order.amount) !== rupeesToPaise(PAID_DEMO_PRICE)) {
+    throw new DemoBookingError(
+      "The paid amount doesn't match the demo fee — contact support with your payment ID for a refund.",
+      409,
+    );
+  }
+
+  const coupon = await getOrCreateDemoCoupon(parentId);
+
+  const booking = await prisma.demoBooking.create({
+    data: {
+      demoCouponId: coupon.id,
+      parentId,
+      studentId: validated.studentId,
+      teacherId: input.teacherId,
+      courseId: input.courseId,
+      subject: validated.subject,
+      isPaid: true,
+      amount: PAID_DEMO_PRICE,
+      status: DemoBookingStatus.CONFIRMED,
+      scheduledAt: validated.scheduledDate,
+      razorpayOrderId: input.razorpayOrderId,
+      razorpayPaymentId: input.razorpayPaymentId,
+      paidAt: new Date(),
+    },
+  });
+
+  return { booking, usedFreeCoupon: false };
+}
+
+/**
+ * Reconciliation path used ONLY by the Razorpay webhook — see
+ * enrollment.service.ts's `reconcileEnrollmentFromWebhook()` for the
+ * full reasoning (same pattern, applied to paid demo bookings).
+ */
+export async function reconcileDemoBookingFromWebhook(
+  orderId: string,
+  paymentId: string,
+) {
+  const existing = await prisma.demoBooking.findUnique({
+    where: { razorpayOrderId: orderId },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const razorpay = getRazorpayClient();
+  const order = await razorpay.orders.fetch(orderId);
+
+  if (order.status !== "paid") {
+    return null;
+  }
+
+  const notes = order.notes ?? {};
+
+  if (notes.kind !== "demo_booking") {
+    return null;
+  }
+
+  const parentId = String(notes.parentId ?? "");
+  const studentId = String(notes.studentId ?? "");
+  const teacherId = String(notes.teacherId ?? "");
+  const courseId = String(notes.courseId ?? "");
+  const subject = notes.subject ? String(notes.subject) : "";
+  const scheduledAt = notes.scheduledAt ? String(notes.scheduledAt) : "";
+
+  if (!parentId || !studentId || !teacherId || !courseId || !scheduledAt) {
+    console.error("Razorpay webhook: demo order missing notes", orderId);
+    return null;
+  }
+
+  if (Number(order.amount) !== rupeesToPaise(PAID_DEMO_PRICE)) {
+    console.error("Razorpay webhook: demo amount mismatch", orderId);
+    return null;
+  }
+
+  // Duplicate slot check — same as validateDemoBooking(), inlined
+  // here since we're working from webhook notes, not a fresh
+  // client request.
+  const duplicate = await prisma.demoBooking.findUnique({
+    where: { teacherId_subject_studentId: { teacherId, subject, studentId } },
+  });
+
+  if (duplicate) {
+    console.error(
+      "Razorpay webhook: demo slot already booked, needs manual refund",
+      orderId,
+    );
+    return null;
+  }
+
+  const coupon = await getOrCreateDemoCoupon(parentId);
+
+  return prisma.demoBooking.create({
+    data: {
+      demoCouponId: coupon.id,
+      parentId,
+      studentId,
+      teacherId,
+      courseId,
+      subject,
+      isPaid: true,
+      amount: PAID_DEMO_PRICE,
+      status: DemoBookingStatus.CONFIRMED,
+      scheduledAt: new Date(scheduledAt),
+      razorpayOrderId: orderId,
+      razorpayPaymentId: paymentId,
+      paidAt: new Date(),
+    },
+  });
 }
 
 /**

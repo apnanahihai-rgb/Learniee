@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireParentId } from "@/features/parent/server/auth";
 import {
-  createDemoBooking,
+  createFreeDemoBooking,
   getDemoBookingsForParent,
   DemoBookingError,
   type CreateDemoBookingInput,
@@ -39,11 +39,14 @@ export async function GET(req: Request) {
 /**
  * POST
  *
- * Books a demo session for one of the parent's children, with a
- * given teacher/course. Consumes a free coupon if any remain on the
- * account (2 total, not per child — 06-OPEN-DECISIONS.md #26),
- * otherwise records a flat ₹100 paid demo. Capped at 1 demo per
- * (teacher, subject, child) — see demoCoupon.service.ts.
+ * Books a FREE demo session (account still has one of its 2 free
+ * demos left — 06-OPEN-DECISIONS.md #26). Once the account is out
+ * of free demos, this route now rejects with 402 instead of
+ * recording an unpaid placeholder booking — the client should call
+ * `/api/parent/demo-bookings/order` then `/verify` instead, which
+ * requires an actual Razorpay payment before the booking is
+ * created. Capped at 1 demo per (teacher, subject, child) — see
+ * demoCoupon.service.ts.
  */
 export async function POST(req: Request) {
   try {
@@ -72,7 +75,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await createDemoBooking(parent.parentId, input);
+    const result = await createFreeDemoBooking(parent.parentId, input);
 
     return NextResponse.json({ success: true, ...result }, { status: 201 });
   } catch (error) {
