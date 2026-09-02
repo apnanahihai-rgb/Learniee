@@ -7,6 +7,23 @@ import type { ChatMessage } from "@/features/chat/types/chat";
 const MESSAGE_POLL_MS = 4000;
 
 /**
+ * Merges `incoming` into `prev`, de-duping by `id`. Needed because the
+ * poll loop and the optimistic append in `sendMessage` can race: a poll
+ * request in flight when a message is sent may resolve afterwards and
+ * still include that same message (it was fetched with a stale `after`
+ * cursor), producing a duplicate entry/key otherwise.
+ */
+function mergeMessages(prev: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
+  const byId = new Map(prev.map((m) => [m.id, m]));
+  for (const message of incoming) {
+    byId.set(message.id, message);
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+}
+
+/**
  * Fetches and polls a single room's messages via `messagesEndpoint`
  * (e.g. `/api/parent/chat/<roomId>/messages`), using the `after`
  * query param so each poll only asks for messages newer than the
@@ -48,7 +65,7 @@ export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
       const incoming: ChatMessage[] = data.messages ?? [];
 
       if (incoming.length > 0) {
-        setMessages((prev) => (after ? [...prev, ...incoming] : incoming));
+        setMessages((prev) => (after ? mergeMessages(prev, incoming) : incoming));
         lastTimestampRef.current = incoming[incoming.length - 1].createdAt;
       }
 
@@ -92,7 +109,7 @@ export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
         throw new Error(data.error || "Failed to send message.");
       }
 
-      setMessages((prev) => [...prev, data.message]);
+      setMessages((prev) => mergeMessages(prev, [data.message]));
       lastTimestampRef.current = data.message.createdAt;
     } catch (err) {
       console.error("Send chat message error:", err);
