@@ -5,6 +5,8 @@ const roleRoutes: Record<string, string> = {
   "/admin": "admin",
   "/teacher": "teacher",
   "/parent": "parent",
+  "/hr": "hr",
+  "/accounts": "accounts",
 };
 
 interface MiddlewareTokenPayload {
@@ -53,5 +55,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/teacher/:path*", "/parent/:path*"],
+  matcher: ["/admin/:path*", "/teacher/:path*", "/parent/:path*", "/hr/:path*", "/accounts/:path*"],
 };

@@ -16,6 +16,88 @@ export function useLogin() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Set when Cognito responds to authenticateUser() with a
+  // NEW_PASSWORD_REQUIRED challenge — this happens on a user's first
+  // login after an admin created their account via AdminCreateUser
+  // (e.g. Staff Accounts / HR / Accounts), which leaves them in
+  // FORCE_CHANGE_PASSWORD status until they set a real password.
+  const [forcePasswordChange, setForcePasswordChange] = useState(false);
+  const [pendingCognitoUser, setPendingCognitoUser] = useState<CognitoUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
+  function routeForRole(role: unknown) {
+    if (role === "hr") {
+      router.push("/hr");
+      return true;
+    }
+    if (role === "accounts") {
+      router.push("/accounts");
+      return true;
+    }
+    return false;
+  }
+
+  function handleCompleteNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (!newPassword || newPassword.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setError("Password must contain an uppercase letter, a lowercase letter, and a number.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!pendingCognitoUser) {
+      setError("Session expired. Please log in again.");
+      setForcePasswordChange(false);
+      return;
+    }
+
+    setLoading(true);
+
+    pendingCognitoUser.completeNewPasswordChallenge(
+      newPassword,
+      {},
+      {
+        onSuccess: async (session) => {
+          try {
+            const idToken = session.getIdToken().getJwtToken();
+            Cookies.set("idToken", idToken, { expires: 1 });
+
+            const role = session.getIdToken().payload["custom:role"];
+            setForcePasswordChange(false);
+            setLoading(false);
+
+            if (role === "admin") {
+              router.push("/admin");
+              return;
+            }
+            if (routeForRole(role)) return;
+
+            // Parent/teacher accounts don't currently go through
+            // AdminCreateUser, but handle it gracefully if that changes.
+            router.push("/login");
+          } catch (err) {
+            console.error(err);
+            setLoading(false);
+            setError("Password changed, but something went wrong loading your account.");
+          }
+        },
+        onFailure: (err) => {
+          setLoading(false);
+          setError(err.message);
+        },
+      },
+    );
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
@@ -127,6 +209,8 @@ export function useLogin() {
             return;
           }
 
+          if (routeForRole(role)) return;
+
           // -----------------------------
           // UNKNOWN ROLE
           // -----------------------------
@@ -148,6 +232,15 @@ export function useLogin() {
         setLoading(false);
         setError(err.message);
       },
+
+      // Fired instead of onSuccess when the user was created via
+      // AdminCreateUser (FORCE_CHANGE_PASSWORD status) and hasn't set
+      // their own password yet.
+      newPasswordRequired: () => {
+        setLoading(false);
+        setPendingCognitoUser(user);
+        setForcePasswordChange(true);
+      },
     });
   }
 
@@ -158,10 +251,17 @@ export function useLogin() {
     loading,
     showPassword,
 
+    forcePasswordChange,
+    newPassword,
+    confirmNewPassword,
+
     setShowPassword,
     setEmail,
     setPassword,
+    setNewPassword,
+    setConfirmNewPassword,
 
     handleLogin,
+    handleCompleteNewPassword,
   };
 }

@@ -555,3 +555,31 @@ enum ChatSenderRole {
   PARENT
   TEACHER
 }
+
+/// Admin-created internal staff accounts (HR, Accounts). Cognito remains
+/// the identity source (custom:role = "hr" | "accounts") — this row is
+/// only a lightweight directory entry so Admin's Manage Staff Accounts
+/// screen has something to list/search/delete against, following the
+/// same pattern as ParentProfile/Teacher. Deliberately minimal for now —
+/// no onboarding/profile/dashboard fields yet, those come later per
+/// 06-OPEN-DECISIONS.md #16 (Accounts role scope still unconfirmed) and
+/// HR isn't in the original 4-role MVP model (02-ARCHITECTURE.md) at all,
+/// so this is explicitly scoped as "create the identity, nothing else."
+model StaffAccount {
+  id          String     @id @default(uuid())
+  cognitoSub  String     @unique
+  role        StaffRole
+  firstName   String
+  lastName    String
+  email       String     @unique
+  phone       String
+  createdById String // Admin.id of whoever created this account
+  createdAt   DateTime   @default(now())
+
+  @@index([role])
+}
+
+enum StaffRole {
+  HR
+  ACCOUNTS
+}
