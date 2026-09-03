@@ -14,6 +14,9 @@ export interface ParentEnrollment {
   revisedByTeacher: boolean;
   revisionNote: string | null;
   rejectionReason: string | null;
+  sessionsCompletedInCycle: number;
+  cyclesCompleted: number;
+  cyclePayoutStatus: string;
   student: { id: string; firstName: string; visibleName: string | null };
   teacher: {
     id: string;

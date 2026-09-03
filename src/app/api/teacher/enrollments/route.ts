@@ -10,7 +10,9 @@ import { getEnrollmentsForTeacher } from "@/features/shared/server/enrollmentApp
  * (needs action), PENDING_PARENT_RECONFIRMATION (Teacher already
  * revised, waiting on the Parent), and PENDING_ADMIN_APPROVAL
  * (Teacher already approved, forwarded to Admin — shown read-only
- * so the Teacher can see it's moved on).
+ * so the Teacher can see it's moved on) — plus ACTIVE enrollments,
+ * so the Teacher can track/mark cycle progress on ones already
+ * approved.
  */
 export async function GET(req: Request) {
   try {

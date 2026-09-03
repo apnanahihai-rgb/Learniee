@@ -15,6 +15,9 @@ export interface TeacherEnrollment {
   revisedByTeacher: boolean;
   revisionNote: string | null;
   pricingChangedAfterPayment: boolean;
+  sessionsCompletedInCycle: number;
+  cyclesCompleted: number;
+  cyclePayoutStatus: string;
   student: { id: string; firstName: string; visibleName: string | null };
   parent: { id: string; firstName: string; lastName: string; email: string; phone: string };
   course: { id: string; courseTitle: string | null; subject: string | null };
@@ -84,6 +87,28 @@ export function useTeacherEnrollments() {
     }
   }
 
+  async function markSession(enrollmentId: string) {
+    try {
+      const res = await fetch(
+        `/api/teacher/enrollments/${enrollmentId}/mark-session`,
+        { method: "PATCH" },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to mark session complete");
+      }
+
+      setEnrollments((current) =>
+        current.map((e) => (e.id === enrollmentId ? { ...e, ...data.enrollment } : e)),
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to mark session complete.");
+    }
+  }
+
   return {
     enrollments,
     loading,
@@ -94,5 +119,6 @@ export function useTeacherEnrollments() {
       id: string,
       input: { note: string; cycleStartDate?: string; sessionsPerMonth?: number },
     ) => act(id, { action: "REVISE", ...input }),
+    markSession,
   };
 }

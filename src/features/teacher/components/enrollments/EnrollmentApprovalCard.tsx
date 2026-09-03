@@ -6,6 +6,7 @@ import { MessageCircle } from "lucide-react";
 
 import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
 import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
+import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
 
 interface Props {
   enrollment: TeacherEnrollment;
@@ -15,6 +16,7 @@ interface Props {
     id: string,
     input: { note: string; cycleStartDate?: string; sessionsPerMonth?: number },
   ) => void;
+  onMarkSession: (id: string) => void;
 }
 
 function displayName(p: { firstName: string; lastName: string }) {
@@ -26,6 +28,7 @@ export default function EnrollmentApprovalCard({
   onApprove,
   onReject,
   onRevise,
+  onMarkSession,
 }: Props) {
   const router = useRouter();
   const [revising, setRevising] = useState(false);
@@ -36,6 +39,7 @@ export default function EnrollmentApprovalCard({
   const label = getEnrollmentStatusLabel(enrollment.status, "teacher");
   const style = getEnrollmentStatusStyle(enrollment.status);
   const actionable = enrollment.status === "PENDING_TEACHER_APPROVAL";
+  const isActive = enrollment.status === "ACTIVE";
 
   function submitRevision() {
     if (!note.trim()) return;
@@ -65,10 +69,26 @@ export default function EnrollmentApprovalCard({
           </p>
         </div>
 
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${style}`}>
-          {label}
-        </span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {isActive && (
+            <CycleProgressRing
+              completed={enrollment.sessionsCompletedInCycle}
+              total={enrollment.sessionsPerMonth}
+              colorClassName="text-purple-600"
+            />
+          )}
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${style}`}>
+            {label}
+          </span>
+        </div>
       </div>
+
+      {isActive && enrollment.cyclesCompleted > 0 && (
+        <p className="text-[11px] text-gray-400 mt-1">
+          {enrollment.cyclesCompleted} cycle{enrollment.cyclesCompleted === 1 ? "" : "s"} completed
+          {enrollment.cyclePayoutStatus === "READY_FOR_PAYOUT" && " · payout pending"}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mt-3 text-xs text-gray-600">
         <p>Sessions/month: <span className="font-semibold">{enrollment.sessionsPerMonth}</span></p>
@@ -90,16 +110,28 @@ export default function EnrollmentApprovalCard({
         </p>
       )}
 
-      {enrollment.chatRoom && (
-        <button
-          type="button"
-          onClick={() => router.push(`/teacher/chat/${enrollment.chatRoom!.id}`)}
-          className="mt-3 flex items-center gap-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-2 rounded-full transition-colors"
-        >
-          <MessageCircle size={13} />
-          Discuss in chat
-        </button>
-      )}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {enrollment.chatRoom && (
+          <button
+            type="button"
+            onClick={() => router.push(`/teacher/chat/${enrollment.chatRoom!.id}`)}
+            className="flex items-center gap-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-2 rounded-full transition-colors"
+          >
+            <MessageCircle size={13} />
+            Discuss in chat
+          </button>
+        )}
+
+        {isActive && (
+          <button
+            type="button"
+            onClick={() => onMarkSession(enrollment.id)}
+            className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-full transition-colors"
+          >
+            Mark session complete
+          </button>
+        )}
+      </div>
 
       {actionable && !revising && (
         <div className="flex gap-2 mt-4">

@@ -44,7 +44,12 @@ const enrollmentListInclude = {
   chatRoom: { select: { id: true } },
 } as const;
 
-/** Enrollments waiting on this Teacher's review. */
+/**
+ * Enrollments this Teacher needs to see: still in the approval
+ * queue, or already ACTIVE (added Sep 3, 2026 alongside cycle
+ * progress — a Teacher needs to see ACTIVE enrollments to mark
+ * sessions complete, not just pending ones).
+ */
 export function getEnrollmentsForTeacher(teacherId: string) {
   return prisma.enrollment.findMany({
     where: {
@@ -54,6 +59,7 @@ export function getEnrollmentsForTeacher(teacherId: string) {
           EnrollmentStatus.PENDING_TEACHER_APPROVAL,
           EnrollmentStatus.PENDING_PARENT_RECONFIRMATION,
           EnrollmentStatus.PENDING_ADMIN_APPROVAL,
+          EnrollmentStatus.ACTIVE,
         ],
       },
     },

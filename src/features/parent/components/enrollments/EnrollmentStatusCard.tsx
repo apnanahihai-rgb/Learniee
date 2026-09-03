@@ -8,6 +8,7 @@ import {
   getEnrollmentStatusLabel,
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
+import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
 
 interface Props {
   enrollment: ParentEnrollment;
@@ -28,6 +29,7 @@ export default function EnrollmentStatusCard({
   const label = getEnrollmentStatusLabel(enrollment.status, "parent");
   const style = getEnrollmentStatusStyle(enrollment.status);
   const needsReconfirmation = enrollment.status === "PENDING_PARENT_RECONFIRMATION";
+  const showCycleProgress = enrollment.status === "ACTIVE" || enrollment.status === "LAPSED";
 
   return (
     <div className="bg-white border border-violet-100 rounded-2xl p-5">
@@ -42,10 +44,24 @@ export default function EnrollmentStatusCard({
           </p>
         </div>
 
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${style}`}>
-          {label}
-        </span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {showCycleProgress && (
+            <CycleProgressRing
+              completed={enrollment.sessionsCompletedInCycle}
+              total={enrollment.sessionsPerMonth}
+            />
+          )}
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${style}`}>
+            {label}
+          </span>
+        </div>
       </div>
+
+      {showCycleProgress && enrollment.cyclesCompleted > 0 && (
+        <p className="text-[11px] text-gray-400 mt-1">
+          {enrollment.cyclesCompleted} cycle{enrollment.cyclesCompleted === 1 ? "" : "s"} completed
+        </p>
+      )}
 
       <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
         <CalendarClock size={13} />

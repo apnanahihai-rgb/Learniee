@@ -442,6 +442,23 @@ model Enrollment {
   // only cycleStartDate never sets this (no cost impact).
   pricingChangedAfterPayment Boolean @default(false)
 
+  // Cycle progress (added Sep 3, 2026). A "cycle" = one calendar
+  // month's worth of sessions, i.e. `sessionsPerMonth`. Marking a
+  // session complete is manual for now (Teacher-only,
+  // POST .../mark-session) — a placeholder for automatic tracking
+  // once class scheduling / Zoho integration exists (per direct
+  // instruction: "later we will set increment and logic after
+  // connection with zoho api"). `cyclePayoutStatus` flips to
+  // READY_FOR_PAYOUT the moment a cycle's sessions are all marked
+  // done, but nothing actually pays the teacher out yet — the
+  // Wallet/Tuition Ledger this would need isn't built
+  // (03-DATA-MODEL.md). Treat this as tracking + a future payout
+  // gate, not a working payout flow.
+  sessionsCompletedInCycle Int               @default(0)
+  cyclesCompleted          Int               @default(0)
+  cyclePayoutStatus        CyclePayoutStatus @default(IN_PROGRESS)
+  lastSessionMarkedAt      DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -475,6 +492,18 @@ enum EnrollmentStatus {
   ACTIVE     // both approvals done — lectures can be scheduled
   LAPSED
   CANCELLED
+}
+
+/// Cycle payout status (added Sep 3, 2026) — informational/future
+/// gate only. Nothing reads this to actually withhold or release
+/// money yet, since Wallet/Tuition Ledger don't exist
+/// (03-DATA-MODEL.md). RELEASED isn't set anywhere in code today;
+/// it's reserved for whatever Accounts-side flow eventually
+/// consumes READY_FOR_PAYOUT enrollments.
+enum CyclePayoutStatus {
+  IN_PROGRESS      // current cycle still has sessions left
+  READY_FOR_PAYOUT // current cycle's sessions are all marked done
+  RELEASED         // reserved for future Accounts/payout flow
 }
 
 /// One chat room per Enrollment — i.e. one per (parent, teacher,
