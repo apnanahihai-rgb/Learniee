@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/verifyAdmin";
-import { checkVerifiedToken } from "@/lib/otp";
 import { createStaffAccount, listStaffAccounts } from "@/features/admin/server/staffAccount.service";
 
-const OTP_PURPOSE_EMAIL = "staff-account-email";
-const OTP_PURPOSE_PHONE = "staff-account-phone";
+// NOTE: OTP verification (email + phone) was removed from this route on
+// 2026-09-03 — re-add via AWS SES (and whatever phone channel is chosen)
+// when that's ready. See src/lib/otp.ts, send-otp/verify-otp routes, which
+// are left in place but are no longer called from this route.
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { firstName, lastName, email, phone, role, emailVerifiedToken, phoneVerifiedToken } = body;
+  const { firstName, lastName, email, phone, role } = body;
 
   if (!firstName || !lastName || !email || !phone || !role) {
     return NextResponse.json({ error: "All fields are required." }, { status: 400 });
@@ -34,22 +35,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Role must be HR or ACCOUNTS." }, { status: 400 });
   }
 
-  if (!emailVerifiedToken || !checkVerifiedToken(emailVerifiedToken, email, OTP_PURPOSE_EMAIL)) {
-    return NextResponse.json(
-      { error: "Email is not verified. Please verify the email OTP first." },
-      { status: 400 },
-    );
-  }
-
-  if (!phoneVerifiedToken || !checkVerifiedToken(phoneVerifiedToken, phone, OTP_PURPOSE_PHONE)) {
-    return NextResponse.json(
-      { error: "Phone is not verified. Please verify the phone OTP first." },
-      { status: 400 },
-    );
-  }
-
   const adminRow = await prisma.admin.findUnique({ where: { cognitoId: admin.sub } });
   if (!adminRow) {
+    console.log("DEBUG: logged-in admin.sub =", admin.sub);
+    console.log("DEBUG: all Admin rows in DB =", await prisma.admin.findMany());
     return NextResponse.json({ error: "Admin record not found." }, { status: 403 });
   }
 
