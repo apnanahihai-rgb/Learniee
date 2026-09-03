@@ -37,8 +37,6 @@ export async function POST(req: NextRequest) {
 
   const adminRow = await prisma.admin.findUnique({ where: { cognitoId: admin.sub } });
   if (!adminRow) {
-    console.log("DEBUG: logged-in admin.sub =", admin.sub);
-    console.log("DEBUG: all Admin rows in DB =", await prisma.admin.findMany());
     return NextResponse.json({ error: "Admin record not found." }, { status: 403 });
   }
 
