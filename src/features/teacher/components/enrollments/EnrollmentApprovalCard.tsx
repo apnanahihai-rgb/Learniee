@@ -6,6 +6,7 @@ import { MessageCircle } from "lucide-react";
 
 import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
 import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
+import { WEEKDAY_LABELS, formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
 
 interface Props {
@@ -14,7 +15,13 @@ interface Props {
   onReject: (id: string, reason?: string) => void;
   onRevise: (
     id: string,
-    input: { note: string; cycleStartDate?: string; sessionsPerMonth?: number },
+    input: {
+      note: string;
+      cycleStartDate?: string;
+      sessionsPerMonth?: number;
+      scheduleDays?: number[];
+      scheduleTime?: string;
+    },
   ) => void;
   onMarkSession: (id: string) => void;
 }
@@ -35,11 +42,21 @@ export default function EnrollmentApprovalCard({
   const [note, setNote] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newSessions, setNewSessions] = useState("");
+  const [newScheduleDays, setNewScheduleDays] = useState<number[]>([]);
+  const [newScheduleTime, setNewScheduleTime] = useState("");
 
   const label = getEnrollmentStatusLabel(enrollment.status, "teacher");
   const style = getEnrollmentStatusStyle(enrollment.status);
   const actionable = enrollment.status === "PENDING_TEACHER_APPROVAL";
   const isActive = enrollment.status === "ACTIVE";
+
+  function toggleNewScheduleDay(day: number) {
+    setNewScheduleDays((current) =>
+      current.includes(day)
+        ? current.filter((d) => d !== day)
+        : [...current, day].sort((a, b) => a - b),
+    );
+  }
 
   function submitRevision() {
     if (!note.trim()) return;
@@ -48,12 +65,16 @@ export default function EnrollmentApprovalCard({
       note,
       cycleStartDate: newDate || undefined,
       sessionsPerMonth: newSessions ? Number(newSessions) : undefined,
+      scheduleDays: newScheduleDays.length ? newScheduleDays : undefined,
+      scheduleTime: newScheduleTime || undefined,
     });
 
     setRevising(false);
     setNote("");
     setNewDate("");
     setNewSessions("");
+    setNewScheduleDays([]);
+    setNewScheduleTime("");
   }
 
   return (
@@ -100,6 +121,12 @@ export default function EnrollmentApprovalCard({
           </span>
         </p>
         <p>Total paid: <span className="font-semibold">₹{enrollment.amountPaid}</span></p>
+        <p className="col-span-2">
+          Schedule:{" "}
+          <span className="font-semibold">
+            {formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}
+          </span>
+        </p>
       </div>
 
       {enrollment.pricingChangedAfterPayment && (
@@ -185,6 +212,33 @@ export default function EnrollmentApprovalCard({
               className="text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
             />
           </div>
+
+          <div className="flex gap-1 flex-wrap">
+            {WEEKDAY_LABELS.map((label, day) => {
+              const active = newScheduleDays.includes(day);
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => toggleNewScheduleDay(day)}
+                  className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                    active
+                      ? "bg-purple-600 text-white border-purple-600"
+                      : "bg-white text-gray-500 border-purple-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+            <input
+              type="time"
+              value={newScheduleTime}
+              onChange={(e) => setNewScheduleTime(e.target.value)}
+              className="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white"
+            />
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"

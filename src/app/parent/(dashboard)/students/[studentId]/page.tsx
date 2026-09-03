@@ -6,7 +6,20 @@ import Link from "next/link";
 import { ArrowLeft, Trash2 } from "lucide-react";
 
 import { useStudentProfile } from "@/features/parent/hooks/useStudentProfile";
+import { useParentCalendar } from "@/features/parent/hooks/useCalendar";
 import ChildAvatar from "@/features/parent/components/ChildAvatar";
+import MonthCalendar from "@/features/shared/components/calendar/MonthCalendar";
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftMonth(month: string, delta: number) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 /**
  * A child's profile hub - everything for one Student in one place.
@@ -23,6 +36,11 @@ export default function StudentProfilePage() {
     useStudentProfile(params.studentId);
 
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [month, setMonth] = useState(currentMonthKey());
+  const { occurrences, loading: calendarLoading } = useParentCalendar(
+    month,
+    params.studentId,
+  );
 
   async function handleConfirmRemove() {
     const ok = await removeStudent();
@@ -97,18 +115,28 @@ export default function StudentProfilePage() {
         </dl>
       </div>
 
-      {/* CLASSES & ENROLLMENT - placeholder until Enrollment exists */}
+      {/* SCHEDULE - one calendar scoped to this child, expanded from
+          their ACTIVE/LAPSED enrollments' recurring schedule (see
+          scheduleOccurrences.service.ts). Empty until an enrollment
+          for this child reaches ACTIVE. */}
       <div className="bg-white border rounded-2xl p-6 mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          Classes & Enrollment
+          {displayName}&apos;s Schedule
         </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Enrolling {student.firstName} in a course, tracking their upcoming
-          classes, and homework will show up here once enrollment is live.
-        </p>
+
+        <MonthCalendar
+          month={month}
+          occurrences={occurrences}
+          loading={calendarLoading}
+          onPrevMonth={() => setMonth((m) => shiftMonth(m, -1))}
+          onNextMonth={() => setMonth((m) => shiftMonth(m, 1))}
+          colorBy="course"
+          emptyMessage={`No classes scheduled for ${student.firstName} this month.`}
+        />
+
         <Link
-          href="/parent"
-          className="inline-block text-sm bg-violet-600 text-white px-4 py-2 rounded"
+          href="/parent/courses"
+          className="inline-block text-sm bg-violet-600 text-white px-4 py-2 rounded mt-4"
         >
           Browse courses
         </Link>

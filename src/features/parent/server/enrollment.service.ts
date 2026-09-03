@@ -17,6 +17,9 @@ const MIN_SESSIONS_PER_MONTH = 4;
 const MAX_SESSIONS_PER_MONTH = 31;
 const MAX_NO_OF_MONTHS = 12;
 
+// 0=Sunday..6=Saturday (JS Date.getDay() convention).
+const SCHEDULE_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 export class EnrollmentError extends Error {
   status: number;
 
@@ -38,6 +41,10 @@ export interface CreateEnrollmentInput {
    * today if omitted — most parents will just enroll "starting now".
    */
   cycleStartDate?: string;
+  /** Weekly recurring class days — 0=Sunday..6=Saturday, at least one required. */
+  scheduleDays: number[];
+  /** Weekly recurring class time, 24-hour "HH:mm". */
+  scheduleTime: string;
 }
 
 interface PricedEnrollment {
@@ -50,6 +57,8 @@ interface PricedEnrollment {
   totalAmount: number;
   cycleStartDate: Date;
   dueDate: Date;
+  scheduleDays: number[];
+  scheduleTime: string;
 }
 
 /**
@@ -86,6 +95,28 @@ async function priceEnrollment(
   if (!Number.isInteger(noOfMonths) || noOfMonths < 1 || noOfMonths > MAX_NO_OF_MONTHS) {
     throw new EnrollmentError(
       `noOfMonths must be a whole number between 1 and ${MAX_NO_OF_MONTHS}.`,
+    );
+  }
+
+  const scheduleDays = Array.from(new Set(input.scheduleDays ?? [])).sort(
+    (a, b) => a - b,
+  );
+
+  if (
+    scheduleDays.length === 0 ||
+    scheduleDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
+  ) {
+    throw new EnrollmentError(
+      "Pick at least one day of the week for classes.",
+    );
+  }
+
+  if (
+    !input.scheduleTime ||
+    !SCHEDULE_TIME_PATTERN.test(input.scheduleTime)
+  ) {
+    throw new EnrollmentError(
+      "Pick a valid class time (HH:mm).",
     );
   }
 
@@ -154,6 +185,8 @@ async function priceEnrollment(
     totalAmount,
     cycleStartDate,
     dueDate,
+    scheduleDays,
+    scheduleTime: input.scheduleTime,
   };
 }
 
@@ -197,6 +230,8 @@ export async function createEnrollmentOrder(
       sessionsPerMonth: priced.sessionsPerMonth,
       noOfMonths: priced.noOfMonths,
       cycleStartDate: priced.cycleStartDate.toISOString(),
+      scheduleDays: JSON.stringify(priced.scheduleDays),
+      scheduleTime: priced.scheduleTime,
     },
   });
 
@@ -288,6 +323,8 @@ export async function verifyEnrollmentPayment(
       totalAmount: priced.totalAmount,
       cycleStartDate: priced.cycleStartDate,
       dueDate: priced.dueDate,
+      scheduleDays: priced.scheduleDays,
+      scheduleTime: priced.scheduleTime,
       // Payment already succeeded by this point — go straight into
       // the Teacher's review queue (resolves #2's sequential flow).
       status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
@@ -363,6 +400,14 @@ export async function reconcileEnrollmentFromWebhook(
     sessionsPerMonth: Number(notes.sessionsPerMonth),
     noOfMonths: Number(notes.noOfMonths) || 1,
     cycleStartDate: notes.cycleStartDate ? String(notes.cycleStartDate) : undefined,
+    scheduleDays: (() => {
+      try {
+        return JSON.parse(String(notes.scheduleDays ?? "[]"));
+      } catch {
+        return [];
+      }
+    })(),
+    scheduleTime: String(notes.scheduleTime ?? ""),
   };
   const parentId = String(notes.parentId ?? "");
 
@@ -393,6 +438,8 @@ export async function reconcileEnrollmentFromWebhook(
       totalAmount: priced.totalAmount,
       cycleStartDate: priced.cycleStartDate,
       dueDate: priced.dueDate,
+      scheduleDays: priced.scheduleDays,
+      scheduleTime: priced.scheduleTime,
       status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
       razorpayOrderId: orderId,
       razorpayPaymentId: paymentId,

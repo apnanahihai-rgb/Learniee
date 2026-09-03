@@ -11,6 +11,8 @@ export interface ParentEnrollment {
   totalAmount: string;
   cycleStartDate: string;
   dueDate: string;
+  scheduleDays: number[];
+  scheduleTime: string | null;
   revisedByTeacher: boolean;
   revisionNote: string | null;
   rejectionReason: string | null;

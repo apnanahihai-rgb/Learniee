@@ -8,6 +8,7 @@ import {
   getEnrollmentStatusLabel,
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
+import { formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
 
 interface Props {
@@ -74,6 +75,10 @@ export default function EnrollmentStatusCard({
         start
       </div>
 
+      <p className="text-[11px] text-gray-400 mt-1">
+        {formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}
+      </p>
+
       {needsReconfirmation && (
         <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-3">
           <p className="text-xs font-bold text-blue-800 mb-1">
@@ -84,7 +89,9 @@ export default function EnrollmentStatusCard({
           )}
           <p className="text-[11px] text-blue-600 mb-3">
             New schedule: {enrollment.sessionsPerMonth} sessions/month, starting{" "}
-            {new Date(enrollment.cycleStartDate).toLocaleDateString()}.
+            {new Date(enrollment.cycleStartDate).toLocaleDateString()}
+            {" — "}
+            {formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}.
           </p>
           <div className="flex gap-2">
             <button

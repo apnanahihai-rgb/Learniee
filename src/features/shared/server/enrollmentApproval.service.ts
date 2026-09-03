@@ -118,8 +118,14 @@ export async function teacherApproveEnrollment(
 export interface TeacherReviseInput {
   cycleStartDate?: string;
   sessionsPerMonth?: number;
+  /** Weekly recurring class days — 0=Sunday..6=Saturday. */
+  scheduleDays?: number[];
+  /** Weekly recurring class time, 24-hour "HH:mm". */
+  scheduleTime?: string;
   note: string;
 }
+
+const SCHEDULE_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /**
  * Teacher proposes a schedule/cycle change. `cycleStartDate` is
@@ -194,6 +200,31 @@ export async function teacherReviseEnrollment(
     data.monthlyRate = monthlyRate;
     data.totalAmount = totalAmount;
     data.pricingChangedAfterPayment = totalAmount !== Number(enrollment.amountPaid);
+  }
+
+  if (input.scheduleDays) {
+    const scheduleDays = Array.from(new Set(input.scheduleDays)).sort(
+      (a, b) => a - b,
+    );
+
+    if (
+      scheduleDays.length === 0 ||
+      scheduleDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
+    ) {
+      throw new EnrollmentApprovalError(
+        "Pick at least one valid day of the week.",
+      );
+    }
+
+    data.scheduleDays = scheduleDays;
+  }
+
+  if (input.scheduleTime) {
+    if (!SCHEDULE_TIME_PATTERN.test(input.scheduleTime)) {
+      throw new EnrollmentApprovalError("That doesn't look like a valid time (HH:mm).");
+    }
+
+    data.scheduleTime = input.scheduleTime;
   }
 
   return prisma.enrollment.update({

@@ -23,7 +23,7 @@ import {
 
 const menuItems = [
   {
-    label: "Calender",
+    label: "Calendar",
     path: "/teacher/calendar",
     icon: CalendarDays,
   },

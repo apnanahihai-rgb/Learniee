@@ -40,6 +40,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!input.scheduleDays?.length || !input.scheduleTime) {
+      return NextResponse.json(
+        { error: "Pick which days and what time classes should happen." },
+        { status: 400 },
+      );
+    }
+
     const { order, pricing } = await createEnrollmentOrder(
       parent.parentId,
       input,

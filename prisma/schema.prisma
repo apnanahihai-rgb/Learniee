@@ -389,6 +389,22 @@ model Enrollment {
   cycleStartDate DateTime
   dueDate        DateTime
 
+  // Weekly recurring class schedule (added for the Parent/Teacher
+  // calendar view). Parent proposes this at Enrollment creation
+  // (BookingPanel.tsx) alongside the cycle; Teacher can revise it
+  // the same way they already revise cycleStartDate/sessionsPerMonth
+  // (teacherReviseEnrollment) — no separate approval step, since
+  // it's covered by the same PENDING_PARENT_RECONFIRMATION flow.
+  // scheduleDays: JS Date.getDay() convention, 0=Sunday..6=Saturday.
+  // scheduleTime: 24-hour "HH:mm", wall-clock (no per-user timezone
+  // yet — see 08-PROJECT-KNOWLEDGE-BASE.md, likely IST).
+  // Both nullable/defaulted rather than required so this migration
+  // is additive-safe against any Enrollment rows that already exist
+  // (same reasoning as the parentId denormalization above) — the
+  // calendar simply shows nothing for a row with no schedule set.
+  scheduleDays Int[]   @default([])
+  scheduleTime String?
+
   // Payment gate (06-OPEN-DECISIONS.md #36, resolved: Enrollment
   // creation now blocks on payment rather than allowing an unpaid
   // row). An Enrollment row is only ever written by

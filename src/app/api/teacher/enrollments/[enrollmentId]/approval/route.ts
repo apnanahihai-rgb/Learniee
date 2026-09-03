@@ -13,7 +13,7 @@ import {
  *
  * body: { action: "APPROVE" }
  *     -> forwards the enrollment to Admin as-is.
- * body: { action: "REVISE", cycleStartDate?, sessionsPerMonth?, note }
+ * body: { action: "REVISE", cycleStartDate?, sessionsPerMonth?, scheduleDays?, scheduleTime?, note }
  *     -> proposes a schedule/cycle change, sends it back to the
  *        Parent for reconfirmation. `note` is required — shown to
  *        the Parent alongside the Confirm/Decline choice. Further
@@ -58,6 +58,8 @@ export async function PATCH(
         {
           cycleStartDate: body.cycleStartDate,
           sessionsPerMonth: body.sessionsPerMonth,
+          scheduleDays: body.scheduleDays,
+          scheduleTime: body.scheduleTime,
           note: body.note,
         },
       );

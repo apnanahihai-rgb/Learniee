@@ -12,6 +12,8 @@ export interface TeacherEnrollment {
   amountPaid: string;
   cycleStartDate: string;
   dueDate: string;
+  scheduleDays: number[];
+  scheduleTime: string | null;
   revisedByTeacher: boolean;
   revisionNote: string | null;
   pricingChangedAfterPayment: boolean;
@@ -63,6 +65,8 @@ export function useTeacherEnrollments() {
           note: string;
           cycleStartDate?: string;
           sessionsPerMonth?: number;
+          scheduleDays?: number[];
+          scheduleTime?: string;
         },
   ) {
     try {
@@ -117,7 +121,13 @@ export function useTeacherEnrollments() {
     reject: (id: string, reason?: string) => act(id, { action: "REJECT", reason }),
     revise: (
       id: string,
-      input: { note: string; cycleStartDate?: string; sessionsPerMonth?: number },
+      input: {
+        note: string;
+        cycleStartDate?: string;
+        sessionsPerMonth?: number;
+        scheduleDays?: number[];
+        scheduleTime?: string;
+      },
     ) => act(id, { action: "REVISE", ...input }),
     markSession,
   };

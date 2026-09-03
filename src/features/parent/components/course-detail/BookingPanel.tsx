@@ -11,6 +11,7 @@ import {
   loadRazorpayCheckout,
   type RazorpayCheckoutOptions,
 } from "@/lib/loadRazorpayCheckout";
+import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
 
 interface Props {
   price: string | null;
@@ -130,6 +131,10 @@ export default function BookingPanel({
   // might already be past their demos for this teacher/subject).
   const [sessionsPerMonth, setSessionsPerMonth] = useState<number | "">("");
   const [noOfMonths, setNoOfMonths] = useState(1);
+  // Recurring weekly schedule — required before enrolling so the
+  // teacher/parent calendar can actually show something real.
+  const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+  const [scheduleTime, setScheduleTime] = useState("");
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState("");
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
@@ -270,6 +275,14 @@ export default function BookingPanel({
     }
   }
 
+  function toggleScheduleDay(day: number) {
+    setScheduleDays((current) =>
+      current.includes(day)
+        ? current.filter((d) => d !== day)
+        : [...current, day].sort((a, b) => a - b),
+    );
+  }
+
   async function handleEnroll() {
     if (!selectedStudentId) {
       setEnrollError("Pick which child this enrollment is for.");
@@ -278,6 +291,11 @@ export default function BookingPanel({
 
     if (!sessionsPerMonth) {
       setEnrollError("Pick how many sessions per month.");
+      return;
+    }
+
+    if (scheduleDays.length === 0 || !scheduleTime) {
+      setEnrollError("Pick which days and what time classes should happen.");
       return;
     }
 
@@ -293,6 +311,8 @@ export default function BookingPanel({
         subject,
         sessionsPerMonth,
         noOfMonths,
+        scheduleDays,
+        scheduleTime,
       };
 
       const orderRes = await fetch("/api/parent/enrollments/order", {
@@ -527,6 +547,43 @@ export default function BookingPanel({
           </div>
         </div>
 
+        <div className="mb-3">
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+            Class days
+          </label>
+          <div className="flex gap-1.5 flex-wrap">
+            {WEEKDAY_LABELS.map((label, day) => {
+              const active = scheduleDays.includes(day);
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => toggleScheduleDay(day)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                    active
+                      ? "bg-brand text-white border-brand"
+                      : "bg-white text-gray-500 border-violet-100 hover:border-brand/40"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+            Class time
+          </label>
+          <input
+            type="time"
+            value={scheduleTime}
+            onChange={(e) => setScheduleTime(e.target.value)}
+            className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
+          />
+        </div>
+
         {pricePreview && (
           <div className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3 space-y-0.5">
             <p>
@@ -575,9 +632,17 @@ export default function BookingPanel({
             enrolling ||
             studentsLoading ||
             students.length === 0 ||
-            !sessionsPerMonth
+            !sessionsPerMonth ||
+            scheduleDays.length === 0 ||
+            !scheduleTime
           }
-          title={!sessionsPerMonth ? "Pick a cycle first" : undefined}
+          title={
+            !sessionsPerMonth
+              ? "Pick a cycle first"
+              : scheduleDays.length === 0 || !scheduleTime
+                ? "Pick class days and time first"
+                : undefined
+          }
           className="w-full text-sm font-bold text-white bg-brand-dark px-4 py-2.5 rounded-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
         >
           {enrolling && <Loader2 size={14} className="animate-spin" />}
