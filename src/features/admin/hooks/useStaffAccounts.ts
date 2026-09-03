@@ -54,7 +54,11 @@ export function useStaffAccounts() {
 
   function handleCreated(newAccount: StaffAccount) {
     setAccounts((prev) => [newAccount, ...prev]);
-    setShowCreateForm(false);
+    // Do NOT setShowCreateForm(false) here — CreateStaffAccountForm still
+    // needs to show its "Account Created" step with the one-time temp
+    // password. Closing was previously happening here, which unmounted
+    // the form before that screen could ever be seen. The form's own
+    // "Done" button (onCancel) is what closes it now.
   }
 
   return {

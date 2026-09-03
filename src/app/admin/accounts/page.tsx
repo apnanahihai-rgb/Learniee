@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { requireAdminOrAccounts } from "@/lib/verifyAdmin";
+import { requireAdmin } from "@/lib/verifyAdmin";
 import {
   getTuitionLedgerRows,
   getDemoBookingRows,
@@ -8,9 +8,9 @@ import {
 } from "@/features/accounts/server/export.service";
 import AccountsExportDashboard from "@/features/accounts/components/AccountsExportDashboard";
 
-export default async function AccountsDashboardPage() {
-  const auth = await requireAdminOrAccounts();
-  if (!auth) {
+export default async function AdminAccountsPage() {
+  const admin = await requireAdmin();
+  if (!admin) {
     redirect("/login");
   }
 
@@ -22,8 +22,8 @@ export default async function AccountsDashboardPage() {
 
   return (
     <AccountsExportDashboard
-      heading="Accounts Dashboard"
-      subheading="Tuition ledger and demo revenue, with an Excel export."
+      heading="Accounts"
+      subheading="Same ledger the Accounts team sees — tuition + demo revenue, exportable as Excel."
       summary={summary}
       ledgerRows={ledgerRows}
       demoRows={demoRows}
