@@ -8,6 +8,7 @@ import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments"
 import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
 import { WEEKDAY_LABELS, formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
+import SessionsList from "@/features/teacher/components/enrollments/SessionsList";
 
 interface Props {
   enrollment: TeacherEnrollment;
@@ -28,6 +29,8 @@ interface Props {
     id: string,
     input: { scheduleDays: number[]; scheduleTime: string },
   ) => void;
+  /** Called after a specific date is marked complete from the Sessions list, with the recomputed enrollment fields. */
+  onSessionMarked?: (patch: Partial<TeacherEnrollment>) => void;
 }
 
 function displayName(p: { firstName: string; lastName: string }) {
@@ -41,9 +44,11 @@ export default function EnrollmentApprovalCard({
   onRevise,
   onMarkSession,
   onSetSchedule,
+  onSessionMarked,
 }: Props) {
   const router = useRouter();
   const [revising, setRevising] = useState(false);
+  const [showSessions, setShowSessions] = useState(false);
   const [note, setNote] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newSessions, setNewSessions] = useState("");
@@ -253,10 +258,27 @@ export default function EnrollmentApprovalCard({
             onClick={() => onMarkSession(enrollment.id)}
             className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-full transition-colors"
           >
-            Mark session complete
+            Mark next session complete
+          </button>
+        )}
+
+        {isActive && (
+          <button
+            type="button"
+            onClick={() => setShowSessions((s) => !s)}
+            className="text-xs font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-full transition-colors"
+          >
+            {showSessions ? "Hide sessions" : "View sessions"}
           </button>
         )}
       </div>
+
+      {isActive && showSessions && (
+        <SessionsList
+          enrollmentId={enrollment.id}
+          onSessionMarked={(patch) => onSessionMarked?.(patch as Partial<TeacherEnrollment>)}
+        />
+      )}
 
       {actionable && !revising && (
         <div className="flex gap-2 mt-4">

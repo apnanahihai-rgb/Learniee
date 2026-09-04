@@ -4,8 +4,17 @@ import { useTeacherEnrollments } from "@/features/teacher/hooks/useEnrollments";
 import EnrollmentApprovalCard from "@/features/teacher/components/enrollments/EnrollmentApprovalCard";
 
 export default function TeacherEnrollmentsPage() {
-  const { enrollments, loading, error, approve, reject, revise, markSession, setSchedule } =
-    useTeacherEnrollments();
+  const {
+    enrollments,
+    loading,
+    error,
+    approve,
+    reject,
+    revise,
+    markSession,
+    setSchedule,
+    syncEnrollment,
+  } = useTeacherEnrollments();
 
   return (
     <div className="p-5 sm:p-8">
@@ -40,6 +49,7 @@ export default function TeacherEnrollmentsPage() {
                 onRevise={revise}
                 onMarkSession={markSession}
                 onSetSchedule={setSchedule}
+                onSessionMarked={(patch) => syncEnrollment(enrollment.id, patch)}
               />
             ))}
           </div>

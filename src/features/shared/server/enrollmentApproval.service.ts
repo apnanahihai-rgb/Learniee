@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { EnrollmentStatus } from "@prisma/client";
 
+import {
+  generateSessionsForEnrollment,
+  regenerateFutureSessions,
+} from "@/features/shared/server/classSession.service";
+
 /**
  * Sequential dual-approval workflow (resolves 06-OPEN-DECISIONS.md
  * #2, per direct clarification Sep 1, 2026):
@@ -341,13 +346,22 @@ export async function adminApproveEnrollment(enrollmentId: string) {
     );
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
       adminApprovedAt: new Date(),
       status: EnrollmentStatus.ACTIVE,
     },
   });
+
+  // Schedule is set by the Parent at Enrollment creation
+  // (parent/server/enrollment.service.ts), so it's already known
+  // here — generate the first batch of real, dated ClassSession
+  // rows now that lectures can actually be scheduled. No-ops if
+  // scheduleDays somehow ended up empty. See classSession.service.ts.
+  await generateSessionsForEnrollment(updated);
+
+  return updated;
 }
 
 const SET_SCHEDULE_STATUSES: EnrollmentStatus[] = [
@@ -401,10 +415,17 @@ export async function setEnrollmentSchedule(
     throw new EnrollmentApprovalError("That doesn't look like a valid time (HH:mm).");
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: { scheduleDays, scheduleTime: input.scheduleTime },
   });
+
+  // Future SCHEDULED sessions were generated off the old
+  // schedule (or none existed yet) — drop and regenerate them from
+  // the corrected one. Never touches COMPLETED/CANCELLED history.
+  await regenerateFutureSessions(enrollmentId);
+
+  return updated;
 }
 
 /**

@@ -3,6 +3,7 @@ import "server-only";
 import ExcelJS from "exceljs";
 
 import { prisma } from "@/lib/prisma";
+import { getSessionCountsForEnrollments } from "@/features/shared/server/classSession.service";
 
 /**
  * Accounts export — the Tuition Ledger (08-PROJECT-KNOWLEDGE-BASE.md's
@@ -15,15 +16,13 @@ import { prisma } from "@/lib/prisma";
  * `Teacher_rate`), platform keeps 30% (`Profits`). No schema change needed —
  * both are derived from `ratePerSession`/`monthlyRate`, which already exist.
  *
- * CCC / MCC / TCC (columns 9-11) are placeholders. There is no
- * `ClassSession` model yet (03-DATA-MODEL.md / 07-LESSONS-LEARNED.md), so
- * there is no record anywhere of a class actually happening — these columns
- * cannot be populated with real counts today. They're included now, always
- * 0, so the column shape doesn't change later: once `ClassSession` exists,
- * swap the constant `0` below for a real `prisma.classSession.count(...)`
- * per enrollment (CCC = this cycle's month, MCC = current calendar month
- * across all cycles for that teacher... confirm exact MCC scope when
- * ClassSession is designed, TCC = all-time for the enrollment).
+ * CCC / MCC / TCC (columns 9-11) are now real counts, sourced from the
+ * `ClassSession` table (`classSession.service.ts`'s
+ * `getSessionCountsForEnrollments`) instead of the hardcoded `0` this file
+ * used before that model existed (03-DATA-MODEL.md / 07-LESSONS-LEARNED.md).
+ * See that function's doc-comment for the exact CCC/MCC/TCC definitions
+ * used — still flagged as a judgment call pending sign-off, same footing as
+ * the pricing formula.
  *
  * The 5-day due-date reminder mentioned in the source spec is a genuine
  * in-app notification (06-OPEN-DECISIONS.md #32, Notification Center +
@@ -80,9 +79,12 @@ export async function getTuitionLedgerRows(): Promise<TuitionLedgerRow[]> {
   const fiveDaysFromNow = new Date();
   fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
 
+  const sessionCounts = await getSessionCountsForEnrollments(enrollments.map((e) => e.id));
+
   return enrollments.map((e) => {
     const rate = Number(e.ratePerSession);
     const monthlyRate = Number(e.monthlyRate);
+    const counts = sessionCounts.get(e.id) ?? { ccc: 0, mcc: 0, tcc: 0 };
 
     return {
       enrollmentId: e.id,
@@ -94,9 +96,9 @@ export async function getTuitionLedgerRows(): Promise<TuitionLedgerRow[]> {
       rate,
       monthlyRate,
       totalAmount: Number(e.totalAmount),
-      ccc: 0,
-      mcc: 0,
-      tcc: 0,
+      ccc: counts.ccc,
+      mcc: counts.mcc,
+      tcc: counts.tcc,
       dueDate: e.dueDate,
       teacherName: displayName(e.teacher.firstName, e.teacher.lastName, e.teacher.visibleName),
       subject: e.subject ?? e.course.subject ?? "",
@@ -214,7 +216,7 @@ function addLedgerSheet(workbook: ExcelJS.Workbook, rows: TuitionLedgerRow[]) {
 
   const noteRowIndex = totalsRowIndex + 2;
   sheet.getCell(`A${noteRowIndex}`).value =
-    "CCC/MCC/TCC are placeholders (no ClassSession data exists yet). Highlighted rows are due within 5 days.";
+    "CCC = completed this cycle, MCC = completed this calendar month, TCC = completed all-time. Highlighted rows are due within 5 days.";
   sheet.getCell(`A${noteRowIndex}`).font = { italic: true, color: { argb: "FF888888" } };
 }
 

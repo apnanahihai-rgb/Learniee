@@ -40,6 +40,7 @@ model ParentProfile {
   demoCoupon          DemoCoupon?
   chatRooms           ChatRoom[]
   enrollments         Enrollment[]
+  classSessions       ClassSession[]
 }
 
 model Admin {
@@ -70,6 +71,7 @@ model Student {
   demoBookings         DemoBooking[]
   enrollments          Enrollment[]
   chatRooms            ChatRoom[]
+  classSessions        ClassSession[]
 
   @@index([parentId])
 }
@@ -108,6 +110,7 @@ model Teacher {
   demoBookings     DemoBooking[]
   enrollments      Enrollment[]
   chatRooms        ChatRoom[]
+  classSessions    ClassSession[]
 }
 
 model TeacherProfessional {
@@ -491,6 +494,13 @@ model Enrollment {
   // to READY_FOR_PAYOUT.
   ledgerEntries TuitionLedgerEntry[]
 
+  // Real, dated class occurrences generated from
+  // scheduleDays/scheduleTime — see ClassSession's doc-comment.
+  // Resolves the "biggest gap" flagged in 07-LESSONS-LEARNED.md /
+  // 03-DATA-MODEL.md: before this, nothing recorded an actual class
+  // happening.
+  classSessions ClassSession[]
+
   @@index([parentId])
   @@index([teacherId])
   @@index([courseId])
@@ -721,4 +731,85 @@ model StaffAccount {
 enum StaffRole {
   HR
   ACCOUNTS
+}
+
+/// A real, dated record of one class occurrence — the single
+/// biggest MVP gap flagged in 07-LESSONS-LEARNED.md /
+/// 03-DATA-MODEL.md ("Nothing records an actual class happening.
+/// Session counts are a manual mark-complete button, not tied to
+/// real dates/times. Ledger's CCC/MCC/TCC columns exist but are
+/// hardcoded to 0 for this reason").
+///
+/// Rows are generated from an Enrollment's recurring
+/// `scheduleDays`/`scheduleTime` (see
+/// src/features/shared/server/classSession.service.ts) rather than
+/// computed on the fly the way the calendar used to
+/// (`scheduleOccurrences.service.ts`, now backed by this table
+/// instead) — so a session's date/time/status is a real, persisted
+/// fact. Editing an Enrollment's schedule only regenerates *future*,
+/// still-SCHEDULED rows; COMPLETED/CANCELLED history is never
+/// rewritten.
+///
+/// `teacherId`/`studentId`/`parentId` are denormalized off
+/// `enrollmentId`, same established pattern as
+/// `DemoBooking.parentId` / `ChatRoom.parentId` elsewhere in this
+/// schema — lets each role's session queries filter directly without
+/// an extra join through Enrollment.
+model ClassSession {
+  id String @id @default(uuid())
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  parentId String
+  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  // Local calendar date this class is/was scheduled for (stored at
+  // midnight, no time component — same "date-only" convention the
+  // old scheduleOccurrences.service.ts used) + the wall-clock time,
+  // same "HH:mm" format as Enrollment.scheduleTime.
+  scheduledDate DateTime
+  scheduledTime String?
+
+  status ClassSessionStatus @default(SCHEDULED)
+
+  // Only "TEACHER" today — Teacher is the sole marker, per direct
+  // instruction (06-OPEN-DECISIONS.md has no dual-confirmation rule
+  // for a single class the way Enrollment approval does). Left as a
+  // free-form string rather than an enum since Zoho/Jitsi-driven
+  // auto-completion ("SYSTEM") is a likely future value, per
+  // cycleProgress.service.ts's original doc-comment about swapping
+  // the increment source out later.
+  completedAt     DateTime?
+  completedByRole String?
+
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Prevents double-generating the same calendar-date occurrence for
+  // an enrollment — also what makes generateSessionsForEnrollment()
+  // idempotent via `skipDuplicates`.
+  @@unique([enrollmentId, scheduledDate])
+  @@index([enrollmentId])
+  @@index([teacherId])
+  @@index([studentId])
+  @@index([parentId])
+  @@index([scheduledDate])
+  @@index([enrollmentId, status])
+}
+
+enum ClassSessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  MISSED
 }

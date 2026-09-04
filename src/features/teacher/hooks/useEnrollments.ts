@@ -142,6 +142,19 @@ export function useTeacherEnrollments() {
     }
   }
 
+  /**
+   * Merges a partial enrollment update into local state — used by
+   * `SessionsList`'s per-session "Mark done" (which returns the
+   * freshly recomputed enrollment counters from
+   * `PATCH /api/teacher/class-sessions/[id]/complete`) so the
+   * cycle-progress ring stays in sync without a full refetch.
+   */
+  function syncEnrollment(enrollmentId: string, patch: Partial<TeacherEnrollment>) {
+    setEnrollments((current) =>
+      current.map((e) => (e.id === enrollmentId ? { ...e, ...patch } : e)),
+    );
+  }
+
   return {
     enrollments,
     loading,
@@ -160,5 +173,6 @@ export function useTeacherEnrollments() {
     ) => act(id, { action: "REVISE", ...input }),
     markSession,
     setSchedule,
+    syncEnrollment,
   };
 }
