@@ -41,6 +41,7 @@ model ParentProfile {
   chatRooms           ChatRoom[]
   enrollments         Enrollment[]
   classSessions       ClassSession[]
+  homeworks           Homework[]
 }
 
 model Admin {
@@ -72,6 +73,7 @@ model Student {
   enrollments          Enrollment[]
   chatRooms            ChatRoom[]
   classSessions        ClassSession[]
+  homeworks            Homework[]
 
   @@index([parentId])
 }
@@ -111,6 +113,7 @@ model Teacher {
   enrollments      Enrollment[]
   chatRooms        ChatRoom[]
   classSessions    ClassSession[]
+  homeworks        Homework[]
 }
 
 model TeacherProfessional {
@@ -500,6 +503,13 @@ model Enrollment {
   // 03-DATA-MODEL.md: before this, nothing recorded an actual class
   // happening.
   classSessions ClassSession[]
+  // Homework module (added Sep 4, 2026) — a simple Google-Classroom-
+  // style assign/submit flow scoped to this Enrollment. Only unlocked
+  // once dual-approval finishes (status ACTIVE/LAPSED) — see the
+  // ACTIVE_ENROLLMENT_STATUSES gate in homework.service.ts, same
+  // reasoning as cycleProgress.service.ts gating "mark session
+  // complete" on ACTIVE only.
+  homeworks Homework[]
 
   @@index([parentId])
   @@index([teacherId])
@@ -703,6 +713,86 @@ model ChatMessage {
 enum ChatSenderRole {
   PARENT
   TEACHER
+}
+
+/// Homework module (added Sep 4, 2026) — deliberately simple, a
+/// Google-Classroom-style "assign once, submit once" flow scoped to
+/// one Enrollment, not a general LMS. Only unlocked once the
+/// Enrollment's dual-approval finishes (ACTIVE/LAPSED) — see
+/// ACTIVE_ENROLLMENT_STATUSES in homework.service.ts, same reasoning
+/// as cycleProgress.service.ts gating "mark session complete" on
+/// ACTIVE only. teacherId/parentId/studentId are denormalized
+/// alongside enrollmentId, same established pattern as
+/// ChatRoom/DemoBooking elsewhere in this schema — lets each role's
+/// list query filter directly without an extra join through
+/// Enrollment.
+model Homework {
+  id String @id @default(uuid())
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  parentId String
+  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  title        String
+  instructions String? @db.Text
+
+  // Optional S3 key for a reference file/worksheet the Teacher
+  // attaches (same private-bucket + presigned-URL pattern as every
+  // other upload in this schema).
+  attachmentKey String?
+
+  dueDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One submission per Homework — the Student/Parent can resubmit by
+  // overwriting this row (upsert in homework.service.ts) rather than
+  // this being a submission history table. Deliberately simple, per
+  // direct instruction to keep this "not that complex."
+  submission HomeworkSubmission?
+
+  @@index([enrollmentId])
+  @@index([teacherId])
+  @@index([parentId])
+  @@index([studentId])
+}
+
+/// The Parent's (on the Student's behalf) submitted work for one
+/// Homework row. `status` starts SUBMITTED and only ever moves to
+/// REVIEWED (Teacher-set, alongside optional `feedback`) — there's no
+/// numeric grading here by design, matching the "simpler than Google
+/// Classroom" brief.
+model HomeworkSubmission {
+  id String @id @default(uuid())
+
+  homeworkId String   @unique
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+
+  fileKey String
+  note    String? @db.Text
+
+  status   HomeworkSubmissionStatus @default(SUBMITTED)
+  feedback String?                  @db.Text
+
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum HomeworkSubmissionStatus {
+  SUBMITTED
+  REVIEWED
 }
 
 /// Admin-created internal staff accounts (HR, Accounts). Cognito remains

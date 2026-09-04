@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarClock, MessageCircle } from "lucide-react";
+import { CalendarClock, MessageCircle, BookOpen } from "lucide-react";
 
 import type { ParentEnrollment } from "@/features/parent/hooks/useEnrollments";
 import {
@@ -119,16 +119,29 @@ export default function EnrollmentStatusCard({
         </p>
       )}
 
-      {enrollment.chatRoom && (
-        <button
-          type="button"
-          onClick={() => router.push(`/parent/chat/${enrollment.chatRoom!.id}`)}
-          className="mt-4 flex items-center gap-2 text-xs font-bold text-brand-dark bg-violet-50 hover:bg-violet-100 px-3 py-2 rounded-full transition-colors"
-        >
-          <MessageCircle size={13} />
-          Chat with teacher
-        </button>
-      )}
+      <div className="flex flex-wrap gap-2 mt-4">
+        {enrollment.chatRoom && (
+          <button
+            type="button"
+            onClick={() => router.push(`/parent/chat/${enrollment.chatRoom!.id}`)}
+            className="flex items-center gap-2 text-xs font-bold text-brand-dark bg-violet-50 hover:bg-violet-100 px-3 py-2 rounded-full transition-colors"
+          >
+            <MessageCircle size={13} />
+            Chat with teacher
+          </button>
+        )}
+
+        {showCycleProgress && (
+          <button
+            type="button"
+            onClick={() => router.push(`/parent/enrollments/${enrollment.id}/homework`)}
+            className="flex items-center gap-2 text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-2 rounded-full transition-colors"
+          >
+            <BookOpen size={13} />
+            Homework
+          </button>
+        )}
+      </div>
     </div>
   );
 }

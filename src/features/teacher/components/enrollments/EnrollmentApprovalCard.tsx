@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, BookOpen } from "lucide-react";
 
 import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
 import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
@@ -269,6 +269,17 @@ export default function EnrollmentApprovalCard({
             className="text-xs font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-full transition-colors"
           >
             {showSessions ? "Hide sessions" : "View sessions"}
+          </button>
+        )}
+
+        {isActive && (
+          <button
+            type="button"
+            onClick={() => router.push(`/teacher/enrollments/${enrollment.id}/homework`)}
+            className="flex items-center gap-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-2 rounded-full transition-colors"
+          >
+            <BookOpen size={13} />
+            Homework
           </button>
         )}
       </div>

@@ -12,8 +12,13 @@ type OwnerResolution = { ownerId: string } | { error: NextResponse };
  *
  * TEACHER_DOCUMENTS and COURSE_MEDIA both resolve to the requesting
  * Teacher's id via an identical lookup; this used to be two
- * copy-pasted blocks in presign/route.ts. Any other folder
- * (currently just CHILD_PHOTOS) resolves to the requesting Parent's id.
+ * copy-pasted blocks in presign/route.ts. CHILD_PHOTOS resolves to
+ * the requesting Parent's id. HOMEWORK is used by both roles (Teacher
+ * attaching reference material, Parent uploading a submission) so it
+ * checks the token's own `custom:role` claim rather than assuming —
+ * ownership of the specific Homework/Enrollment row is still enforced
+ * separately in homework.service.ts, this only decides whose id the
+ * S3 key is namespaced under.
  */
 export async function resolveUploadOwnerId(
   folder: UploadFolder,
@@ -24,7 +29,12 @@ export async function resolveUploadOwnerId(
     return { error: auth.error };
   }
 
-  if (folder === UPLOAD_FOLDERS.TEACHER_DOCUMENTS || folder === UPLOAD_FOLDERS.COURSE_MEDIA) {
+  const resolvesToTeacher =
+    folder === UPLOAD_FOLDERS.TEACHER_DOCUMENTS ||
+    folder === UPLOAD_FOLDERS.COURSE_MEDIA ||
+    (folder === UPLOAD_FOLDERS.HOMEWORK && auth.payload["custom:role"] === "teacher");
+
+  if (resolvesToTeacher) {
     const teacher = await prisma.teacher.findUnique({
       where: { cognitoId: auth.payload.sub },
       select: { id: true },
@@ -39,7 +49,8 @@ export async function resolveUploadOwnerId(
     return { ownerId: teacher.id };
   }
 
-  // CHILD_PHOTOS: parent is identified through Cognito auth, not client input.
+  // CHILD_PHOTOS, and HOMEWORK submissions: parent is identified
+  // through Cognito auth, not client input.
   const parent = await prisma.parentProfile.findUnique({
     where: { cognitoSub: auth.payload.sub },
   });

@@ -33,6 +33,7 @@ export const UPLOAD_FOLDERS = {
   TEACHER_DOCUMENTS: "teacher-documents",
   CHILD_PHOTOS: "child-photos",
   COURSE_MEDIA: "course-media",
+  HOMEWORK: "homework",
 } as const;
 
 export type UploadFolder =
@@ -45,6 +46,13 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   "video/mp4",
   "video/webm",
   "video/quicktime",
+  // Added for homework attachments/submissions (worksheets, typed
+  // answers) — every other allowed type above was already image/
+  // video/PDF only, none of which fit a plain-text or Word homework
+  // file.
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
 /**

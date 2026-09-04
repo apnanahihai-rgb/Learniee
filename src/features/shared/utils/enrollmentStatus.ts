@@ -101,3 +101,12 @@ export const SENDABLE_ENROLLMENT_STATUSES = new Set([
   "ACTIVE",
   "LAPSED",
 ]);
+
+/**
+ * Statuses where dual-approval has actually finished — i.e. lessons
+ * can happen. Gates anything that should only unlock post-approval:
+ * "mark session complete" (cycleProgress.service.ts) and the
+ * Homework module (homework.service.ts) both use this same set, so
+ * the definition of "approved" never drifts between the two.
+ */
+export const ACTIVE_ENROLLMENT_STATUSES = new Set(["ACTIVE", "LAPSED"]);
