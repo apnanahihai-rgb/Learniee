@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { CyclePayoutStatus, EnrollmentStatus } from "@prisma/client";
 
+import { createLedgerEntryForCompletedCycle } from "@/features/shared/server/tuitionLedger.service";
+
 /**
  * Cycle progress tracking (added Sep 3, 2026).
  *
@@ -15,10 +17,12 @@ import { CyclePayoutStatus, EnrollmentStatus } from "@prisma/client";
  * the shape of what's stored here.
  *
  * Payout gating: `cyclePayoutStatus` flips to READY_FOR_PAYOUT the
- * moment a cycle's sessions are all marked done. Nothing downstream
- * reads that flag yet — Wallet/Tuition Ledger aren't built
- * (03-DATA-MODEL.md) — so this is tracking + a future gate, not a
- * working payout flow.
+ * moment a cycle's sessions are all marked done. As of this change,
+ * that same moment also writes a real TuitionLedgerEntry row
+ * (tuitionLedger.service.ts) — the Tuition Ledger's "17-field record
+ * per enrollment/payment cycle" — starting the Monthly Payout
+ * Verification workflow. Both writes happen in one transaction so
+ * the cycle-progress update and the ledger entry can't drift apart.
  */
 
 export class CycleProgressError extends Error {
@@ -76,21 +80,33 @@ export async function markSessionCompleted(
   const nextCount = enrollment.sessionsCompletedInCycle + 1;
   const cycleJustCompleted = nextCount >= enrollment.sessionsPerMonth;
 
-  return prisma.enrollment.update({
-    where: { id: enrollmentId },
-    data: cycleJustCompleted
-      ? {
-          sessionsCompletedInCycle: 0,
-          cyclesCompleted: { increment: 1 },
-          cyclePayoutStatus: CyclePayoutStatus.READY_FOR_PAYOUT,
-          lastSessionMarkedAt: now,
-          lastClassAt: now,
-        }
-      : {
-          sessionsCompletedInCycle: nextCount,
-          lastSessionMarkedAt: now,
-          lastClassAt: now,
-        },
-    include: cycleProgressInclude,
+  if (!cycleJustCompleted) {
+    return prisma.enrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        sessionsCompletedInCycle: nextCount,
+        lastSessionMarkedAt: now,
+        lastClassAt: now,
+      },
+      include: cycleProgressInclude,
+    });
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.enrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        sessionsCompletedInCycle: 0,
+        cyclesCompleted: { increment: 1 },
+        cyclePayoutStatus: CyclePayoutStatus.READY_FOR_PAYOUT,
+        lastSessionMarkedAt: now,
+        lastClassAt: now,
+      },
+      include: cycleProgressInclude,
+    });
+
+    await createLedgerEntryForCompletedCycle(tx, updated);
+
+    return updated;
   });
 }

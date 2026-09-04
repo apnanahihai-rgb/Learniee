@@ -485,10 +485,104 @@ model Enrollment {
   // built yet, so nothing can reach APPROVED today).
   chatRoom ChatRoom?
 
+  // One TuitionLedgerEntry per completed cycle (see model doc-comment
+  // below) — created by cycleProgress.service.ts the moment a cycle's
+  // sessions are all marked done, alongside cyclePayoutStatus flipping
+  // to READY_FOR_PAYOUT.
+  ledgerEntries TuitionLedgerEntry[]
+
   @@index([parentId])
   @@index([teacherId])
   @@index([courseId])
   @@index([studentId])
+}
+
+/// The Tuition Ledger, now a real persisted record instead of a
+/// report computed on the fly (08-PROJECT-KNOWLEDGE-BASE.md's
+/// "17-field record per enrollment/payment cycle"). One row is
+/// created per Enrollment PER COMPLETED CYCLE — not one row per
+/// Enrollment — by markSessionCompleted() in cycleProgress.service.ts,
+/// the same moment cyclePayoutStatus flips to READY_FOR_PAYOUT. That
+/// makes CCC (`sessionsCompleted` below) a real, final count for that
+/// cycle instead of the placeholder 0 the old export-only view used.
+///
+/// This is also what makes "Monthly Payout Verification"
+/// (08-PROJECT-KNOWLEDGE-BASE.md — Accounts' 1-day Approve/Reject
+/// window per teacher payout) a real, stateful workflow: every row
+/// starts PENDING_VERIFICATION with a 24h `verificationDeadline`.
+/// Accounts (or Admin) approves or rejects it explicitly
+/// (tuitionLedger.service.ts); if neither happens before the
+/// deadline, the row is lazily flipped to EXPIRED the next time
+/// anyone lists the ledger (there's no cron/job runner in this
+/// project yet — see 07-LESSONS-LEARNED.md — so this is reconciled
+/// on read, the same pattern the Razorpay webhook uses for dropped
+/// clients). EXPIRED is a flag for Admin/Accounts to notice and
+/// re-decide, not an auto-approval or auto-rejection — silently
+/// paying or silently withholding a teacher's money on a missed
+/// deadline would be the wrong default for money-adjacent logic.
+///
+/// Money fields are a snapshot at cycle-completion time and are never
+/// recalculated after creation, even if the Course price changes
+/// later — same reasoning as `Enrollment.amountPaid` being tracked
+/// separately from `totalAmount`.
+model TuitionLedgerEntry {
+  id String @id @default(uuid())
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  // 1-based count of which cycle this row represents for this
+  // Enrollment (matches Enrollment.cyclesCompleted at creation time).
+  // Unique alongside enrollmentId so markSessionCompleted() can never
+  // double-write a ledger row for the same cycle, even on a retried
+  // request.
+  cycleNumber Int
+
+  // Denormalized purely for Accounts-side filtering without a join
+  // through Enrollment — same established pattern as
+  // Enrollment.parentId / DemoBooking.parentId elsewhere in this
+  // schema.
+  parentId  String
+  teacherId String
+  studentId String
+  courseId  String
+
+  // The 17-field snapshot (03-DATA-MODEL.md / export.service.ts names
+  // in parentheses where they differ): parent/child/teacher/course
+  // names and subject are NOT duplicated here — joined at read time
+  // from the relations above, same as the rest of this schema.
+  transactionDate DateTime // when this cycle completed
+  noOfMonths      Int
+  rate            Decimal  @db.Decimal(10, 2) // ratePerSession snapshot
+  monthlyRate     Decimal  @db.Decimal(10, 2)
+  totalAmount     Decimal  @db.Decimal(10, 2)
+  sessionsCompleted Int    // CCC for this cycle — real now, not a placeholder
+  dueDate         DateTime
+  teacherRate       Decimal @db.Decimal(10, 2) // Teacher_rate: rate * 0.70
+  monthlyTeacherPay Decimal @db.Decimal(10, 2) // Monthly_teacher_pay: monthlyRate * 0.70
+  profits           Decimal @db.Decimal(10, 2) // Profits: monthlyRate * 0.30 (06-OPEN-DECISIONS.md #1)
+
+  // Monthly Payout Verification workflow.
+  payoutStatus         LedgerPayoutStatus @default(PENDING_VERIFICATION)
+  verificationDeadline DateTime // createdAt + 24h, set at creation
+  verifiedByStaffSub   String? // Cognito `sub` of the Admin/Accounts login who acted
+  verifiedAt           DateTime?
+  rejectionReason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([enrollmentId, cycleNumber])
+  @@index([parentId])
+  @@index([teacherId])
+  @@index([payoutStatus])
+}
+
+enum LedgerPayoutStatus {
+  PENDING_VERIFICATION
+  APPROVED
+  REJECTED
+  EXPIRED // deadline passed with no action — flagged, never auto-decided
 }
 
 enum EnrollmentStatus {
