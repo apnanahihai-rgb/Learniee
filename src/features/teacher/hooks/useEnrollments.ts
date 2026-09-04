@@ -113,6 +113,35 @@ export function useTeacherEnrollments() {
     }
   }
 
+  async function setSchedule(
+    enrollmentId: string,
+    input: { scheduleDays: number[]; scheduleTime: string },
+  ) {
+    try {
+      const res = await fetch(
+        `/api/teacher/enrollments/${enrollmentId}/schedule`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update schedule");
+      }
+
+      setEnrollments((current) =>
+        current.map((e) => (e.id === enrollmentId ? { ...e, ...data.enrollment } : e)),
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to update schedule.");
+    }
+  }
+
   return {
     enrollments,
     loading,
@@ -130,5 +159,6 @@ export function useTeacherEnrollments() {
       },
     ) => act(id, { action: "REVISE", ...input }),
     markSession,
+    setSchedule,
   };
 }

@@ -350,6 +350,63 @@ export async function adminApproveEnrollment(enrollmentId: string) {
   });
 }
 
+const SET_SCHEDULE_STATUSES: EnrollmentStatus[] = [
+  EnrollmentStatus.ACTIVE,
+  EnrollmentStatus.LAPSED,
+];
+
+/**
+ * Lets a Teacher set/correct the weekly recurring schedule on an
+ * enrollment that's already ACTIVE (or LAPSED) — i.e. fully
+ * approved, with no cost/approval impact, so it doesn't need to go
+ * through `teacherReviseEnrollment`'s Parent-reconfirmation flow.
+ *
+ * Exists for two cases: (1) enrollments created before
+ * `scheduleDays`/`scheduleTime` existed on the schema default to an
+ * empty schedule and otherwise have no way to ever get one, and (2)
+ * simple corrections (wrong day/time typed at enrollment) that
+ * don't warrant a full revision-and-reconfirm round trip. The
+ * calendar (`scheduleOccurrences.service.ts`) reads straight off
+ * these two fields, so this is what unblocks a "why isn't my
+ * enrolled student showing on the calendar" case for old rows.
+ */
+export async function setEnrollmentSchedule(
+  enrollmentId: string,
+  teacherId: string,
+  input: { scheduleDays: number[]; scheduleTime: string },
+) {
+  const enrollment = await loadOwnedByTeacher(enrollmentId, teacherId);
+
+  if (!SET_SCHEDULE_STATUSES.includes(enrollment.status)) {
+    throw new EnrollmentApprovalError(
+      "Schedule can only be set on an active enrollment.",
+      409,
+    );
+  }
+
+  const scheduleDays = Array.from(new Set(input.scheduleDays ?? [])).sort(
+    (a, b) => a - b,
+  );
+
+  if (
+    scheduleDays.length === 0 ||
+    scheduleDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
+  ) {
+    throw new EnrollmentApprovalError(
+      "Pick at least one valid day of the week.",
+    );
+  }
+
+  if (!input.scheduleTime || !SCHEDULE_TIME_PATTERN.test(input.scheduleTime)) {
+    throw new EnrollmentApprovalError("That doesn't look like a valid time (HH:mm).");
+  }
+
+  return prisma.enrollment.update({
+    where: { id: enrollmentId },
+    data: { scheduleDays, scheduleTime: input.scheduleTime },
+  });
+}
+
 /**
  * Admin rejects — terminal, per direct instruction. Does not bounce
  * back to the Teacher even though the Teacher already approved it.
