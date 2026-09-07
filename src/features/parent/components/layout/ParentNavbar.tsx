@@ -6,6 +6,7 @@ import Cookies from "js-cookie";
 import { Menu, Bell, Search, GraduationCap } from "lucide-react";
 
 import DemoCouponButton from "@/features/parent/components/layout/DemoCouponButton";
+import WalletBadge from "@/features/parent/components/layout/WalletBadge";
 
 interface Parent {
   firstName: string;
@@ -117,6 +118,10 @@ export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
             Moved here from the dashboard (Aug 30, 2026); see
             DemoCouponButton.tsx. */}
         <DemoCouponButton />
+
+        {/* Wallet — balance + add-money, mirrors DemoCouponButton's
+            dropdown pattern. Added Sep 7, 2026, see WalletBadge.tsx. */}
+        <WalletBadge />
 
         {/* Notification — static for now. Notification Center
             (grouped buckets, admin toggle, subscribe/unsubscribe)

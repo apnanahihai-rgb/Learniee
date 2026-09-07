@@ -15,10 +15,11 @@ import { prisma } from "@/lib/prisma";
  * Parent route in this pass, this file adds a properly
  * signature-verified path (same `aws-jwt-verify` +
  * `CognitoJwtVerifier` pattern already used for Admin in
- * `verifyAdmin.ts`) and wires it into ONLY the four Razorpay
- * order/verify routes, where a forged token would mean real money
- * moving under someone else's name. Every other Parent route is
- * unchanged and still decode-only — that broader gap is still open.
+ * `verifyAdmin.ts`) and wires it into ONLY the Razorpay order/verify
+ * routes — Enrollment, DemoBooking, and (added Sep 7, 2026) Wallet
+ * top-up — where a forged token would mean real money moving under
+ * someone else's name. Every other Parent route is unchanged and
+ * still decode-only — that broader gap is still open.
  */
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!,

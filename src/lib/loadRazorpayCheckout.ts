@@ -73,3 +73,60 @@ export function loadRazorpayCheckout(): Promise<boolean> {
 
   return loadPromise;
 }
+
+export type RazorpayCheckoutResult = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+/**
+ * Shared version of the `openRazorpayCheckout` helper that was
+ * originally written inline inside `BookingPanel.tsx` for Demo/
+ * Enrollment payments. Extracted here (added Sep 7, 2026, for the
+ * Wallet top-up flow) rather than duplicated a second time — safe to
+ * point BookingPanel at this one too in a future pass, left as-is
+ * for now to keep this change scoped to Wallet.
+ *
+ * Loads Checkout, opens it against a server-created order, and
+ * resolves with the payment result once the user completes (or
+ * `null` if they abandon) it.
+ */
+export function openRazorpayCheckout(options: {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  name: string;
+  description: string;
+}): Promise<RazorpayCheckoutResult | null> {
+  return new Promise((resolve, reject) => {
+    loadRazorpayCheckout().then((loaded) => {
+      if (!loaded || !window.Razorpay) {
+        reject(
+          new Error(
+            "Couldn't load the payment window. Check your connection and try again.",
+          ),
+        );
+        return;
+      }
+
+      const checkoutOptions: RazorpayCheckoutOptions = {
+        key: options.keyId,
+        amount: options.amount,
+        currency: options.currency,
+        order_id: options.orderId,
+        name: options.name,
+        description: options.description,
+        theme: { color: "#9347FF" },
+        handler: (response) => resolve(response),
+        modal: {
+          ondismiss: () => resolve(null),
+        },
+      };
+
+      const instance = new window.Razorpay!(checkoutOptions);
+      instance.open();
+    });
+  });
+}

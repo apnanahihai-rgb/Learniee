@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { Plus } from "lucide-react";
+
 import { useWallet } from "@/features/parent/hooks/useWallet";
 
 const currency = new Intl.NumberFormat("en-IN", {
@@ -17,7 +20,22 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
 });
 
 export default function ParentWalletPage() {
-  const { balance, transactions, loading, error } = useWallet();
+  const { balance, transactions, loading, error, addingMoney, addMoney } = useWallet();
+  const [amountInput, setAmountInput] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function handleAddMoney() {
+    const amount = Number(amountInput);
+    setNotice("");
+
+    const result = await addMoney(amount);
+
+    setNotice(result.message);
+
+    if (result.ok) {
+      setAmountInput("");
+    }
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -35,9 +53,38 @@ export default function ParentWalletPage() {
 
       <div className="bg-white border rounded-xl p-6 mb-6 shadow-sm">
         <p className="text-xs text-gray-500">Available balance</p>
-        <p className="text-3xl font-bold text-violet-900 mt-1">
+        <p className="text-3xl font-bold text-violet-900 mt-1 mb-4">
           {loading ? "…" : currency.format(balance)}
         </p>
+
+        <div className="flex items-center gap-2 max-w-sm">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+              ₹
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={1}
+              placeholder="Amount to add"
+              value={amountInput}
+              onChange={(e) => setAmountInput(e.target.value)}
+              className="w-full h-10 rounded-full border-2 border-violet-100 bg-violet-50/50 pl-7 pr-3 text-sm outline-none focus:border-violet-400 focus:bg-white transition"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAddMoney}
+            disabled={addingMoney || !amountInput}
+            className="flex items-center gap-1 h-10 px-4 rounded-full bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-60 flex-shrink-0"
+          >
+            <Plus size={15} />
+            {addingMoney ? "Please wait..." : "Add money"}
+          </button>
+        </div>
+
+        {notice && <p className="text-xs text-amber-600 mt-2">{notice}</p>}
       </div>
 
       <div className="bg-white border rounded-xl overflow-hidden">

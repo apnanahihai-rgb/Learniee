@@ -964,6 +964,14 @@ model WalletTransaction {
   // it was a manual action rather than a future automated one.
   createdByStaffSub String?
 
+  // Set only for a parent-initiated top-up (see wallet.service.ts's
+  // createWalletTopupOrder/verifyWalletTopup) — both unique so the
+  // verify route and the webhook-reconciliation fallback can both
+  // safely be called for the same order without double-crediting,
+  // same idempotency pattern as Enrollment/DemoBooking.
+  razorpayOrderId   String? @unique
+  razorpayPaymentId String? @unique
+
   createdAt DateTime @default(now())
 
   @@index([walletId])
