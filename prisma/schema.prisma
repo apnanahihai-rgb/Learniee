@@ -7,8 +7,8 @@ datasource db {
 }
 
 model ParentProfile {
-  id                  String         @id @default(uuid())
-  cognitoSub          String         @unique
+  id                  String              @id @default(uuid())
+  cognitoSub          String              @unique
   firstName           String
   lastName            String
   visibleName         String?
@@ -23,7 +23,7 @@ model ParentProfile {
   timezone            String?
   phone               String
   whatsappNumber      String?
-  email               String         @unique
+  email               String              @unique
   relationToStudent   String?
   childStatus         String?
   onlineTuition       String?
@@ -34,8 +34,8 @@ model ParentProfile {
   preferredLanguage   String?
   howDidYouHear       String?
   suggestions         String?
-  onboardingComplete  Boolean        @default(false)
-  createdAt           DateTime       @default(now())
+  onboardingComplete  Boolean             @default(false)
+  createdAt           DateTime            @default(now())
   chatRooms           ChatRoom[]
   classSessions       ClassSession[]
   demoCoupon          DemoCoupon?
@@ -43,6 +43,7 @@ model ParentProfile {
   homeworks           Homework[]
   students            Student[]
   wallet              Wallet?
+  rescheduleRequests  RescheduleRequest[]
 }
 
 model Admin {
@@ -80,40 +81,41 @@ model Student {
 }
 
 model Teacher {
-  id               String                @id @default(uuid())
-  cognitoId        String                @unique
-  email            String                @unique
-  firstName        String
-  lastName         String
-  visibleName      String?
-  dobDay           Int?
-  dobMonth         String?
-  dobYear          Int?
-  gender           String?
-  nationality      String?
-  address          String?
-  city             String?
-  country          String?
-  pincode          String?
-  phone            String?
-  whatsapp         String?
-  aboutMe          String?
-  criminalCase     String?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  approvalStatus   TeacherApprovalStatus @default(PENDING)
-  currentStep      Int                   @default(1)
-  onboardingStatus String                @default("IN_PROGRESS")
-  panCardNumber    String?
-  chatRooms        ChatRoom[]
-  classSessions    ClassSession[]
-  courses          Course[]
-  demoBookings     DemoBooking[]
-  enrollments      Enrollment[]
-  homeworks        Homework[]
-  TeacherDocuments TeacherDocuments?
-  files            TeacherFile[]
-  professionalInfo TeacherProfessional?
+  id                 String                @id @default(uuid())
+  cognitoId          String                @unique
+  email              String                @unique
+  firstName          String
+  lastName           String
+  visibleName        String?
+  dobDay             Int?
+  dobMonth           String?
+  dobYear            Int?
+  gender             String?
+  nationality        String?
+  address            String?
+  city               String?
+  country            String?
+  pincode            String?
+  phone              String?
+  whatsapp           String?
+  aboutMe            String?
+  criminalCase       String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  approvalStatus     TeacherApprovalStatus @default(PENDING)
+  currentStep        Int                   @default(1)
+  onboardingStatus   String                @default("IN_PROGRESS")
+  panCardNumber      String?
+  chatRooms          ChatRoom[]
+  classSessions      ClassSession[]
+  courses            Course[]
+  demoBookings       DemoBooking[]
+  enrollments        Enrollment[]
+  homeworks          Homework[]
+  TeacherDocuments   TeacherDocuments?
+  files              TeacherFile[]
+  professionalInfo   TeacherProfessional?
+  rescheduleRequests RescheduleRequest[]
 }
 
 model TeacherProfessional {
@@ -338,6 +340,7 @@ model Enrollment {
   teacher                    Teacher              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   homeworks                  Homework[]
   ledgerEntries              TuitionLedgerEntry[]
+  rescheduleRequests         RescheduleRequest[]
 
   @@index([parentId])
   @@index([teacherId])
@@ -633,6 +636,9 @@ model RescheduleRequest {
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   classSession          ClassSession            @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  enrollment            Enrollment              @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  teacher               Teacher                 @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  parent                ParentProfile           @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
   @@index([classSessionId])
   @@index([teacherId])
