@@ -7,8 +7,8 @@ datasource db {
 }
 
 model ParentProfile {
-  id                  String      @id @default(uuid())
-  cognitoSub          String      @unique
+  id                  String         @id @default(uuid())
+  cognitoSub          String         @unique
   firstName           String
   lastName            String
   visibleName         String?
@@ -23,7 +23,7 @@ model ParentProfile {
   timezone            String?
   phone               String
   whatsappNumber      String?
-  email               String      @unique
+  email               String         @unique
   relationToStudent   String?
   childStatus         String?
   onlineTuition       String?
@@ -34,14 +34,14 @@ model ParentProfile {
   preferredLanguage   String?
   howDidYouHear       String?
   suggestions         String?
-  onboardingComplete  Boolean     @default(false)
-  createdAt           DateTime    @default(now())
-  students            Student[]
-  demoCoupon          DemoCoupon?
+  onboardingComplete  Boolean        @default(false)
+  createdAt           DateTime       @default(now())
   chatRooms           ChatRoom[]
-  enrollments         Enrollment[]
   classSessions       ClassSession[]
+  demoCoupon          DemoCoupon?
+  enrollments         Enrollment[]
   homeworks           Homework[]
+  students            Student[]
   wallet              Wallet?
 }
 
@@ -55,7 +55,7 @@ model Admin {
 }
 
 model Student {
-  id                   String        @id @default(uuid())
+  id                   String         @id @default(uuid())
   parentId             String
   firstName            String
   lastName             String
@@ -68,13 +68,13 @@ model Student {
   currentSchoolName    String?
   learningDifficulties String?
   photoUrl             String?
-  createdAt            DateTime      @default(now())
-  parent               ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  demoBookings         DemoBooking[]
-  enrollments          Enrollment[]
+  createdAt            DateTime       @default(now())
   chatRooms            ChatRoom[]
   classSessions        ClassSession[]
+  demoBookings         DemoBooking[]
+  enrollments          Enrollment[]
   homeworks            Homework[]
+  parent               ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
   @@index([parentId])
 }
@@ -101,20 +101,19 @@ model Teacher {
   criminalCase     String?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
+  approvalStatus   TeacherApprovalStatus @default(PENDING)
   currentStep      Int                   @default(1)
   onboardingStatus String                @default("IN_PROGRESS")
-  approvalStatus   TeacherApprovalStatus @default(PENDING)
   panCardNumber    String?
-  TeacherDocuments TeacherDocuments?
-
-  files            TeacherFile[]
-  courses          Course[]
-  professionalInfo TeacherProfessional?
-  demoBookings     DemoBooking[]
-  enrollments      Enrollment[]
   chatRooms        ChatRoom[]
   classSessions    ClassSession[]
+  courses          Course[]
+  demoBookings     DemoBooking[]
+  enrollments      Enrollment[]
   homeworks        Homework[]
+  TeacherDocuments TeacherDocuments?
+  files            TeacherFile[]
+  professionalInfo TeacherProfessional?
 }
 
 model TeacherProfessional {
@@ -179,76 +178,41 @@ model TeacherDocuments {
   Teacher               Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 }
 
-enum TeacherApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum TeacherFileType {
-  PROFILE_PHOTO
-  INTRO_VIDEO
-  CERTIFICATION
-  AWARD
-  DOB_PROOF
-  ADDRESS_PROOF
-  QUALIFICATION_PROOF
-}
-
 model Course {
-  id String @id @default(uuid())
-
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  category String?
-  timeSlot String?
-
-  subject    String?
-  grade      String?
-  board      String?
-  experience String?
-
-  duration  String?
-  type      String?
-  language  String?
-  frequency String?
-
-  courseTitle String?
-  rating      Float?
-  objective   String?
-  description String?
-
-  modules    String?
-  courseTags String?
-  price      Decimal? @db.Decimal(10, 2)
-
-  thumbnailKey  String?
-  introVideoKey String?
-
-  status CourseStatus @default(DRAFT)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id              String        @id @default(uuid())
+  teacherId       String
+  category        String?
+  timeSlot        String?
+  subject         String?
+  grade           String?
+  board           String?
+  experience      String?
+  duration        String?
+  type            String?
+  language        String?
+  frequency       String?
+  courseTitle     String?
+  rating          Float?
+  objective       String?
+  description     String?
+  modules         String?
+  courseTags      String?
+  price           Decimal?      @db.Decimal(10, 2)
+  thumbnailKey    String?
+  introVideoKey   String?
+  status          CourseStatus  @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   ageGroup        String?
   rejectionReason String?
-
-  demoBookings DemoBooking[]
-  enrollments  Enrollment[]
-  chatRooms    ChatRoom[]
+  chatRooms       ChatRoom[]
+  teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  demoBookings    DemoBooking[]
+  enrollments     Enrollment[]
 
   @@index([teacherId])
   @@index([status])
   @@index([teacherId, status])
-}
-
-enum CourseStatus {
-  DRAFT
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
-  INACTIVE
 }
 
 /// Every ParentProfile gets exactly one DemoCoupon row, lazily
@@ -258,17 +222,14 @@ enum CourseStatus {
 /// demos total, shared across every Student under one parent, then
 /// a flat ₹100 each after that.
 model DemoCoupon {
-  id       String        @id @default(uuid())
-  parentId String        @unique
-  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-
-  totalIssued Int @default(2)
-  usedCount   Int @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  bookings DemoBooking[]
+  id          String        @id @default(uuid())
+  parentId    String        @unique
+  totalIssued Int           @default(2)
+  usedCount   Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  bookings    DemoBooking[]
+  parent      ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
 }
 
 /// One row per booked demo session. `subject` defaults to "" (never
@@ -279,54 +240,29 @@ model DemoCoupon {
 /// which would silently defeat this cap for any course with no
 /// subject set.
 model DemoBooking {
-  id String @id @default(uuid())
-
-  demoCouponId String
-  demoCoupon   DemoCoupon @relation(fields: [demoCouponId], references: [id], onDelete: Cascade)
-
-  // Denormalized alongside demoCouponId purely so
-  // getDemoBookingsForParent() can filter directly on parentId
-  // without an extra join — not declared as its own Prisma relation.
-  parentId String
-
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  subject String @default("")
-
-  isPaid Boolean           @default(false)
-  amount Decimal?          @db.Decimal(10, 2)
-  status DemoBookingStatus @default(CONFIRMED)
-
-  // Razorpay fields — only set for the paid (3rd+) demo path. Free
-  // demos never touch Razorpay at all, so these stay null for them.
-  // `razorpayOrderId` is unique so verifyDemoPayment() can be called
-  // more than once for the same order (e.g. a retried client
-  // request) without creating a second DemoBooking row.
-  razorpayOrderId   String?   @unique
-  razorpayPaymentId String?   @unique
+  id                String            @id @default(uuid())
+  demoCouponId      String
+  parentId          String
+  studentId         String
+  teacherId         String
+  courseId          String
+  subject           String            @default("")
+  isPaid            Boolean           @default(false)
+  amount            Decimal?          @db.Decimal(10, 2)
+  status            DemoBookingStatus @default(CONFIRMED)
+  scheduledAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   paidAt            DateTime?
-
-  scheduledAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  razorpayOrderId   String?           @unique
+  razorpayPaymentId String?           @unique
+  course            Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  demoCoupon        DemoCoupon        @relation(fields: [demoCouponId], references: [id], onDelete: Cascade)
+  student           Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher           Teacher           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([teacherId, subject, studentId])
   @@index([parentId])
-}
-
-enum DemoBookingStatus {
-  CONFIRMED
-  PENDING_PAYMENT
-  COMPLETED
-  CANCELLED
 }
 
 /// Cycle-based Enrollment (03-DATA-MODEL.md's "Enrollment (extended
@@ -347,10 +283,10 @@ enum DemoBookingStatus {
 /// assumption in 06-OPEN-DECISIONS.md — nothing in the docs actually
 /// states how Course.price maps to a per-session vs. monthly rate,
 /// so this is a judgment call pending sign-off, not a settled rule):
-///   ratePerSession = Course.price (teacher's per-session rate)
-///   monthlyRate    = ratePerSession * sessionsPerMonth
-///   totalAmount    = monthlyRate * noOfMonths
-///   dueDate        = cycleStartDate + 1 month
+/// ratePerSession = Course.price (teacher's per-session rate)
+/// monthlyRate    = ratePerSession * sessionsPerMonth
+/// totalAmount    = monthlyRate * noOfMonths
+/// dueDate        = cycleStartDate + 1 month
 ///
 /// Sequential dual-approval (resolves 06-OPEN-DECISIONS.md #2, per
 /// direct clarification Sep 1, 2026): Teacher reviews first, then
@@ -360,157 +296,48 @@ enum DemoBookingStatus {
 /// src/features/shared/server/enrollmentApproval.service.ts for the
 /// full state machine.
 model Enrollment {
-  id String @id @default(uuid())
-
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  parentId String
-  // Added alongside the dual-approval workflow — Teacher/Admin
-  // approval queues need the parent's name/email/phone, and a plain
-  // denormalized ID with no relation couldn't be `include`d. Every
-  // existing row already has a valid parentId, so this is additive
-  // and safe against live data.
-  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  subject String?
-
-  // Cycle rule (updated Aug 31, 2026, supersedes 06-OPEN-DECISIONS.md
-  // #25's old fixed 4/8/12/24/30 set): min 4, max 31 (1/day for the
-  // longest month) — enforced in enrollment.service.ts, not just
-  // trusted from the client.
-  sessionsPerMonth Int
-  noOfMonths       Int @default(1)
-
-  // System-calculated, never manually entered (03-DATA-MODEL.md).
-  ratePerSession Decimal @db.Decimal(10, 2)
-  monthlyRate    Decimal @db.Decimal(10, 2)
-  totalAmount    Decimal @db.Decimal(10, 2)
-
-  cycleStartDate DateTime
-  dueDate        DateTime
-
-  // Weekly recurring class schedule (added for the Parent/Teacher
-  // calendar view). Parent proposes this at Enrollment creation
-  // (BookingPanel.tsx) alongside the cycle; Teacher can revise it
-  // the same way they already revise cycleStartDate/sessionsPerMonth
-  // (teacherReviseEnrollment) — no separate approval step, since
-  // it's covered by the same PENDING_PARENT_RECONFIRMATION flow.
-  // scheduleDays: JS Date.getDay() convention, 0=Sunday..6=Saturday.
-  // scheduleTime: 24-hour "HH:mm", wall-clock (no per-user timezone
-  // yet — see 08-PROJECT-KNOWLEDGE-BASE.md, likely IST).
-  // Both nullable/defaulted rather than required so this migration
-  // is additive-safe against any Enrollment rows that already exist
-  // (same reasoning as the parentId denormalization above) — the
-  // calendar simply shows nothing for a row with no schedule set.
-  scheduleDays Int[]   @default([])
-  scheduleTime String?
-
-  // Payment gate (06-OPEN-DECISIONS.md #36, resolved: Enrollment
-  // creation now blocks on payment rather than allowing an unpaid
-  // row). An Enrollment row is only ever written by
-  // verifyEnrollmentPayment() AFTER Razorpay confirms the charge —
-  // so these are required, not optional, and every Enrollment that
-  // exists is by definition paid. `amountPaid` is captured
-  // separately from `totalAmount` (even though they should always
-  // match) so a future partial-payment/refund scenario has
-  // somewhere to diverge without a schema change.
-  razorpayOrderId   String   @unique
-  razorpayPaymentId String   @unique
-  amountPaid        Decimal  @db.Decimal(10, 2)
-  paidAt            DateTime @default(now())
-
-  // DECIDED (#27): 45 days with no class taken -> auto-lapse.
-  // Reactivation/pre-warning still open (#34, non-blocking for MVP).
-  // Null until the first ClassSession is built and marked complete.
-  lastClassAt DateTime?
-
-  // Sequential dual-approval (resolves #2, per direct clarification
-  // Sep 1, 2026): Teacher reviews first — approve as-is, revise the
-  // cycle, or reject. Once the Teacher side is settled (either
-  // approved outright, or a revision the Parent has reconfirmed),
-  // it moves to Admin. Admin has final say: reject here is terminal
-  // (REJECTED), it does not bounce back to Teacher. Parent-facing
-  // copy NEVER mentions Admin by name (see status-label helper) —
-  // "pending" reads as "waiting for teacher approval" the whole way
-  // through, per direct instruction.
-  status EnrollmentStatus @default(PENDING_TEACHER_APPROVAL)
-
-  teacherApprovedAt DateTime?
-  adminApprovedAt   DateTime?
-
-  rejectedBy       String? // "TEACHER" | "ADMIN"
-  rejectionReason  String?
-
-  // Teacher-proposed schedule/cycle revision. `revisedByTeacher`
-  // flips true the first time a Teacher revises; `revisionNote` is
-  // the Teacher's own explanation, shown to the Parent alongside
-  // the Confirm/Decline choice. Discussion itself happens in the
-  // enrollment's ChatRoom (the sole Parent<->Teacher channel) —
-  // this note is just a short heads-up, not the full conversation.
-  revisedByTeacher Boolean @default(false)
-  revisionNote     String?
-
-  // Set true if a Teacher's revision changed sessionsPerMonth (and
-  // therefore monthlyRate/totalAmount) away from what was actually
-  // charged via Razorpay (`amountPaid`, still untouched/historical).
-  // No automatic extra charge or refund happens — flagged for Admin
-  // to see and reconcile manually before final approval. Revising
-  // only cycleStartDate never sets this (no cost impact).
-  pricingChangedAfterPayment Boolean @default(false)
-
-  // Cycle progress (added Sep 3, 2026). A "cycle" = one calendar
-  // month's worth of sessions, i.e. `sessionsPerMonth`. Marking a
-  // session complete is manual for now (Teacher-only,
-  // POST .../mark-session) — a placeholder for automatic tracking
-  // once class scheduling / Zoho integration exists (per direct
-  // instruction: "later we will set increment and logic after
-  // connection with zoho api"). `cyclePayoutStatus` flips to
-  // READY_FOR_PAYOUT the moment a cycle's sessions are all marked
-  // done, but nothing actually pays the teacher out yet — the
-  // Wallet/Tuition Ledger this would need isn't built
-  // (03-DATA-MODEL.md). Treat this as tracking + a future payout
-  // gate, not a working payout flow.
-  sessionsCompletedInCycle Int               @default(0)
-  cyclesCompleted          Int               @default(0)
-  cyclePayoutStatus        CyclePayoutStatus @default(IN_PROGRESS)
-  lastSessionMarkedAt      DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // One chat room per enrollment (a specific parent+teacher+course+
-  // child combination) — see ChatRoom's doc-comment below for why
-  // this is gated on Enrollment existing rather than on
-  // EnrollmentStatus == APPROVED (dual-approval workflow, #2, isn't
-  // built yet, so nothing can reach APPROVED today).
-  chatRoom ChatRoom?
-
-  // One TuitionLedgerEntry per completed cycle (see model doc-comment
-  // below) — created by cycleProgress.service.ts the moment a cycle's
-  // sessions are all marked done, alongside cyclePayoutStatus flipping
-  // to READY_FOR_PAYOUT.
-  ledgerEntries TuitionLedgerEntry[]
-
-  // Real, dated class occurrences generated from
-  // scheduleDays/scheduleTime — see ClassSession's doc-comment.
-  // Resolves the "biggest gap" flagged in 07-LESSONS-LEARNED.md /
-  // 03-DATA-MODEL.md: before this, nothing recorded an actual class
-  // happening.
-  classSessions ClassSession[]
-  // Homework module (added Sep 4, 2026) — a simple Google-Classroom-
-  // style assign/submit flow scoped to this Enrollment. Only unlocked
-  // once dual-approval finishes (status ACTIVE/LAPSED) — see the
-  // ACTIVE_ENROLLMENT_STATUSES gate in homework.service.ts, same
-  // reasoning as cycleProgress.service.ts gating "mark session
-  // complete" on ACTIVE only.
-  homeworks Homework[]
+  id                         String               @id @default(uuid())
+  studentId                  String
+  parentId                   String
+  teacherId                  String
+  courseId                   String
+  subject                    String?
+  sessionsPerMonth           Int
+  noOfMonths                 Int                  @default(1)
+  ratePerSession             Decimal              @db.Decimal(10, 2)
+  monthlyRate                Decimal              @db.Decimal(10, 2)
+  totalAmount                Decimal              @db.Decimal(10, 2)
+  cycleStartDate             DateTime
+  dueDate                    DateTime
+  lastClassAt                DateTime?
+  status                     EnrollmentStatus     @default(PENDING_TEACHER_APPROVAL)
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+  amountPaid                 Decimal              @db.Decimal(10, 2)
+  paidAt                     DateTime             @default(now())
+  razorpayOrderId            String               @unique
+  razorpayPaymentId          String               @unique
+  adminApprovedAt            DateTime?
+  pricingChangedAfterPayment Boolean              @default(false)
+  rejectedBy                 String?
+  rejectionReason            String?
+  revisedByTeacher           Boolean              @default(false)
+  revisionNote               String?
+  teacherApprovedAt          DateTime?
+  sessionsCompletedInCycle   Int                  @default(0)
+  cyclesCompleted            Int                  @default(0)
+  cyclePayoutStatus          CyclePayoutStatus    @default(IN_PROGRESS)
+  lastSessionMarkedAt        DateTime?
+  scheduleDays               Int[]                @default([])
+  scheduleTime               String?
+  chatRoom                   ChatRoom?
+  classSessions              ClassSession[]
+  course                     Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  parent                     ParentProfile        @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student                    Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher                    Teacher              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  homeworks                  Homework[]
+  ledgerEntries              TuitionLedgerEntry[]
 
   @@index([parentId])
   @@index([teacherId])
@@ -547,94 +374,36 @@ model Enrollment {
 /// later — same reasoning as `Enrollment.amountPaid` being tracked
 /// separately from `totalAmount`.
 model TuitionLedgerEntry {
-  id String @id @default(uuid())
-
-  enrollmentId String
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-
-  // 1-based count of which cycle this row represents for this
-  // Enrollment (matches Enrollment.cyclesCompleted at creation time).
-  // Unique alongside enrollmentId so markSessionCompleted() can never
-  // double-write a ledger row for the same cycle, even on a retried
-  // request.
-  cycleNumber Int
-
-  // Denormalized purely for Accounts-side filtering without a join
-  // through Enrollment — same established pattern as
-  // Enrollment.parentId / DemoBooking.parentId elsewhere in this
-  // schema.
-  parentId  String
-  teacherId String
-  studentId String
-  courseId  String
-
-  // The 17-field snapshot (03-DATA-MODEL.md / export.service.ts names
-  // in parentheses where they differ): parent/child/teacher/course
-  // names and subject are NOT duplicated here — joined at read time
-  // from the relations above, same as the rest of this schema.
-  transactionDate DateTime // when this cycle completed
-  noOfMonths      Int
-  rate            Decimal  @db.Decimal(10, 2) // ratePerSession snapshot
-  monthlyRate     Decimal  @db.Decimal(10, 2)
-  totalAmount     Decimal  @db.Decimal(10, 2)
-  sessionsCompleted Int    // CCC for this cycle — real now, not a placeholder
-  dueDate         DateTime
-  teacherRate       Decimal @db.Decimal(10, 2) // Teacher_rate: rate * 0.70
-  monthlyTeacherPay Decimal @db.Decimal(10, 2) // Monthly_teacher_pay: monthlyRate * 0.70
-  profits           Decimal @db.Decimal(10, 2) // Profits: monthlyRate * 0.30 (06-OPEN-DECISIONS.md #1)
-
-  // Monthly Payout Verification workflow.
+  id                   String             @id @default(uuid())
+  enrollmentId         String
+  cycleNumber          Int
+  parentId             String
+  teacherId            String
+  studentId            String
+  courseId             String
+  transactionDate      DateTime
+  noOfMonths           Int
+  rate                 Decimal            @db.Decimal(10, 2)
+  monthlyRate          Decimal            @db.Decimal(10, 2)
+  totalAmount          Decimal            @db.Decimal(10, 2)
+  sessionsCompleted    Int
+  dueDate              DateTime
+  teacherRate          Decimal            @db.Decimal(10, 2)
+  monthlyTeacherPay    Decimal            @db.Decimal(10, 2)
+  profits              Decimal            @db.Decimal(10, 2)
   payoutStatus         LedgerPayoutStatus @default(PENDING_VERIFICATION)
-  verificationDeadline DateTime // createdAt + 24h, set at creation
-  verifiedByStaffSub   String? // Cognito `sub` of the Admin/Accounts login who acted
+  verificationDeadline DateTime
+  verifiedByStaffSub   String?
   verifiedAt           DateTime?
   rejectionReason      String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  enrollment           Enrollment         @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@unique([enrollmentId, cycleNumber])
   @@index([parentId])
   @@index([teacherId])
   @@index([payoutStatus])
-}
-
-enum LedgerPayoutStatus {
-  PENDING_VERIFICATION
-  APPROVED
-  REJECTED
-  EXPIRED // deadline passed with no action — flagged, never auto-decided
-}
-
-enum EnrollmentStatus {
-  // Legacy — no longer written by new code (kept so any existing
-  // rows in this status still deserialize/display fine; see
-  // 07-LESSONS-LEARNED.md re: never drop enum values that live data
-  // may already be using).
-  PENDING_APPROVAL
-  APPROVED
-
-  // Sequential dual-approval flow (resolves #2):
-  PENDING_TEACHER_APPROVAL     // paid, waiting on Teacher
-  PENDING_PARENT_RECONFIRMATION // Teacher revised the cycle/date, waiting on Parent
-  PENDING_ADMIN_APPROVAL       // Teacher side settled, waiting on Admin
-
-  REJECTED   // terminal — set by either Teacher or Admin (see rejectedBy)
-  ACTIVE     // both approvals done — lectures can be scheduled
-  LAPSED
-  CANCELLED
-}
-
-/// Cycle payout status (added Sep 3, 2026) — informational/future
-/// gate only. Nothing reads this to actually withhold or release
-/// money yet, since Wallet/Tuition Ledger don't exist
-/// (03-DATA-MODEL.md). RELEASED isn't set anywhere in code today;
-/// it's reserved for whatever Accounts-side flow eventually
-/// consumes READY_FOR_PAYOUT enrollments.
-enum CyclePayoutStatus {
-  IN_PROGRESS      // current cycle still has sessions left
-  READY_FOR_PAYOUT // current cycle's sessions are all marked done
-  RELEASED         // reserved for future Accounts/payout flow
 }
 
 /// One chat room per Enrollment — i.e. one per (parent, teacher,
@@ -654,33 +423,21 @@ enum CyclePayoutStatus {
 /// record, but Parent/Teacher sending is blocked — see
 /// chat.service.ts's `SENDABLE_ENROLLMENT_STATUSES`.
 model ChatRoom {
-  id String @id @default(uuid())
-
-  enrollmentId String     @unique
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-
-  // Denormalized alongside enrollmentId, same reasoning as
-  // DemoBooking.parentId / Enrollment.parentId elsewhere in this
-  // schema — lets each role's room-list query filter directly
-  // without an extra join through Enrollment.
-  parentId  String
-  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
+  id            String        @id @default(uuid())
+  enrollmentId  String        @unique
+  parentId      String
+  teacherId     String
+  courseId      String
+  studentId     String
   lastMessageAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  messages ChatMessage[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  messages      ChatMessage[]
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrollment    Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  parent        ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher       Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([parentId])
   @@index([teacherId])
@@ -696,24 +453,15 @@ model ChatRoom {
 /// `senderId` points into (there's no single generic `User` table
 /// yet — see 03-DATA-MODEL.md).
 model ChatMessage {
-  id String @id @default(uuid())
-
+  id         String         @id @default(uuid())
   chatRoomId String
-  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
-
   senderRole ChatSenderRole
   senderId   String
-
-  body String @db.Text
-
-  createdAt DateTime @default(now())
+  body       String
+  createdAt  DateTime       @default(now())
+  chatRoom   ChatRoom       @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
 
   @@index([chatRoomId, createdAt])
-}
-
-enum ChatSenderRole {
-  PARENT
-  TEACHER
 }
 
 /// Homework module (added Sep 4, 2026) — deliberately simple, a
@@ -728,38 +476,22 @@ enum ChatSenderRole {
 /// list query filter directly without an extra join through
 /// Enrollment.
 model Homework {
-  id String @id @default(uuid())
-
-  enrollmentId String
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  parentId String
-  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  title        String
-  instructions String? @db.Text
-
-  // Optional S3 key for a reference file/worksheet the Teacher
-  // attaches (same private-bucket + presigned-URL pattern as every
-  // other upload in this schema).
+  id            String              @id @default(uuid())
+  enrollmentId  String
+  teacherId     String
+  parentId      String
+  studentId     String
+  title         String
+  instructions  String?
   attachmentKey String?
-
-  dueDate DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // One submission per Homework — the Student/Parent can resubmit by
-  // overwriting this row (upsert in homework.service.ts) rather than
-  // this being a submission history table. Deliberately simple, per
-  // direct instruction to keep this "not that complex."
-  submission HomeworkSubmission?
+  dueDate       DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  enrollment    Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  parent        ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher       Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  submission    HomeworkSubmission?
 
   @@index([enrollmentId])
   @@index([teacherId])
@@ -773,27 +505,17 @@ model Homework {
 /// numeric grading here by design, matching the "simpler than Google
 /// Classroom" brief.
 model HomeworkSubmission {
-  id String @id @default(uuid())
-
-  homeworkId String   @unique
-  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-
-  fileKey String
-  note    String? @db.Text
-
-  status   HomeworkSubmissionStatus @default(SUBMITTED)
-  feedback String?                  @db.Text
-
-  submittedAt DateTime  @default(now())
+  id          String                   @id @default(uuid())
+  homeworkId  String                   @unique
+  fileKey     String
+  note        String?
+  status      HomeworkSubmissionStatus @default(SUBMITTED)
+  feedback    String?
+  submittedAt DateTime                 @default(now())
   reviewedAt  DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum HomeworkSubmissionStatus {
-  SUBMITTED
-  REVIEWED
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  homework    Homework                 @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
 }
 
 /// Admin-created internal staff accounts (HR, Accounts). Cognito remains
@@ -806,22 +528,17 @@ enum HomeworkSubmissionStatus {
 /// HR isn't in the original 4-role MVP model (02-ARCHITECTURE.md) at all,
 /// so this is explicitly scoped as "create the identity, nothing else."
 model StaffAccount {
-  id          String     @id @default(uuid())
-  cognitoSub  String     @unique
+  id          String    @id @default(uuid())
+  cognitoSub  String    @unique
   role        StaffRole
   firstName   String
   lastName    String
-  email       String     @unique
+  email       String    @unique
   phone       String
-  createdById String // Admin.id of whoever created this account
-  createdAt   DateTime   @default(now())
+  createdById String
+  createdAt   DateTime  @default(now())
 
   @@index([role])
-}
-
-enum StaffRole {
-  HR
-  ACCOUNTS
 }
 
 /// A real, dated record of one class occurrence — the single
@@ -847,50 +564,26 @@ enum StaffRole {
 /// schema — lets each role's session queries filter directly without
 /// an extra join through Enrollment.
 model ClassSession {
-  id String @id @default(uuid())
-
-  enrollmentId String
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  parentId String
-  parent   ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-
-  // Local calendar date this class is/was scheduled for (stored at
-  // midnight, no time component — same "date-only" convention the
-  // old scheduleOccurrences.service.ts used) + the wall-clock time,
-  // same "HH:mm" format as Enrollment.scheduleTime.
-  scheduledDate DateTime
-  scheduledTime String?
-
-  status ClassSessionStatus @default(SCHEDULED)
-
-  // Only "TEACHER" today — Teacher is the sole marker, per direct
-  // instruction (06-OPEN-DECISIONS.md has no dual-confirmation rule
-  // for a single class the way Enrollment approval does). Left as a
-  // free-form string rather than an enum since Zoho/Jitsi-driven
-  // auto-completion ("SYSTEM") is a likely future value, per
-  // cycleProgress.service.ts's original doc-comment about swapping
-  // the increment source out later.
-  completedAt     DateTime?
-  completedByRole String?
-
-  cancelledAt  DateTime?
-  cancelReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                 String              @id @default(uuid())
+  enrollmentId       String
+  teacherId          String
+  studentId          String
+  parentId           String
+  scheduledDate      DateTime
+  scheduledTime      String?
+  status             ClassSessionStatus  @default(SCHEDULED)
+  completedAt        DateTime?
+  completedByRole    String?
+  cancelledAt        DateTime?
+  cancelReason       String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  enrollment         Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  parent             ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student            Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher            Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   rescheduleRequests RescheduleRequest[]
 
-  // Prevents double-generating the same calendar-date occurrence for
-  // an enrollment — also what makes generateSessionsForEnrollment()
-  // idempotent via `skipDuplicates`.
   @@unique([enrollmentId, scheduledDate])
   @@index([enrollmentId])
   @@index([teacherId])
@@ -900,13 +593,6 @@ model ClassSession {
   @@index([enrollmentId, status])
 }
 
-enum ClassSessionStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-  MISSED
-}
-
 /// Reschedule requests for one already-scheduled `ClassSession`
 /// (added Sep 7, 2026) — moving a lecture to a different date/time,
 /// independent of Enrollment's own payment/dual-approval workflow.
@@ -914,8 +600,8 @@ enum ClassSessionStatus {
 /// Single-step approval, per direct instruction (unlike Enrollment's
 /// sequential Teacher->Admin chain — there's no Admin involvement
 /// here at all): whoever did NOT propose the move has to approve it.
-///   - Parent proposes  -> PENDING_TEACHER_APPROVAL (Teacher decides)
-///   - Teacher proposes -> PENDING_PARENT_APPROVAL (Parent decides)
+/// - Parent proposes  -> PENDING_TEACHER_APPROVAL (Teacher decides)
+/// - Teacher proposes -> PENDING_PARENT_APPROVAL (Parent decides)
 ///
 /// Approving updates the underlying ClassSession's `scheduledDate`/
 /// `scheduledTime` directly (see rescheduleRequest.service.ts) — the
@@ -930,52 +616,28 @@ enum ClassSessionStatus {
 /// lets each role's request-inbox query filter directly without an
 /// extra join through ClassSession/Enrollment.
 model RescheduleRequest {
-  id String @id @default(uuid())
-
-  classSessionId String
-  classSession   ClassSession @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
-
-  enrollmentId String
-  teacherId    String
-  parentId     String
-
-  requestedBy RescheduleRequestedBy
-
+  id                    String                  @id @default(uuid())
+  classSessionId        String
+  enrollmentId          String
+  teacherId             String
+  parentId              String
+  requestedBy           RescheduleRequestedBy
   originalScheduledDate DateTime
   originalScheduledTime String?
-
-  proposedDate DateTime
-  proposedTime String?
-
-  reason String? @db.Text
-
-  // Set at creation based on `requestedBy` — see the model
-  // doc-comment above for the mapping.
-  status RescheduleRequestStatus
-
-  responseNote String?   @db.Text
-  respondedAt  DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  proposedDate          DateTime
+  proposedTime          String?
+  reason                String?
+  status                RescheduleRequestStatus
+  responseNote          String?
+  respondedAt           DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  classSession          ClassSession            @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
 
   @@index([classSessionId])
   @@index([teacherId])
   @@index([parentId])
   @@index([status])
-}
-
-enum RescheduleRequestedBy {
-  PARENT
-  TEACHER
-}
-
-enum RescheduleRequestStatus {
-  PENDING_TEACHER_APPROVAL
-  PENDING_PARENT_APPROVAL
-  APPROVED
-  REJECTED
-  CANCELLED // withdrawn by whoever proposed it, before a response
 }
 
 /// Wallet (added Sep 5, 2026) — closed-loop credit ledger per
@@ -1000,13 +662,12 @@ enum RescheduleRequestStatus {
 /// than deciding either silently. `debitWallet()` exists as the
 /// natural counterpart to `creditWallet()` but has no caller yet.
 model Wallet {
-  id        String   @id @default(uuid())
-  parentId  String   @unique
-  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  balance   Decimal  @default(0) @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id           String              @id @default(uuid())
+  parentId     String              @unique
+  balance      Decimal             @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  parent       ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
 }
 
@@ -1017,38 +678,119 @@ model Wallet {
 /// deliberately denormalized) so a parent's statement reads
 /// correctly without recomputing a running total client-side.
 model WalletTransaction {
-  id       String @id @default(uuid())
-  walletId String
-  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-
-  type         WalletTransactionType
-  amount       Decimal @db.Decimal(10, 2)
-  balanceAfter Decimal @db.Decimal(10, 2)
-  reason       String
-
-  // What this transaction relates to, if anything — e.g.
-  // referenceType "MANUAL_ADJUSTMENT" for an Accounts-issued credit
-  // today; "ENROLLMENT_REFUND" / "DEMO_REFUND" are reserved for
-  // whenever an automatic refund-to-wallet path gets built.
-  referenceType String?
-  referenceId   String?
-
-  // Cognito `sub` of the Admin/Accounts login who issued this, when
-  // it was a manual action rather than a future automated one.
+  id                String                @id @default(uuid())
+  walletId          String
+  type              WalletTransactionType
+  amount            Decimal               @db.Decimal(10, 2)
+  balanceAfter      Decimal               @db.Decimal(10, 2)
+  reason            String
+  referenceType     String?
+  referenceId       String?
   createdByStaffSub String?
-
-  // Set only for a parent-initiated top-up (see wallet.service.ts's
-  // createWalletTopupOrder/verifyWalletTopup) — both unique so the
-  // verify route and the webhook-reconciliation fallback can both
-  // safely be called for the same order without double-crediting,
-  // same idempotency pattern as Enrollment/DemoBooking.
-  razorpayOrderId   String? @unique
-  razorpayPaymentId String? @unique
-
-  createdAt DateTime @default(now())
+  createdAt         DateTime              @default(now())
+  razorpayOrderId   String?               @unique
+  razorpayPaymentId String?               @unique
+  wallet            Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
   @@index([referenceType, referenceId])
+}
+
+enum TeacherApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TeacherFileType {
+  PROFILE_PHOTO
+  INTRO_VIDEO
+  CERTIFICATION
+  AWARD
+  DOB_PROOF
+  ADDRESS_PROOF
+  QUALIFICATION_PROOF
+}
+
+enum CourseStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum DemoBookingStatus {
+  CONFIRMED
+  PENDING_PAYMENT
+  COMPLETED
+  CANCELLED
+}
+
+enum LedgerPayoutStatus {
+  PENDING_VERIFICATION
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum EnrollmentStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ACTIVE
+  LAPSED
+  CANCELLED
+  PENDING_TEACHER_APPROVAL
+  PENDING_PARENT_RECONFIRMATION
+  PENDING_ADMIN_APPROVAL
+}
+
+/// Cycle payout status (added Sep 3, 2026) — informational/future
+/// gate only. Nothing reads this to actually withhold or release
+/// money yet, since Wallet/Tuition Ledger don't exist
+/// (03-DATA-MODEL.md). RELEASED isn't set anywhere in code today;
+/// it's reserved for whatever Accounts-side flow eventually
+/// consumes READY_FOR_PAYOUT enrollments.
+enum CyclePayoutStatus {
+  IN_PROGRESS
+  READY_FOR_PAYOUT
+  RELEASED
+}
+
+enum ChatSenderRole {
+  PARENT
+  TEACHER
+}
+
+enum HomeworkSubmissionStatus {
+  SUBMITTED
+  REVIEWED
+}
+
+enum StaffRole {
+  HR
+  ACCOUNTS
+}
+
+enum ClassSessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  MISSED
+}
+
+enum RescheduleRequestedBy {
+  PARENT
+  TEACHER
+}
+
+enum RescheduleRequestStatus {
+  PENDING_TEACHER_APPROVAL
+  PENDING_PARENT_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
 enum WalletTransactionType {
