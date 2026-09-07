@@ -7,10 +7,10 @@ import { CalendarClock, CheckCircle2 } from "lucide-react";
 import { useProposeSessionReschedule } from "@/features/parent/hooks/useProposeSessionReschedule";
 
 /**
- * Reached from the "Reschedule" link on a SCHEDULED class
- * (UpcomingLecturesCard) or directly by sessionId. Since the Parent
- * is proposing here, the request goes to the Teacher for approval —
- * see rescheduleRequest.service.ts.
+ * Reached from the "Request a reschedule" picker on
+ * /parent/reschedule (the Reschedule page itself), or directly by
+ * sessionId. Since the Parent is proposing here, the request goes to
+ * the Teacher for approval — see rescheduleRequest.service.ts.
  */
 export default function ParentProposeReschedulePage({
   params,
