@@ -23,11 +23,13 @@ const DEFAULT_LIMIT = 6;
  * today's class visually reads as the one that actually matters
  * right now, not just another item in a uniform list.
  *
- * The action button (Join for Parent, Start Session for Teacher) is
- * only clickable once `isSessionLive` says the scheduled time has
- * actually arrived (see classSessionWindow.ts) — visible either way,
- * so the person can always see what's coming up, just can't act on
- * it early.
+ * The action button (Join for Parent, Start Session for Teacher)
+ * only appears on today's hero card, and is only clickable once
+ * `isSessionLive` says the scheduled time has actually arrived (see
+ * classSessionWindow.ts). Later sessions are always in the future,
+ * so that button could never be enabled there — showing it anyway
+ * as a permanently-disabled control reads as broken, so those cards
+ * are plain info (date/time, other party, course) instead.
  *
  * Reads from the same `/api/parent/calendar` / `/api/teacher/calendar`
  * occurrences the existing calendar pages already use (current month
@@ -142,40 +144,34 @@ export default function UpcomingLecturesCard({
 
       {laterSessions.length > 0 && (
         <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-          {laterSessions.map((occ) => {
-            const otherParty = role === "teacher" ? occ.studentName : occ.teacherName;
-            const actionLabel = role === "teacher" ? "Start" : "Join";
-
-            return (
-              <div
-                key={occ.id}
-                className="rounded-xl p-3 border border-violet-100 bg-white"
-              >
-                <div className="flex items-center gap-1 text-[11px] font-bold text-brand mb-1">
-                  <CalendarClock size={11} />
-                  {occ.date}
-                  {occ.time ? ` · ${formatScheduleTime(occ.time)}` : ""}
+          {laterSessions.map((occ) => (
+            <div
+              key={occ.id}
+              className="rounded-xl p-3 border border-violet-100 bg-white"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-brand min-w-0">
+                  <CalendarClock size={11} className="flex-shrink-0" />
+                  <span className="truncate">
+                    {occ.date}
+                    {occ.time ? ` · ${formatScheduleTime(occ.time)}` : ""}
+                  </span>
                 </div>
-
-                <p className="text-xs font-semibold text-gray-800 truncate">
-                  {otherParty}
-                </p>
-                <p className="text-[11px] text-gray-500 truncate mb-2">
-                  {occ.courseTitle || occ.subject || "Course"}
-                </p>
-
-                <button
-                  type="button"
-                  disabled
-                  title="This becomes available at the scheduled time."
-                  className="w-full flex items-center justify-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded-full text-gray-400 bg-gray-100 cursor-not-allowed"
-                >
-                  {role === "teacher" ? <PlayCircle size={11} /> : <Video size={11} />}
-                  {actionLabel}
-                </button>
+                {role === "teacher" ? (
+                  <PlayCircle size={13} className="flex-shrink-0 text-gray-300" />
+                ) : (
+                  <Video size={13} className="flex-shrink-0 text-gray-300" />
+                )}
               </div>
-            );
-          })}
+
+              <p className="text-xs font-semibold text-gray-800 truncate">
+                {role === "teacher" ? occ.studentName : occ.teacherName}
+              </p>
+              <p className="text-[11px] text-gray-500 truncate">
+                {occ.courseTitle || occ.subject || "Course"}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </div>
