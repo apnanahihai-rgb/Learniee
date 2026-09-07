@@ -2,14 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Info, Sparkles, BookOpenCheck } from "lucide-react";
+import { CalendarClock, Info, Sparkles, BookOpenCheck, ArrowRight } from "lucide-react";
 
 import { useApprovedCourses } from "@/features/parent/hooks/useApprovedCourses";
 import { useStudents } from "@/features/parent/hooks/useStudents";
+import { useParentCalendar } from "@/features/parent/hooks/useCalendar";
 import CourseCard from "@/features/parent/components/CourseCard";
 import LearnerSwitcher, {
   type LearnerFilter,
 } from "@/features/parent/components/LearnerSwitcher";
+import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
+
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default function ParentHome() {
   const { courses, loading, error } = useApprovedCourses();
@@ -18,6 +25,9 @@ export default function ParentHome() {
     loading: studentsLoading,
     error: studentsError,
   } = useStudents();
+  const { occurrences, loading: occurrencesLoading } = useParentCalendar(
+    currentMonthKey(),
+  );
 
   const [activeLearner, setActiveLearner] = useState<LearnerFilter>("all");
 
@@ -91,6 +101,33 @@ export default function ParentHome() {
           <BookOpenCheck size={56} className="text-white/70" strokeWidth={1.3} />
         </div>
       </div>
+
+      {/* TODAY & UPCOMING LECTURES */}
+      <section className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center flex-shrink-0">
+              <CalendarClock size={18} />
+            </span>
+            <h2 className="font-heading text-lg font-bold text-gray-800">
+              Today &amp; upcoming lectures
+            </h2>
+          </div>
+          <Link
+            href="/parent/calendar"
+            className="text-sm font-semibold text-brand hover:text-brand-dark flex items-center gap-1"
+          >
+            Full calendar
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <UpcomingLecturesCard
+          occurrences={occurrences}
+          loading={occurrencesLoading}
+          role="parent"
+        />
+      </section>
 
       {/* ACTIVE COURSES */}
       <section>

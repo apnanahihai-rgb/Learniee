@@ -91,28 +91,6 @@ export function useTeacherEnrollments() {
     }
   }
 
-  async function markSession(enrollmentId: string) {
-    try {
-      const res = await fetch(
-        `/api/teacher/enrollments/${enrollmentId}/mark-session`,
-        { method: "PATCH" },
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to mark session complete");
-      }
-
-      setEnrollments((current) =>
-        current.map((e) => (e.id === enrollmentId ? { ...e, ...data.enrollment } : e)),
-      );
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to mark session complete.");
-    }
-  }
-
   async function setSchedule(
     enrollmentId: string,
     input: { scheduleDays: number[]; scheduleTime: string },
@@ -171,7 +149,6 @@ export function useTeacherEnrollments() {
         scheduleTime?: string;
       },
     ) => act(id, { action: "REVISE", ...input }),
-    markSession,
     setSchedule,
     syncEnrollment,
   };

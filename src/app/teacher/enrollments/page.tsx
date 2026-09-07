@@ -11,7 +11,6 @@ export default function TeacherEnrollmentsPage() {
     approve,
     reject,
     revise,
-    markSession,
     setSchedule,
     syncEnrollment,
   } = useTeacherEnrollments();
@@ -47,7 +46,6 @@ export default function TeacherEnrollmentsPage() {
                 onApprove={approve}
                 onReject={reject}
                 onRevise={revise}
-                onMarkSession={markSession}
                 onSetSchedule={setSchedule}
                 onSessionMarked={(patch) => syncEnrollment(enrollment.id, patch)}
               />

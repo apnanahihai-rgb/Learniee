@@ -10,7 +10,6 @@ import {
   CalendarDays,
   Plus,
   ArrowRight,
-  Clock,
 } from "lucide-react";
 
 import { useTeacherCourses } from "@/features/courses/hooks/useTeacherCourses";
@@ -20,18 +19,12 @@ import {
   getEnrollmentStatusLabel,
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
+import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
 
 interface TeacherProfile {
   firstName: string;
   lastName: string;
   visibleName: string | null;
-}
-
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
 }
 
 function currentMonthKey() {
@@ -86,16 +79,6 @@ export default function TeacherDashboard() {
     const ids = new Set(activeEnrollments.map((e) => e.student.id));
     return ids.size;
   }, [activeEnrollments]);
-
-  const today = todayKey();
-  const upcomingClasses = useMemo(
-    () =>
-      [...occurrences]
-        .filter((o) => o.date >= today)
-        .sort((a, b) => (a.date + (a.time ?? "")).localeCompare(b.date + (b.time ?? "")))
-        .slice(0, 5),
-    [occurrences, today],
-  );
 
   const publishedCourses = courses.filter((c) => c.status === "APPROVED");
 
@@ -261,7 +244,7 @@ export default function TeacherDashboard() {
               <CalendarDays size={18} />
             </span>
             <h2 className="font-heading text-lg font-bold text-gray-800">
-              Upcoming classes
+              Today &amp; upcoming lectures
             </h2>
           </div>
           <Link
@@ -273,41 +256,11 @@ export default function TeacherDashboard() {
           </Link>
         </div>
 
-        {occurrencesLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="rounded-2xl border border-violet-100 bg-violet-50/60 animate-pulse h-20"
-              />
-            ))}
-          </div>
-        ) : upcomingClasses.length === 0 ? (
-          <div className="bg-white border-2 border-dashed border-violet-200 rounded-3xl p-6 text-center text-sm text-gray-500">
-            No classes scheduled yet this month.
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {upcomingClasses.map((o, i) => (
-              <div
-                key={`${o.enrollmentId}-${o.date}-${i}`}
-                className="bg-white rounded-2xl border border-violet-100 p-4"
-              >
-                <div className="flex items-center gap-2 text-xs font-bold text-brand mb-1.5">
-                  <Clock size={13} />
-                  {o.date}
-                  {o.time ? ` · ${o.time}` : ""}
-                </div>
-                <p className="text-sm font-semibold text-gray-800 truncate">
-                  {o.studentName}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {o.courseTitle || o.subject || "Course"}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+        <UpcomingLecturesCard
+          occurrences={occurrences}
+          loading={occurrencesLoading}
+          role="teacher"
+        />
       </section>
 
       {/* YOUR COURSES */}

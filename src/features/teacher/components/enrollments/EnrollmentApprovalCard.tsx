@@ -24,7 +24,6 @@ interface Props {
       scheduleTime?: string;
     },
   ) => void;
-  onMarkSession: (id: string) => void;
   onSetSchedule: (
     id: string,
     input: { scheduleDays: number[]; scheduleTime: string },
@@ -42,7 +41,6 @@ export default function EnrollmentApprovalCard({
   onApprove,
   onReject,
   onRevise,
-  onMarkSession,
   onSetSchedule,
   onSessionMarked,
 }: Props) {
@@ -249,16 +247,6 @@ export default function EnrollmentApprovalCard({
           >
             <MessageCircle size={13} />
             Discuss in chat
-          </button>
-        )}
-
-        {isActive && (
-          <button
-            type="button"
-            onClick={() => onMarkSession(enrollment.id)}
-            className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-full transition-colors"
-          >
-            Mark next session complete
           </button>
         )}
 
