@@ -8,11 +8,7 @@ import {
   Calculator,
   User,
   BookOpen,
-  Briefcase,
-  FileText,
-  Users,
   Award,
-  School,
   Newspaper,
   ClipboardCheck,
   LogOut,
@@ -58,10 +54,8 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    label: "Classes & Students",
+    label: "Schedule",
     items: [
-      { label: "Class", path: "/teacher/class", icon: School },
-      { label: "Students Management", path: "/teacher/students", icon: Users },
       { label: "HW & Tests", path: "/teacher/hw-tests", icon: ClipboardCheck },
       { label: "Reschedule", path: "/teacher/reschedule", icon: RefreshCw },
       { label: "Leave", path: "/teacher/leave", icon: LogOut },
@@ -71,9 +65,7 @@ const menuSections: MenuSection[] = [
     label: "Growth & Earnings",
     items: [
       { label: "Rate Calculator", path: "/teacher/rate-calculator", icon: Calculator },
-      { label: "Reports", path: "/teacher/reports", icon: FileText },
       { label: "Certificate Management", path: "/teacher/certificates", icon: Award },
-      { label: "Vacancy", path: "/teacher/vacancy", icon: Briefcase },
     ],
   },
   {
