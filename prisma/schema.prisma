@@ -42,6 +42,7 @@ model ParentProfile {
   enrollments         Enrollment[]
   classSessions       ClassSession[]
   homeworks           Homework[]
+  wallet              Wallet?
 }
 
 model Admin {
@@ -902,4 +903,74 @@ enum ClassSessionStatus {
   COMPLETED
   CANCELLED
   MISSED
+}
+
+/// Wallet (added Sep 5, 2026) — closed-loop credit ledger per
+/// ParentProfile, no cash-out (06-OPEN-DECISIONS.md #28: "Refunds
+/// credit the Wallet, never the original payment method"). Account
+/// level, one row per parent — same lazy-create-on-first-use
+/// pattern as `DemoCoupon` (see `getOrCreateWallet()` in
+/// `wallet.service.ts`), so no backfill migration is needed for
+/// existing ParentProfile rows.
+///
+/// Nothing in this pass automatically credits a Wallet — there's no
+/// automatic refund-on-Enrollment-rejection flow yet, and Razorpay
+/// refunds still aren't wired up anywhere (see
+/// `enrollment.service.ts`'s existing "contact support for a
+/// refund" copy). The only way money moves into a Wallet today is
+/// Accounts/Admin manually issuing a credit via
+/// `/api/accounts/wallet/credit` (`WalletPanel.tsx`) — e.g. to
+/// actually fulfil one of those "contact support" refund promises.
+/// Whether Enrollment rejection/cancellation should auto-credit the
+/// Wallet, and whether a Wallet balance can be spent toward a future
+/// Enrollment/demo payment, are both still open — flagging rather
+/// than deciding either silently. `debitWallet()` exists as the
+/// natural counterpart to `creditWallet()` but has no caller yet.
+model Wallet {
+  id        String   @id @default(uuid())
+  parentId  String   @unique
+  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions WalletTransaction[]
+}
+
+/// One row per credit/debit. `amount` is always positive — `type`
+/// carries the direction, same "never a signed magnitude" shape
+/// Course/Enrollment money fields already use elsewhere in this
+/// schema. `balanceAfter` is a snapshot (not strictly normalized,
+/// deliberately denormalized) so a parent's statement reads
+/// correctly without recomputing a running total client-side.
+model WalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type         WalletTransactionType
+  amount       Decimal @db.Decimal(10, 2)
+  balanceAfter Decimal @db.Decimal(10, 2)
+  reason       String
+
+  // What this transaction relates to, if anything — e.g.
+  // referenceType "MANUAL_ADJUSTMENT" for an Accounts-issued credit
+  // today; "ENROLLMENT_REFUND" / "DEMO_REFUND" are reserved for
+  // whenever an automatic refund-to-wallet path gets built.
+  referenceType String?
+  referenceId   String?
+
+  // Cognito `sub` of the Admin/Accounts login who issued this, when
+  // it was a manual action rather than a future automated one.
+  createdByStaffSub String?
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@index([referenceType, referenceId])
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
 }

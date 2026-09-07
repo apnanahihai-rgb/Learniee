@@ -8,6 +8,7 @@ import {
 } from "@/features/accounts/server/export.service";
 import AccountsExportDashboard from "@/features/accounts/components/AccountsExportDashboard";
 import TuitionLedgerPanel from "@/features/accounts/components/TuitionLedgerPanel";
+import WalletPanel from "@/features/accounts/components/WalletPanel";
 
 export default async function AdminAccountsPage() {
   const admin = await requireAdmin();
@@ -25,6 +26,7 @@ export default async function AdminAccountsPage() {
     <>
       <div className="max-w-[1400px] mx-auto px-8 pt-8">
         <TuitionLedgerPanel />
+        <WalletPanel />
       </div>
       <AccountsExportDashboard
         heading="Accounts"

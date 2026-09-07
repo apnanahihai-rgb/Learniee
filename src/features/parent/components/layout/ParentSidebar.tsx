@@ -20,6 +20,7 @@ import {
   Star,
   User,
   AlertCircle,
+  Wallet as WalletIcon,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -63,6 +64,7 @@ const menuSections: MenuSection[] = [
       { label: "Home works/tests", path: "/parent/homework-tests", icon: ClipboardCheck },
       { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
       { label: "Payments", path: "/parent/payments", icon: CreditCard },
+      { label: "Wallet", path: "/parent/wallet", icon: WalletIcon },
       { label: "Favorites", path: "/parent/favorites", icon: Heart },
     ],
   },
