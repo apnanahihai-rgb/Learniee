@@ -16,6 +16,8 @@ interface Props {
   colorBy?: "student" | "course";
   /** Shown when there's nothing scheduled at all for the month. */
   emptyMessage?: string;
+  /** Optional — when set, each occurrence chip becomes clickable (e.g. to jump to its Reschedule page). */
+  onOccurrenceClick?: (occurrence: CalendarOccurrence) => void;
 }
 
 const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -40,6 +42,7 @@ export default function MonthCalendar({
   loading,
   colorBy = "student",
   emptyMessage = "No classes scheduled this month.",
+  onOccurrenceClick,
 }: Props) {
   const [yearStr, monthStr] = month.split("-");
   const year = Number(yearStr);
@@ -131,8 +134,29 @@ export default function MonthCalendar({
                       return (
                         <div
                           key={`${occ.enrollmentId}-${i}`}
-                          className={`text-[10px] leading-tight rounded px-1.5 py-1 truncate ${color.bg} ${color.text}`}
-                          title={`${occ.studentName} · ${occ.courseTitle ?? "Course"} with ${occ.teacherName}${occ.time ? " · " + formatScheduleTime(occ.time) : ""}`}
+                          onClick={
+                            onOccurrenceClick
+                              ? () => onOccurrenceClick(occ)
+                              : undefined
+                          }
+                          role={onOccurrenceClick ? "button" : undefined}
+                          tabIndex={onOccurrenceClick ? 0 : undefined}
+                          onKeyDown={
+                            onOccurrenceClick
+                              ? (e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    onOccurrenceClick(occ);
+                                  }
+                                }
+                              : undefined
+                          }
+                          className={`text-[10px] leading-tight rounded px-1.5 py-1 truncate ${color.bg} ${color.text} ${
+                            onOccurrenceClick
+                              ? "cursor-pointer hover:opacity-75"
+                              : ""
+                          }`}
+                          title={`${occ.studentName} · ${occ.courseTitle ?? "Course"} with ${occ.teacherName}${occ.time ? " · " + formatScheduleTime(occ.time) : ""}${onOccurrenceClick ? " · Click to reschedule" : ""}`}
                         >
                           <span className="font-bold">
                             {occ.time ? formatScheduleTime(occ.time) : ""}
