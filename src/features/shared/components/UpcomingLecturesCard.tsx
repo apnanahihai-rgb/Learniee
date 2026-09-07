@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarClock, PlayCircle, Video } from "lucide-react";
+import { CalendarClock, PlayCircle, RefreshCw, Video } from "lucide-react";
 
 import type { CalendarOccurrence } from "@/features/shared/types/calendar";
 import { formatScheduleTime } from "@/features/shared/utils/weekdays";
@@ -57,6 +57,14 @@ export default function UpcomingLecturesCard({
       role === "teacher"
         ? `/teacher/classes/${occ.id}/start`
         : `/parent/classes/${occ.id}/join`,
+    );
+  }
+
+  function goToReschedule(occ: CalendarOccurrence) {
+    router.push(
+      role === "teacher"
+        ? `/teacher/classes/${occ.id}/reschedule`
+        : `/parent/classes/${occ.id}/reschedule`,
     );
   }
 
@@ -134,6 +142,15 @@ export default function UpcomingLecturesCard({
                   {role === "teacher" ? <PlayCircle size={18} /> : <Video size={18} />}
                   {actionLabel}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => goToReschedule(occ)}
+                  className="w-full mt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-brand hover:text-brand-dark px-4 py-1.5"
+                >
+                  <RefreshCw size={13} />
+                  Reschedule
+                </button>
               </div>
             );
           })}
@@ -172,6 +189,15 @@ export default function UpcomingLecturesCard({
                 >
                   {role === "teacher" ? <PlayCircle size={11} /> : <Video size={11} />}
                   {actionLabel}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => goToReschedule(occ)}
+                  className="w-full mt-1 flex items-center justify-center gap-1 text-[10px] font-bold text-brand hover:text-brand-dark py-1"
+                >
+                  <RefreshCw size={10} />
+                  Reschedule
                 </button>
               </div>
             );

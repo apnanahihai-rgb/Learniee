@@ -886,6 +886,8 @@ model ClassSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  rescheduleRequests RescheduleRequest[]
+
   // Prevents double-generating the same calendar-date occurrence for
   // an enrollment — also what makes generateSessionsForEnrollment()
   // idempotent via `skipDuplicates`.
@@ -903,6 +905,77 @@ enum ClassSessionStatus {
   COMPLETED
   CANCELLED
   MISSED
+}
+
+/// Reschedule requests for one already-scheduled `ClassSession`
+/// (added Sep 7, 2026) — moving a lecture to a different date/time,
+/// independent of Enrollment's own payment/dual-approval workflow.
+///
+/// Single-step approval, per direct instruction (unlike Enrollment's
+/// sequential Teacher->Admin chain — there's no Admin involvement
+/// here at all): whoever did NOT propose the move has to approve it.
+///   - Parent proposes  -> PENDING_TEACHER_APPROVAL (Teacher decides)
+///   - Teacher proposes -> PENDING_PARENT_APPROVAL (Parent decides)
+///
+/// Approving updates the underlying ClassSession's `scheduledDate`/
+/// `scheduledTime` directly (see rescheduleRequest.service.ts) — the
+/// same session row simply moves, there's no separate "old" vs "new"
+/// session. `originalScheduledDate`/`originalScheduledTime` here are
+/// a display-only snapshot taken at request time, never re-read to
+/// drive logic.
+///
+/// `enrollmentId`/`teacherId`/`parentId` are denormalized off
+/// `classSessionId`, same established pattern as
+/// `ClassSession.teacherId`/`parentId` elsewhere in this schema —
+/// lets each role's request-inbox query filter directly without an
+/// extra join through ClassSession/Enrollment.
+model RescheduleRequest {
+  id String @id @default(uuid())
+
+  classSessionId String
+  classSession   ClassSession @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+
+  enrollmentId String
+  teacherId    String
+  parentId     String
+
+  requestedBy RescheduleRequestedBy
+
+  originalScheduledDate DateTime
+  originalScheduledTime String?
+
+  proposedDate DateTime
+  proposedTime String?
+
+  reason String? @db.Text
+
+  // Set at creation based on `requestedBy` — see the model
+  // doc-comment above for the mapping.
+  status RescheduleRequestStatus
+
+  responseNote String?   @db.Text
+  respondedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classSessionId])
+  @@index([teacherId])
+  @@index([parentId])
+  @@index([status])
+}
+
+enum RescheduleRequestedBy {
+  PARENT
+  TEACHER
+}
+
+enum RescheduleRequestStatus {
+  PENDING_TEACHER_APPROVAL
+  PENDING_PARENT_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED // withdrawn by whoever proposed it, before a response
 }
 
 /// Wallet (added Sep 5, 2026) — closed-loop credit ledger per
