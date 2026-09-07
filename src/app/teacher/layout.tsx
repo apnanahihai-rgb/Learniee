@@ -12,7 +12,7 @@ export default function TeacherLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-violet-50/40">
       {/* Fixed Navbar */}
       <TeacherNavbar
         onMenuClick={() =>
@@ -27,7 +27,7 @@ export default function TeacherLayout({
       />
 
       {/* Page Content */}
-      <main className="min-h-screen pt-14 lg:ml-52">
+      <main className="min-h-screen pt-16 lg:pl-64 bg-gradient-to-b from-violet-50 via-white to-white">
         {children}
       </main>
     </div>

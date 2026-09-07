@@ -35,17 +35,17 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Grouped + reordered (Sep 7, 2026) to match the same problem/fix
-// ParentSidebar already had: "Home" was missing entirely, and on
-// mobile TeacherNavbar's HOME button is hidden (`hidden sm:block`),
-// so there was previously no way back to /teacher except browser
-// back. It's now the first item here, same as ParentSidebar.
+// Same grouping/order as before — only the visual treatment below
+// was changed (Sep 7, 2026) to match ParentSidebar's design system
+// (gradient background, pill-shaped active state, section labels)
+// so the Teacher and Parent dashboards read as one consistent
+// product instead of two different UI styles.
 //
-// Sections below put what's actually built first (Main), then group
-// the remaining placeholder items by theme instead of leaving them
-// as one long, arbitrarily-ordered list — see 01-PROJECT-STATUS.md
-// / 05-MODULE-SPECS-INDEX.md for what's built vs. still a
-// placeholder route on the Teacher side.
+// Sections put what's actually built first (Main), then group the
+// remaining placeholder items by theme instead of leaving them as
+// one long, arbitrarily-ordered list — see 01-PROJECT-STATUS.md /
+// 05-MODULE-SPECS-INDEX.md for what's built vs. still a placeholder
+// route on the Teacher side.
 const menuSections: MenuSection[] = [
   {
     label: "Main",
@@ -120,12 +120,27 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
         type="button"
         onClick={() => handleNavigation(item.path)}
         className={`
-          w-full flex items-center gap-2 text-left text-sm py-1.5 rounded-md transition
-          ${isActive ? "text-yellow-300 font-semibold" : "text-white hover:text-yellow-200"}
+          group w-full flex items-center gap-3 text-left text-sm py-2 px-3 rounded-xl transition-all
+          ${
+            isActive
+              ? "bg-white text-brand-dark font-bold shadow-playful"
+              : "text-white/85 hover:bg-white/10 hover:text-white"
+          }
         `}
       >
-        <Icon size={15} strokeWidth={1.8} />
-        <span>{item.label}</span>
+        <span
+          className={`
+            w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+            ${
+              isActive
+                ? "bg-brand-yellow text-violet-900"
+                : "bg-white/10 text-white group-hover:bg-white/20"
+            }
+          `}
+        >
+          <Icon size={14} strokeWidth={2} />
+        </span>
+        <span className="truncate">{item.label}</span>
       </button>
     );
   };
@@ -135,42 +150,50 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
       {/* Mobile / Tablet overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          className="fixed inset-0 bg-violet-950/40 backdrop-blur-[2px] z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
       <aside
         className={`
-          fixed top-14 bottom-0 left-0 z-40 w-52
-          bg-purple-500 rounded-r-2xl px-5 py-7 text-white overflow-y-auto
+          fixed top-16 bottom-0 left-0 z-40 w-64
+          bg-gradient-to-b from-brand-light to-brand-dark
+          rounded-r-[2rem] px-4 py-6 text-white overflow-y-auto
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold text-yellow-300">Teacher</h2>
+        <div className="flex items-center justify-between mb-6 px-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">
+              Welcome back
+            </p>
+            <h2 className="font-heading text-2xl font-bold text-brand-yellow leading-tight">
+              Teacher Hub
+            </h2>
+          </div>
 
           {/* Mobile close button */}
           <button
             type="button"
             onClick={onClose}
-            className="lg:hidden text-white hover:text-yellow-200"
+            className="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
             aria-label="Close menu"
           >
-            <X size={22} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Menu, grouped into labelled sections — Main (built
             features) first, then remaining placeholder routes
             grouped by theme instead of one long undifferentiated
-            list. */}
-        <nav className="space-y-4">
+            list, same pattern as ParentSidebar. */}
+        <nav className="space-y-5">
           {menuSections.map((section) => (
             <div key={section.label}>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-white/60">
+              <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">
                 {section.label}
               </p>
               <div className="space-y-1">{section.items.map(renderItem)}</div>
