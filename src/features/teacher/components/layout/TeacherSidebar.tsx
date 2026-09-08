@@ -11,7 +11,7 @@ import {
   Award,
   Newspaper,
   ClipboardCheck,
-  LogOut,
+  CalendarOff,
   Video,
   Radio,
   MessageCircle,
@@ -58,7 +58,7 @@ const menuSections: MenuSection[] = [
     items: [
       { label: "HW & Tests", path: "/teacher/hw-tests", icon: ClipboardCheck },
       { label: "Reschedule", path: "/teacher/reschedule", icon: RefreshCw },
-      { label: "Leave", path: "/teacher/leave", icon: LogOut },
+      { label: "Leave", path: "/teacher/leave", icon: CalendarOff },
     ],
   },
   {
