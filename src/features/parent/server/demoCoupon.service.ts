@@ -5,6 +5,10 @@ import {
   rupeesToPaise,
   verifyCheckoutSignature,
 } from "@/lib/razorpay";
+import {
+  isInternationalParent,
+  priceWithInternationalSurcharge,
+} from "@/lib/internationalPayments";
 
 /**
  * DECIDED (06-OPEN-DECISIONS.md #26): every ParentProfile gets 2
@@ -14,6 +18,25 @@ import {
  */
 const FREE_DEMOS_PER_ACCOUNT = 2;
 const PAID_DEMO_PRICE = 100;
+
+/**
+ * Prices a paid demo for this parent, applying the international
+ * surcharge if applicable — same pattern and same caveats as
+ * enrollment.service.ts's priceEnrollment(). Called at order-create,
+ * verify, and webhook-reconcile time so the charge can't drift
+ * between steps.
+ */
+async function priceDemoBooking(parentId: string) {
+  const parent = await prisma.parentProfile.findUnique({
+    where: { id: parentId },
+    select: { nriOrIndian: true, country: true },
+  });
+
+  return priceWithInternationalSurcharge(
+    PAID_DEMO_PRICE,
+    parent ? isInternationalParent(parent) : false,
+  );
+}
 
 export class DemoBookingError extends Error {
   status: number;
@@ -224,10 +247,11 @@ export async function createDemoBookingOrder(
     );
   }
 
+  const pricing = await priceDemoBooking(parentId);
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(PAID_DEMO_PRICE),
+    amount: rupeesToPaise(pricing.amountPayable),
     currency: "INR",
     receipt: `demo_${Date.now()}`,
     // Full enough to reconstruct the DemoBooking from the webhook
@@ -244,7 +268,7 @@ export async function createDemoBookingOrder(
     },
   });
 
-  return { order, amount: PAID_DEMO_PRICE };
+  return { order, amount: pricing.amountPayable, pricing };
 }
 
 export interface VerifyDemoBookingPaymentInput extends CreateDemoBookingInput {
@@ -306,7 +330,9 @@ export async function verifyDemoBookingPayment(
     );
   }
 
-  if (Number(order.amount) !== rupeesToPaise(PAID_DEMO_PRICE)) {
+  const pricing = await priceDemoBooking(parentId);
+
+  if (Number(order.amount) !== rupeesToPaise(pricing.amountPayable)) {
     throw new DemoBookingError(
       "The paid amount doesn't match the demo fee — contact support with your payment ID for a refund.",
       409,
@@ -324,7 +350,9 @@ export async function verifyDemoBookingPayment(
       courseId: input.courseId,
       subject: validated.subject,
       isPaid: true,
-      amount: PAID_DEMO_PRICE,
+      amount: pricing.amountPayable,
+      isInternationalPayment: pricing.isInternationalPayment,
+      internationalSurchargeAmount: pricing.surchargeAmount,
       status: DemoBookingStatus.CONFIRMED,
       scheduledAt: validated.scheduledDate,
       razorpayOrderId: input.razorpayOrderId,
@@ -378,7 +406,9 @@ export async function reconcileDemoBookingFromWebhook(
     return null;
   }
 
-  if (Number(order.amount) !== rupeesToPaise(PAID_DEMO_PRICE)) {
+  const pricing = await priceDemoBooking(parentId);
+
+  if (Number(order.amount) !== rupeesToPaise(pricing.amountPayable)) {
     console.error("Razorpay webhook: demo amount mismatch", orderId);
     return null;
   }
@@ -409,7 +439,9 @@ export async function reconcileDemoBookingFromWebhook(
       courseId,
       subject,
       isPaid: true,
-      amount: PAID_DEMO_PRICE,
+      amount: pricing.amountPayable,
+      isInternationalPayment: pricing.isInternationalPayment,
+      internationalSurchargeAmount: pricing.surchargeAmount,
       status: DemoBookingStatus.CONFIRMED,
       scheduledAt: new Date(scheduledAt),
       razorpayOrderId: orderId,

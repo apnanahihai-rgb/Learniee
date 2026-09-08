@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { order, amount } = await createDemoBookingOrder(
+    const { order, amount, pricing } = await createDemoBookingOrder(
       parent.parentId,
       input,
     );
@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       currency: order.currency,
       keyId: process.env.RAZORPAY_KEY_ID,
       amountRupees: amount,
+      pricing,
     });
   } catch (error) {
     if (error instanceof DemoBookingError) {

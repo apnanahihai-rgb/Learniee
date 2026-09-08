@@ -262,6 +262,8 @@ model DemoBooking {
   paidAt            DateTime?
   razorpayOrderId   String?           @unique
   razorpayPaymentId String?           @unique
+  isInternationalPayment Boolean      @default(false)
+  internationalSurchargeAmount Decimal @default(0) @db.Decimal(10, 2)
   course            Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   demoCoupon        DemoCoupon        @relation(fields: [demoCouponId], references: [id], onDelete: Cascade)
   student           Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -323,6 +325,8 @@ model Enrollment {
   paidAt                     DateTime             @default(now())
   razorpayOrderId            String               @unique
   razorpayPaymentId          String               @unique
+  isInternationalPayment     Boolean              @default(false)
+  internationalSurchargeAmount Decimal            @default(0) @db.Decimal(10, 2)
   adminApprovedAt            DateTime?
   pricingChangedAfterPayment Boolean              @default(false)
   rejectedBy                 String?

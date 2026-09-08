@@ -5,6 +5,10 @@ import {
   rupeesToPaise,
   verifyCheckoutSignature,
 } from "@/lib/razorpay";
+import {
+  isInternationalParent,
+  priceWithInternationalSurcharge,
+} from "@/lib/internationalPayments";
 import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
 
 /**
@@ -55,7 +59,14 @@ interface PricedEnrollment {
   noOfMonths: number;
   ratePerSession: number;
   monthlyRate: number;
+  /** Course-computed total, unchanged by the international surcharge — see 03-DATA-MODEL.md's pricing formula. */
   totalAmount: number;
+  /** Whether the international surcharge applies — see src/lib/internationalPayments.ts. */
+  isInternationalPayment: boolean;
+  /** Extra amount on top of totalAmount for international parents. Zero otherwise. */
+  internationalSurchargeAmount: number;
+  /** totalAmount + internationalSurchargeAmount — this is what's actually charged via Razorpay. */
+  amountPayable: number;
   cycleStartDate: Date;
   dueDate: Date;
   scheduleDays: number[];
@@ -176,6 +187,22 @@ async function priceEnrollment(
 
   const subject = (input.subject ?? course.subject ?? "").trim() || null;
 
+  // Parent already confirmed to exist (the student lookup above is
+  // scoped to `parentId`) — fetch the two fields that decide whether
+  // the international surcharge applies. See
+  // src/lib/internationalPayments.ts for the detection logic and
+  // why this is a self-declared signal, not real-time card detection.
+  const parent = await prisma.parentProfile.findUnique({
+    where: { id: parentId },
+    select: { nriOrIndian: true, country: true },
+  });
+
+  const { isInternationalPayment, surchargeAmount, amountPayable } =
+    priceWithInternationalSurcharge(
+      totalAmount,
+      parent ? isInternationalParent(parent) : false,
+    );
+
   return {
     studentId: input.studentId,
     subject,
@@ -184,6 +211,9 @@ async function priceEnrollment(
     ratePerSession,
     monthlyRate,
     totalAmount,
+    isInternationalPayment,
+    internationalSurchargeAmount: surchargeAmount,
+    amountPayable,
     cycleStartDate,
     dueDate,
     scheduleDays,
@@ -214,7 +244,10 @@ export async function createEnrollmentOrder(
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(priced.totalAmount),
+    // Charges the surcharge-inclusive amount for international
+    // parents — see src/lib/internationalPayments.ts. Domestic
+    // parents get amountPayable === totalAmount, unchanged.
+    amount: rupeesToPaise(priced.amountPayable),
     currency: "INR",
     // Razorpay caps receipt at 40 chars — keep it short.
     receipt: `enr_${Date.now()}`,
@@ -296,14 +329,15 @@ export async function verifyEnrollmentPayment(
     );
   }
 
-  const expectedPaise = rupeesToPaise(priced.totalAmount);
+  const expectedPaise = rupeesToPaise(priced.amountPayable);
 
   if (Number(order.amount) !== expectedPaise) {
     // The order amount no longer matches what this course/cycle
     // combination prices to right now (e.g. Course.price changed
-    // mid-checkout) — refuse rather than create an Enrollment for
-    // the wrong amount. The payment itself already succeeded
-    // against Razorpay's order, so this needs a manual refund.
+    // mid-checkout, or the parent's international status changed) —
+    // refuse rather than create an Enrollment for the wrong amount.
+    // The payment itself already succeeded against Razorpay's
+    // order, so this needs a manual refund.
     throw new EnrollmentError(
       "The paid amount no longer matches this course's current price — contact support with your payment ID for a refund.",
       409,
@@ -331,7 +365,13 @@ export async function verifyEnrollmentPayment(
       status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
       razorpayOrderId: input.razorpayOrderId,
       razorpayPaymentId: input.razorpayPaymentId,
-      amountPaid: priced.totalAmount,
+      // amountPaid is the actual charge (base + international
+      // surcharge, if any) — can legitimately differ from
+      // totalAmount now, which is exactly what amountPaid being a
+      // separate field was already designed for.
+      amountPaid: priced.amountPayable,
+      isInternationalPayment: priced.isInternationalPayment,
+      internationalSurchargeAmount: priced.internationalSurchargeAmount,
       // Every Enrollment gets exactly one ChatRoom, created in the
       // same write — it's the sole Parent<->Teacher communication
       // channel throughout the whole approval flow, so it needs to
@@ -428,7 +468,7 @@ export async function reconcileEnrollmentFromWebhook(
   }
 
   const priced = await priceEnrollment(parentId, input);
-  const expectedPaise = rupeesToPaise(priced.totalAmount);
+  const expectedPaise = rupeesToPaise(priced.amountPayable);
 
   if (Number(order.amount) !== expectedPaise) {
     console.error("Razorpay webhook: enrollment amount mismatch", orderId);
@@ -454,7 +494,9 @@ export async function reconcileEnrollmentFromWebhook(
       status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
       razorpayOrderId: orderId,
       razorpayPaymentId: paymentId,
-      amountPaid: priced.totalAmount,
+      amountPaid: priced.amountPayable,
+      isInternationalPayment: priced.isInternationalPayment,
+      internationalSurchargeAmount: priced.internationalSurchargeAmount,
       chatRoom: {
         create: {
           parentId,

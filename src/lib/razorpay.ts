@@ -9,18 +9,22 @@ import Razorpay from "razorpay";
  * the pair), so the order-creation API routes return it alongside
  * the order so the client never needs its own copy of the env var.
  *
- * Currency/forex note (per direct request): Learniee only ever
- * creates orders in INR — every price in the product (Course.price,
- * the flat ₹100 demo fee) is an INR amount, and that's what we ask
- * Razorpay to charge. We do NOT compute or add any forex/markup
- * ourselves. A parent paying with a non-Indian card still gets
- * charged this exact INR amount; their own card network/issuing
- * bank does the currency conversion and applies whatever forex fee
- * their bank charges — that cost lands on them automatically, we
- * never see or touch it. The only thing required on our side for
- * non-Indian cards to work at all is enabling "International
- * Payments" in the Razorpay Dashboard (Account & Settings ->
- * Configuration) — that's a dashboard toggle + KYC step, not code.
+ * Currency note: Learniee only ever creates orders in INR — every
+ * price in the product (Course.price, the flat ₹100 demo fee) is an
+ * INR amount, and that's what we ask Razorpay to charge.
+ *
+ * International-surcharge note (UPDATED Sep 8, 2026 — supersedes
+ * the old no-markup decision that used to live in this comment):
+ * international parents are now charged an explicit surcharge on
+ * top of the base INR price, computed server-side via
+ * `src/lib/internationalPayments.ts` and folded into the order
+ * amount before it ever reaches Razorpay. Their card network/issuing
+ * bank may still apply its own separate forex fee on top of that —
+ * we have no visibility into that and don't try to account for it.
+ * Non-Indian cards still won't work at all unless "International
+ * Payments" is enabled in the Razorpay Dashboard (Account &
+ * Settings -> Configuration) — that's a dashboard toggle + KYC
+ * step, not code, same as before.
  */
 
 function getEnv(name: string): string {
