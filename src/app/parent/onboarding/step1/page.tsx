@@ -156,6 +156,16 @@ export default function Step1() {
               onChange={handleChange}
             />
           </FormField>
+
+          <FormField label="Referral Code" htmlFor="referredByCode">
+            <Input
+              id="referredByCode"
+              name="referredByCode"
+              placeholder="Have a code from a friend? Enter it here"
+              value={formData.referredByCode}
+              onChange={handleChange}
+            />
+          </FormField>
         </FormSection>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -5,6 +5,7 @@ import {
   rupeesToPaise,
   verifyCheckoutSignature,
 } from "@/lib/razorpay";
+import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
 
 /**
  * Cycle rule (updated Aug 31, 2026, per direct clarification —
@@ -350,6 +351,16 @@ export async function verifyEnrollmentPayment(
     include: { chatRoom: { select: { id: true } } },
   });
 
+  // Refer & Earn: if this Parent was referred and this is their
+  // first-ever Enrollment, credit the referrer's Wallet. Never lets
+  // a referral-processing failure block the payment/Enrollment
+  // response the Parent is waiting on.
+  try {
+    await processReferralRewardForNewEnrollment(parentId, enrollment.id);
+  } catch (err) {
+    console.error("Referral reward processing failed (enrollment still succeeded):", err);
+  }
+
   return enrollment;
 }
 
@@ -424,7 +435,7 @@ export async function reconcileEnrollmentFromWebhook(
     return null;
   }
 
-  return prisma.enrollment.create({
+  const enrollment = await prisma.enrollment.create({
     data: {
       studentId: priced.studentId,
       parentId,
@@ -454,6 +465,18 @@ export async function reconcileEnrollmentFromWebhook(
       },
     },
   });
+
+  // Same Refer & Earn hook as verifyEnrollmentPayment() — this path
+  // exists specifically for the "paid but /verify never got called"
+  // case, so it needs the same reward trigger, not just the happy
+  // path.
+  try {
+    await processReferralRewardForNewEnrollment(parentId, enrollment.id);
+  } catch (err) {
+    console.error("Referral reward processing failed (webhook enrollment still succeeded):", err);
+  }
+
+  return enrollment;
 }
 
 /**

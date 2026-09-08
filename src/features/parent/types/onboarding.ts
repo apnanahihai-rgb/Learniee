@@ -11,6 +11,10 @@ export interface Step1FormData {
   timezone: string;
   whatsappNumber: string;
   relationToStudent: string;
+  /** Optional — another Parent's shareable code (Refer & Earn). Not a
+   * ParentProfile column; handled specially by
+   * /api/onboarding/parent-info, see referral.service.ts. */
+  referredByCode: string;
 }
 
 export const emptyStep1FormData: Step1FormData = {
@@ -26,6 +30,7 @@ export const emptyStep1FormData: Step1FormData = {
   timezone: "",
   whatsappNumber: "",
   relationToStudent: "",
+  referredByCode: "",
 };
 
 export interface Step2FormData {

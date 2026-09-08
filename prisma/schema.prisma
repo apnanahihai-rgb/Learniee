@@ -44,6 +44,9 @@ model ParentProfile {
   students            Student[]
   wallet              Wallet?
   rescheduleRequests  RescheduleRequest[]
+  referralCode        String?              @unique
+  referralsMade       Referral[]           @relation("ReferralsMade")
+  referralReceived    Referral?            @relation("ReferralReceived")
 }
 
 model Admin {
@@ -672,6 +675,44 @@ model LeaveRequest {
   @@index([status])
 }
 
+/// Refer & Earn (added Sep 8, 2026) — a Parent's own shareable code
+/// (`ParentProfile.referralCode`, lazily generated the first time
+/// they open /parent/referral, same lazy-creation pattern as
+/// DemoCoupon/Wallet) that a *new* Parent can enter during onboarding
+/// (`Step1`'s "Referral code" field). One row per successful signup
+/// that used a code — `@@unique` on `refereeParentId` means a given
+/// Parent can only ever be "the referee" once. The reward is credited
+/// to the *referrer's* Wallet only once the referee's first
+/// Enrollment is actually created — which, per the payment gate in
+/// `06-OPEN-DECISIONS.md` #36, only ever happens after a real
+/// confirmed Razorpay payment. See
+/// `processReferralRewardForNewEnrollment()` in
+/// `referral.service.ts`, called from both `verifyEnrollmentPayment()`
+/// and `reconcileEnrollmentFromWebhook()` in `enrollment.service.ts`.
+/// Entering a code at signup alone never pays out anything by itself.
+model Referral {
+  id               String         @id @default(uuid())
+  referrerParentId String
+  refereeParentId  String         @unique
+  code             String
+  status           ReferralStatus @default(PENDING)
+  rewardAmount     Decimal        @default(500) @db.Decimal(10, 2)
+  /// Denormalized pointer to the Enrollment that triggered the
+  /// reward — plain string, not a Prisma relation (kept simple; the
+  /// `status` flip to REWARDED is what actually guards against a
+  /// double credit, this field is for audit/support lookups only).
+  enrollmentId String?
+  rewardedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  referrer ParentProfile @relation("ReferralsMade", fields: [referrerParentId], references: [id], onDelete: Cascade)
+  referee  ParentProfile @relation("ReferralReceived", fields: [refereeParentId], references: [id], onDelete: Cascade)
+
+  @@index([referrerParentId])
+  @@index([code])
+}
+
 /// Wallet (added Sep 5, 2026) — closed-loop credit ledger per
 /// ParentProfile, no cash-out (06-OPEN-DECISIONS.md #28: "Refunds
 /// credit the Wallet, never the original payment method"). Account
@@ -810,6 +851,11 @@ enum ClassSessionStatus {
   COMPLETED
   CANCELLED
   MISSED
+}
+
+enum ReferralStatus {
+  PENDING
+  REWARDED
 }
 
 enum LeaveRequestStatus {
