@@ -54,7 +54,7 @@ export default function WalletPanel() {
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden mb-8">
+    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b">
         <h2 className="text-lg font-semibold text-gray-800">Parent Wallets</h2>
         <p className="text-xs text-gray-400 mt-1">

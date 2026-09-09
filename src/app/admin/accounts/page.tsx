@@ -6,9 +6,7 @@ import {
   getDemoBookingRows,
   getAccountsSummary,
 } from "@/features/accounts/server/export.service";
-import AccountsExportDashboard from "@/features/accounts/components/AccountsExportDashboard";
-import TuitionLedgerPanel from "@/features/accounts/components/TuitionLedgerPanel";
-import WalletPanel from "@/features/accounts/components/WalletPanel";
+import AccountsDashboardShell from "@/features/accounts/components/AccountsDashboardShell";
 
 export default async function AdminAccountsPage() {
   const admin = await requireAdmin();
@@ -23,18 +21,12 @@ export default async function AdminAccountsPage() {
   const summary = await getAccountsSummary(ledgerRows, demoRows);
 
   return (
-    <>
-      <div className="max-w-[1400px] mx-auto px-8 pt-8">
-        <TuitionLedgerPanel />
-        <WalletPanel />
-      </div>
-      <AccountsExportDashboard
-        heading="Accounts"
-        subheading="Same ledger the Accounts team sees — tuition + demo revenue, exportable as Excel."
-        summary={summary}
-        ledgerRows={ledgerRows}
-        demoRows={demoRows}
-      />
-    </>
+    <AccountsDashboardShell
+      heading="Accounts"
+      subheading="Same ledger the Accounts team sees — tuition + demo revenue, exportable as Excel."
+      summary={summary}
+      ledgerRows={ledgerRows}
+      demoRows={demoRows}
+    />
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { useTuitionLedger, type LedgerEntry } from "@/features/accounts/hooks/useTuitionLedger";
+import type { LedgerEntry, LedgerSummary } from "@/features/accounts/hooks/useTuitionLedger";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -37,14 +37,35 @@ function PayoutStatusPill({ status, isOverdue }: { status: LedgerEntry["payoutSt
   );
 }
 
+interface TuitionLedgerPanelProps {
+  entries: LedgerEntry[];
+  summary: LedgerSummary | null;
+  loading: boolean;
+  error: string;
+  actingOn: string | null;
+  approve: (entryId: string) => Promise<boolean>;
+  reject: (entryId: string, reason?: string) => Promise<boolean>;
+}
+
 /**
  * Monthly Payout Verification (08-PROJECT-KNOWLEDGE-BASE.md) — the
  * Tuition Ledger as a real, persisted table (one row per completed
  * cycle) with Accounts' 1-day Approve/Reject window now a working
  * action, not just a description in a doc.
+ *
+ * Data comes from the parent dashboard shell (`useTuitionLedger` is
+ * lifted up there) so the pending-verification count can also drive
+ * the tab badge without a second fetch.
  */
-export default function TuitionLedgerPanel() {
-  const { entries, summary, loading, error, actingOn, approve, reject } = useTuitionLedger();
+export default function TuitionLedgerPanel({
+  entries,
+  summary,
+  loading,
+  error,
+  actingOn,
+  approve,
+  reject,
+}: TuitionLedgerPanelProps) {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
@@ -57,12 +78,13 @@ export default function TuitionLedgerPanel() {
   }
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden mb-8">
+    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b">
-        <h2 className="text-lg font-semibold text-gray-800">Tuition Ledger — Payout Verification</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Payout Verification</h2>
         <p className="text-xs text-gray-400 mt-1">
           One row per completed cycle. Each row starts Pending Verification with a 24-hour
-          window to Approve or Reject the teacher payout for that cycle.
+          window to Approve or Reject the teacher payout for that cycle. This is separate from
+          the Revenue Ledger tab, which lists Enrollments rather than completed payout cycles.
         </p>
       </div>
 
