@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAdminOrAccounts } from "@/lib/verifyAdmin";
 import {
+  getOngoingCycleRows,
   getTuitionLedgerRows,
   getDemoBookingRows,
   getAccountsSummary,
@@ -14,7 +15,8 @@ export default async function AccountsDashboardPage() {
     redirect("/login");
   }
 
-  const [ledgerRows, demoRows] = await Promise.all([
+  const [ongoingCycleRows, ledgerRows, demoRows] = await Promise.all([
+    getOngoingCycleRows(),
     getTuitionLedgerRows(),
     getDemoBookingRows(),
   ]);
@@ -25,6 +27,7 @@ export default async function AccountsDashboardPage() {
       heading="Accounts Dashboard"
       subheading="Tuition ledger and demo revenue, with an Excel export."
       summary={summary}
+      ongoingCycleRows={ongoingCycleRows}
       ledgerRows={ledgerRows}
       demoRows={demoRows}
     />

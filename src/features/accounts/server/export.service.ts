@@ -2,6 +2,8 @@ import "server-only";
 
 import ExcelJS from "exceljs";
 
+import { EnrollmentStatus } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { getSessionCountsForEnrollments } from "@/features/shared/server/classSession.service";
 
@@ -107,6 +109,69 @@ export async function getTuitionLedgerRows(): Promise<TuitionLedgerRow[]> {
       profits: Math.round(monthlyRate * PLATFORM_SHARE * 100) / 100,
       isDueSoon: e.dueDate <= fiveDaysFromNow && e.dueDate >= new Date(),
     };
+  });
+}
+
+export interface OngoingCycleRow {
+  enrollmentId: string;
+  parentName: string;
+  childName: string;
+  teacherName: string;
+  subject: string;
+  cycleNumber: number; // cyclesCompleted + 1 — the cycle currently in progress
+  sessionsCompletedInCycle: number;
+  sessionsPerMonth: number;
+  monthlyRate: number;
+  projectedTeacherPay: number; // what this cycle will pay the Teacher once it completes
+  projectedProfit: number; // platform's cut once it completes
+  cycleStartDate: Date;
+  lastSessionMarkedAt: Date | null;
+}
+
+/**
+ * Cycles currently IN PROGRESS — distinct from the Payout
+ * Verification queue (`tuitionLedger.service.ts`/`useTuitionLedger`),
+ * which only ever shows a cycle *after* it's fully completed and a
+ * `TuitionLedgerEntry` already exists for it. This is the "not paid
+ * out yet, not even completed yet" view Accounts asked for: how far
+ * into the current cycle each active Enrollment is, so an upcoming
+ * payout isn't a surprise the moment it lands in Payout Verification.
+ *
+ * Sorted with the closest-to-completing cycle first (highest
+ * sessions-done ratio), since that's the most actionable ordering
+ * for anticipating "what's about to need a payout decision."
+ */
+export async function getOngoingCycleRows(): Promise<OngoingCycleRow[]> {
+  const enrollments = await prisma.enrollment.findMany({
+    where: { status: EnrollmentStatus.ACTIVE },
+    include: ledgerInclude,
+    orderBy: { lastSessionMarkedAt: "desc" },
+  });
+
+  const rows = enrollments.map((e) => {
+    const monthlyRate = Number(e.monthlyRate);
+
+    return {
+      enrollmentId: e.id,
+      parentName: displayName(e.parent.firstName, e.parent.lastName),
+      childName: displayName(e.student.firstName, undefined, e.student.visibleName),
+      teacherName: displayName(e.teacher.firstName, e.teacher.lastName, e.teacher.visibleName),
+      subject: e.subject ?? e.course.subject ?? "",
+      cycleNumber: e.cyclesCompleted + 1,
+      sessionsCompletedInCycle: e.sessionsCompletedInCycle,
+      sessionsPerMonth: e.sessionsPerMonth,
+      monthlyRate,
+      projectedTeacherPay: Math.round(monthlyRate * TEACHER_SHARE * 100) / 100,
+      projectedProfit: Math.round(monthlyRate * PLATFORM_SHARE * 100) / 100,
+      cycleStartDate: e.cycleStartDate,
+      lastSessionMarkedAt: e.lastSessionMarkedAt,
+    };
+  });
+
+  return rows.sort((a, b) => {
+    const ratioA = a.sessionsCompletedInCycle / Math.max(1, a.sessionsPerMonth);
+    const ratioB = b.sessionsCompletedInCycle / Math.max(1, b.sessionsPerMonth);
+    return ratioB - ratioA;
   });
 }
 

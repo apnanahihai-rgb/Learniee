@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/verifyAdmin";
 import {
+  getOngoingCycleRows,
   getTuitionLedgerRows,
   getDemoBookingRows,
   getAccountsSummary,
@@ -14,19 +15,23 @@ export default async function AdminAccountsPage() {
     redirect("/login");
   }
 
-  const [ledgerRows, demoRows] = await Promise.all([
+  const [ongoingCycleRows, ledgerRows, demoRows] = await Promise.all([
+    getOngoingCycleRows(),
     getTuitionLedgerRows(),
     getDemoBookingRows(),
   ]);
   const summary = await getAccountsSummary(ledgerRows, demoRows);
 
   return (
-    <AccountsDashboardShell
-      heading="Accounts"
-      subheading="Same ledger the Accounts team sees — tuition + demo revenue, exportable as Excel."
-      summary={summary}
-      ledgerRows={ledgerRows}
-      demoRows={demoRows}
-    />
+    <div className="min-h-screen bg-gray-50">
+      <AccountsDashboardShell
+        heading="Accounts"
+        subheading="Same ledger the Accounts team sees — tuition + demo revenue, exportable as Excel."
+        summary={summary}
+        ongoingCycleRows={ongoingCycleRows}
+        ledgerRows={ledgerRows}
+        demoRows={demoRows}
+      />
+    </div>
   );
 }
