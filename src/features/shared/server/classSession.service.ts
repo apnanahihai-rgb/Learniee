@@ -9,6 +9,10 @@ import {
 } from "@prisma/client";
 
 import { createLedgerEntryForCompletedCycle } from "@/features/shared/server/tuitionLedger.service";
+import {
+  notifyClassSessionCompleted,
+  notifyCyclePayoutReady,
+} from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * ClassSession — the actual record of a class happening (or being
@@ -299,7 +303,7 @@ async function recomputeEnrollmentCounters(enrollmentId: string) {
     });
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const updated = await tx.enrollment.update({
       where: { id: enrollmentId },
       data: updateData,
@@ -310,6 +314,10 @@ async function recomputeEnrollmentCounters(enrollmentId: string) {
 
     return updated;
   });
+
+  await notifyCyclePayoutReady(enrollmentId);
+
+  return updated;
 }
 
 /**
@@ -348,7 +356,10 @@ export async function markClassSessionComplete(
     },
   });
 
-  return recomputeEnrollmentCounters(session.enrollmentId);
+  const result = await recomputeEnrollmentCounters(session.enrollmentId);
+  await notifyClassSessionCompleted(sessionId);
+
+  return result;
 }
 
 /**

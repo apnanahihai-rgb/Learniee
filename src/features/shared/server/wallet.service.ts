@@ -9,6 +9,7 @@ import {
   WALLET_TOPUP_MIN_AMOUNT,
   WALLET_TOPUP_MAX_AMOUNT,
 } from "@/features/shared/utils/walletTopup";
+import { notifyWalletCredited } from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Wallet (06-OPEN-DECISIONS.md #28) — closed-loop credit ledger per
@@ -96,7 +97,7 @@ function assertValidAdjustment(input: WalletAdjustmentInput) {
 export async function creditWallet(input: WalletAdjustmentInput) {
   assertValidAdjustment(input);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     let wallet = await tx.wallet.findUnique({ where: { parentId: input.parentId } });
 
     if (!wallet) {
@@ -132,6 +133,10 @@ export async function creditWallet(input: WalletAdjustmentInput) {
 
     return { wallet: updatedWallet, transaction };
   });
+
+  await notifyWalletCredited(input.parentId, input.amount, input.reason);
+
+  return result;
 }
 
 /**

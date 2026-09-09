@@ -10,6 +10,7 @@ import {
   priceWithInternationalSurcharge,
 } from "@/lib/internationalPayments";
 import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
+import { notifyEnrollmentCreated } from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Cycle rule (updated Aug 31, 2026, per direct clarification —
@@ -401,6 +402,8 @@ export async function verifyEnrollmentPayment(
     console.error("Referral reward processing failed (enrollment still succeeded):", err);
   }
 
+  await notifyEnrollmentCreated(enrollment.id);
+
   return enrollment;
 }
 
@@ -517,6 +520,8 @@ export async function reconcileEnrollmentFromWebhook(
   } catch (err) {
     console.error("Referral reward processing failed (webhook enrollment still succeeded):", err);
   }
+
+  await notifyEnrollmentCreated(enrollment.id);
 
   return enrollment;
 }

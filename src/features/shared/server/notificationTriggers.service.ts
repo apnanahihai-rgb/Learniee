@@ -1,0 +1,742 @@
+import "server-only";
+
+import { prisma } from "@/lib/prisma";
+import { NotificationRecipientRole, NotificationType } from "@prisma/client";
+
+import {
+  createNotification,
+  createNotifications,
+  notifyAllAdmins,
+} from "@/features/shared/server/notification.service";
+
+/**
+ * One function per business event that should produce an in-app
+ * notification. Kept in a single file (rather than scattered across
+ * every feature's own server folder) so "what notifications exist in
+ * this app" has one place to read — the actual triggering call still
+ * lives next to the business logic it's attached to (e.g.
+ * `enrollmentApproval.service.ts` calls
+ * `notifyEnrollmentTeacherApproved()` right after the status update).
+ *
+ * Every function here swallows its own errors (logs, never throws) —
+ * a notification-write failure must never block or roll back the
+ * real business transaction it's attached to. Call sites can invoke
+ * these without their own try/catch.
+ */
+
+async function safe(label: string, fn: () => Promise<void>) {
+  try {
+    await fn();
+  } catch (err) {
+    console.error(`Notification trigger failed (${label}):`, err);
+  }
+}
+
+const R = NotificationRecipientRole;
+const T = NotificationType;
+
+/** Small display-name helper — visibleName wins, else first+last. */
+function displayName(p: {
+  visibleName?: string | null;
+  firstName: string;
+  lastName?: string | null;
+}) {
+  return p.visibleName || `${p.firstName} ${p.lastName ?? ""}`.trim();
+}
+
+/**
+ * One shared lookup used by every Enrollment-related trigger below —
+ * the mutation functions in enrollmentApproval.service.ts /
+ * enrollment.service.ts don't all `include` display names on their
+ * own update() calls, so triggers fetch them once here rather than
+ * widening every mutation's include clause just for notification
+ * copy. Cheap (single indexed findUnique), and only ever called on
+ * already-successful state transitions, never on hot read paths.
+ */
+async function loadEnrollmentContext(enrollmentId: string) {
+  return prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    select: {
+      id: true,
+      parentId: true,
+      teacherId: true,
+      studentId: true,
+      status: true,
+      student: { select: { firstName: true, visibleName: true } },
+      teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+      parent: { select: { firstName: true, lastName: true, visibleName: true } },
+      course: { select: { courseTitle: true, subject: true } },
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Enrollment lifecycle
+// ---------------------------------------------------------------------------
+
+export function notifyEnrollmentCreated(enrollmentId: string) {
+  return safe("enrollment created", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const studentName = displayName({ firstName: e.student.firstName, visibleName: e.student.visibleName });
+    const courseTitle = e.course.courseTitle || "your course";
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_CREATED,
+      title: "Enrolled successfully",
+      message: `${studentName}'s enrollment in "${courseTitle}" is confirmed — waiting on the teacher's review.`,
+      link: "/parent/enrollments",
+    });
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.ENROLLMENT_CREATED,
+      title: "New enrollment to review",
+      message: `${studentName} just enrolled in "${courseTitle}" — review it to continue.`,
+      link: "/teacher/enrollments",
+    });
+  });
+}
+
+export function notifyEnrollmentTeacherApproved(enrollmentId: string) {
+  return safe("enrollment teacher-approved", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_TEACHER_APPROVED,
+      title: "Teacher approved your enrollment",
+      message: `Your enrollment in "${courseTitle}" was approved and is now waiting on final approval.`,
+      link: "/parent/enrollments",
+    });
+
+    await notifyAllAdmins({
+      type: T.ENROLLMENT_TEACHER_APPROVED,
+      title: "Enrollment awaiting your approval",
+      message: `An enrollment in "${courseTitle}" has cleared Teacher review and needs Admin approval.`,
+      link: "/admin/enrollments",
+    });
+  });
+}
+
+export function notifyEnrollmentRevisionProposed(enrollmentId: string, note: string) {
+  return safe("enrollment revision proposed", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+    const teacherName = displayName(e.teacher);
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_REVISION_PROPOSED,
+      title: "Teacher proposed a change",
+      message: `${teacherName} proposed a change to "${courseTitle}": ${note.slice(0, 140)}`,
+      link: "/parent/enrollments",
+    });
+  });
+}
+
+export function notifyEnrollmentRevisionConfirmed(enrollmentId: string) {
+  return safe("enrollment revision confirmed", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "the enrollment";
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.ENROLLMENT_REVISION_CONFIRMED,
+      title: "Parent confirmed your change",
+      message: `The parent confirmed your proposed change to "${courseTitle}" — it's now with Admin.`,
+      link: "/teacher/enrollments",
+    });
+
+    await notifyAllAdmins({
+      type: T.ENROLLMENT_REVISION_CONFIRMED,
+      title: "Enrollment awaiting your approval",
+      message: `An enrollment in "${courseTitle}" cleared a revision reconfirmation and needs Admin approval.`,
+      link: "/admin/enrollments",
+    });
+  });
+}
+
+export function notifyEnrollmentRevisionDeclined(enrollmentId: string) {
+  return safe("enrollment revision declined", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "the enrollment";
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.ENROLLMENT_REVISION_DECLINED,
+      title: "Parent declined your change",
+      message: `The parent declined your proposed change to "${courseTitle}" — the enrollment is cancelled.`,
+      link: "/teacher/enrollments",
+    });
+  });
+}
+
+export function notifyEnrollmentRejected(
+  enrollmentId: string,
+  rejectedBy: "TEACHER" | "ADMIN",
+) {
+  return safe("enrollment rejected", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your enrollment";
+    const by = rejectedBy === "TEACHER" ? "the teacher" : "an admin";
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_REJECTED,
+      title: "Enrollment rejected",
+      message: `Your enrollment in "${courseTitle}" was rejected by ${by}.`,
+      link: "/parent/enrollments",
+    });
+
+    if (rejectedBy === "ADMIN") {
+      await createNotification({
+        recipientId: e.teacherId,
+        recipientRole: R.TEACHER,
+        type: T.ENROLLMENT_REJECTED,
+        title: "Enrollment rejected by Admin",
+        message: `Admin rejected the enrollment in "${courseTitle}" you'd already approved.`,
+        link: "/teacher/enrollments",
+      });
+    }
+  });
+}
+
+export function notifyEnrollmentActivated(enrollmentId: string) {
+  return safe("enrollment activated", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+    const studentName = displayName({ firstName: e.student.firstName, visibleName: e.student.visibleName });
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_ACTIVATED,
+      title: "Enrollment is now active",
+      message: `${studentName}'s enrollment in "${courseTitle}" is fully approved — classes will be scheduled.`,
+      link: "/parent/enrollments",
+    });
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.ENROLLMENT_ACTIVATED,
+      title: "Enrollment is now active",
+      message: `The enrollment for ${studentName} in "${courseTitle}" is active — classes have been scheduled.`,
+      link: "/teacher/enrollments",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Class sessions
+// ---------------------------------------------------------------------------
+
+export function notifyClassSessionCompleted(sessionId: string) {
+  return safe("class session completed", async () => {
+    const session = await prisma.classSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        parentId: true,
+        teacherId: true,
+        scheduledDate: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!session) return;
+
+    const courseTitle = session.enrollment.course.courseTitle || "your class";
+    const dateLabel = session.scheduledDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+    });
+
+    await createNotification({
+      recipientId: session.parentId,
+      recipientRole: R.PARENT,
+      type: T.CLASS_SESSION_COMPLETED,
+      title: "Class marked complete",
+      message: `The ${dateLabel} class for "${courseTitle}" was marked complete by the teacher.`,
+      link: "/parent/calendar",
+    });
+  });
+}
+
+/** Cycle just completed and payout moved to READY_FOR_PAYOUT — lets the Teacher know money is queued. */
+export function notifyCyclePayoutReady(enrollmentId: string) {
+  return safe("cycle payout ready", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your enrollment";
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.CYCLE_PAYOUT_READY,
+      title: "A cycle just completed",
+      message: `A billing cycle for "${courseTitle}" is complete — payout is queued for Accounts' review.`,
+      link: "/teacher/rate-calculator",
+    });
+  });
+}
+
+/**
+ * "Lecture will start in X" — called only from the reminder cron
+ * (/api/cron/session-reminders), never from request-handling code,
+ * since it needs to fire on a schedule rather than in response to a
+ * user action. `minutesUntil` is folded into the copy directly
+ * rather than left for the client to compute.
+ */
+export function notifyClassSessionStartingSoon(
+  sessionId: string,
+  minutesUntil: number,
+) {
+  return safe("class session reminder", async () => {
+    const session = await prisma.classSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        parentId: true,
+        teacherId: true,
+        scheduledTime: true,
+        enrollment: {
+          select: {
+            course: { select: { courseTitle: true } },
+            student: { select: { firstName: true, visibleName: true } },
+          },
+        },
+      },
+    });
+    if (!session) return;
+
+    const courseTitle = session.enrollment.course.courseTitle || "your class";
+    const studentName = displayName({
+      firstName: session.enrollment.student.firstName,
+      visibleName: session.enrollment.student.visibleName,
+    });
+    const timeLabel = session.scheduledTime ? ` at ${session.scheduledTime}` : "";
+
+    await createNotifications([
+      {
+        recipientId: session.parentId,
+        recipientRole: R.PARENT,
+        type: T.CLASS_SESSION_REMINDER,
+        title: "Class starting soon",
+        message: `${studentName}'s "${courseTitle}" class starts in about ${minutesUntil} minutes${timeLabel}.`,
+        link: "/parent/calendar",
+      },
+      {
+        recipientId: session.teacherId,
+        recipientRole: R.TEACHER,
+        type: T.CLASS_SESSION_REMINDER,
+        title: "Class starting soon",
+        message: `Your "${courseTitle}" class with ${studentName} starts in about ${minutesUntil} minutes${timeLabel}.`,
+        link: "/teacher/classes",
+      },
+    ]);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Demo bookings
+// ---------------------------------------------------------------------------
+
+export function notifyDemoBooked(bookingId: string) {
+  return safe("demo booked", async () => {
+    const booking = await prisma.demoBooking.findUnique({
+      where: { id: bookingId },
+      select: {
+        parentId: true,
+        teacherId: true,
+        scheduledAt: true,
+        student: { select: { firstName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!booking) return;
+
+    const courseTitle = booking.course.courseTitle || "a course";
+    const studentName = displayName({
+      firstName: booking.student.firstName,
+      visibleName: booking.student.visibleName,
+    });
+    const dateLabel = booking.scheduledAt
+      ? booking.scheduledAt.toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : "soon";
+
+    await createNotification({
+      recipientId: booking.parentId,
+      recipientRole: R.PARENT,
+      type: T.DEMO_BOOKED,
+      title: "Demo booked",
+      message: `Demo for "${courseTitle}" is booked for ${dateLabel}.`,
+      link: "/parent/free-demo",
+    });
+
+    await createNotification({
+      recipientId: booking.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.DEMO_BOOKED,
+      title: "New demo booking",
+      message: `${studentName} booked a demo for "${courseTitle}" on ${dateLabel}.`,
+      link: "/teacher/demo",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Reschedule requests
+// ---------------------------------------------------------------------------
+
+export function notifyReschedulePropose(requestId: string) {
+  return safe("reschedule proposed", async () => {
+    const request = await prisma.rescheduleRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        requestedBy: true,
+        parentId: true,
+        teacherId: true,
+        proposedDate: true,
+        proposedTime: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!request) return;
+
+    const courseTitle = request.enrollment.course.courseTitle || "the class";
+    const dateLabel = request.proposedDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+    });
+    const timeLabel = request.proposedTime ? ` at ${request.proposedTime}` : "";
+
+    const recipientId = request.requestedBy === "PARENT" ? request.teacherId : request.parentId;
+    const recipientRole = request.requestedBy === "PARENT" ? R.TEACHER : R.PARENT;
+    const proposer = request.requestedBy === "PARENT" ? "The parent" : "The teacher";
+
+    await createNotification({
+      recipientId,
+      recipientRole,
+      type: T.RESCHEDULE_PROPOSED,
+      title: "Reschedule requested",
+      message: `${proposer} proposed moving your "${courseTitle}" class to ${dateLabel}${timeLabel}.`,
+      link: recipientRole === R.TEACHER ? "/teacher/reschedule" : "/parent/reschedule",
+    });
+  });
+}
+
+export function notifyRescheduleResponded(requestId: string, approved: boolean) {
+  return safe("reschedule responded", async () => {
+    const request = await prisma.rescheduleRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        requestedBy: true,
+        parentId: true,
+        teacherId: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!request) return;
+
+    const courseTitle = request.enrollment.course.courseTitle || "the class";
+
+    // Notify whichever side originally proposed the move.
+    const recipientId = request.requestedBy === "PARENT" ? request.parentId : request.teacherId;
+    const recipientRole = request.requestedBy === "PARENT" ? R.PARENT : R.TEACHER;
+
+    await createNotification({
+      recipientId,
+      recipientRole,
+      type: approved ? T.RESCHEDULE_APPROVED : T.RESCHEDULE_REJECTED,
+      title: approved ? "Reschedule approved" : "Reschedule rejected",
+      message: approved
+        ? `Your requested reschedule for "${courseTitle}" was approved.`
+        : `Your requested reschedule for "${courseTitle}" was rejected.`,
+      link: recipientRole === R.TEACHER ? "/teacher/reschedule" : "/parent/reschedule",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Leave requests
+// ---------------------------------------------------------------------------
+
+export function notifyLeaveRequestSubmitted(teacherId: string) {
+  return safe("leave request submitted", async () => {
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      select: { firstName: true, lastName: true, visibleName: true },
+    });
+    if (!teacher) return;
+
+    await notifyAllAdmins({
+      type: T.LEAVE_REQUEST_SUBMITTED,
+      title: "New leave request",
+      message: `${displayName(teacher)} submitted a leave request for review.`,
+      link: "/admin/leave-requests",
+    });
+  });
+}
+
+export function notifyLeaveRequestResponded(teacherId: string, approved: boolean) {
+  return safe("leave request responded", async () => {
+    await createNotification({
+      recipientId: teacherId,
+      recipientRole: R.TEACHER,
+      type: approved ? T.LEAVE_REQUEST_APPROVED : T.LEAVE_REQUEST_REJECTED,
+      title: approved ? "Leave request approved" : "Leave request rejected",
+      message: approved
+        ? "Your leave request was approved by Admin."
+        : "Your leave request was rejected by Admin.",
+      link: "/teacher/leave",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Homework
+// ---------------------------------------------------------------------------
+
+export function notifyHomeworkAssigned(homeworkId: string) {
+  return safe("homework assigned", async () => {
+    const homework = await prisma.homework.findUnique({
+      where: { id: homeworkId },
+      select: {
+        parentId: true,
+        title: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!homework) return;
+
+    await createNotification({
+      recipientId: homework.parentId,
+      recipientRole: R.PARENT,
+      type: T.HOMEWORK_ASSIGNED,
+      title: "New homework assigned",
+      message: `"${homework.title}" was assigned for ${homework.enrollment.course.courseTitle || "your course"}.`,
+      link: "/parent/homework-tests",
+    });
+  });
+}
+
+export function notifyHomeworkSubmitted(homeworkId: string) {
+  return safe("homework submitted", async () => {
+    const homework = await prisma.homework.findUnique({
+      where: { id: homeworkId },
+      select: {
+        teacherId: true,
+        title: true,
+        student: { select: { firstName: true, visibleName: true } },
+      },
+    });
+    if (!homework) return;
+
+    const studentName = displayName({
+      firstName: homework.student.firstName,
+      visibleName: homework.student.visibleName,
+    });
+
+    await createNotification({
+      recipientId: homework.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.HOMEWORK_SUBMITTED,
+      title: "Homework submitted",
+      message: `${studentName} submitted "${homework.title}" — ready for review.`,
+      link: "/teacher/hw-tests",
+    });
+  });
+}
+
+export function notifyHomeworkGraded(homeworkId: string) {
+  return safe("homework graded", async () => {
+    const homework = await prisma.homework.findUnique({
+      where: { id: homeworkId },
+      select: { parentId: true, title: true },
+    });
+    if (!homework) return;
+
+    await createNotification({
+      recipientId: homework.parentId,
+      recipientRole: R.PARENT,
+      type: T.HOMEWORK_GRADED,
+      title: "Homework reviewed",
+      message: `Your teacher reviewed "${homework.title}" and left feedback.`,
+      link: "/parent/homework-tests",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Courses & teacher approval
+// ---------------------------------------------------------------------------
+
+export function notifyCourseApproval(courseId: string, approved: boolean) {
+  return safe("course approval", async () => {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { teacherId: true, courseTitle: true, subject: true, status: true },
+    });
+    if (!course) return;
+
+    await createNotification({
+      recipientId: course.teacherId,
+      recipientRole: R.TEACHER,
+      type: approved ? T.COURSE_APPROVED : T.COURSE_REJECTED,
+      title: approved ? "Course approved" : "Course rejected",
+      message: approved
+        ? `Your course "${course.courseTitle || "Untitled course"}" was approved and is now visible to parents.`
+        : `Your course "${course.courseTitle || "Untitled course"}" was rejected — check Admin's notes.`,
+      link: "/teacher/course-management",
+    });
+
+    if (approved && course.subject?.trim()) {
+      await notifyInterestedParentsOfNewCourse(courseId);
+    }
+  });
+}
+
+/**
+ * "New lecture with the same subject has been listed" — fans out to
+ * every Parent whose `favoriteSubject` case-insensitively matches
+ * the newly-approved course's subject. Capped at 200 recipients per
+ * course so one very popular subject can't turn a single approval
+ * into an unbounded write; a Notification Center-level "digest"
+ * instead of per-course fan-out is the kind of thing #32's fuller
+ * Phase 2 version should eventually replace this with.
+ */
+const INTERESTED_PARENT_NOTIFY_CAP = 200;
+
+async function notifyInterestedParentsOfNewCourse(courseId: string) {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: {
+      courseTitle: true,
+      subject: true,
+      teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+    },
+  });
+  if (!course?.subject) return;
+
+  const interestedParents = await prisma.parentProfile.findMany({
+    where: { favoriteSubject: { equals: course.subject, mode: "insensitive" } },
+    select: { id: true },
+    take: INTERESTED_PARENT_NOTIFY_CAP,
+  });
+  if (interestedParents.length === 0) return;
+
+  const teacherName = displayName(course.teacher);
+  const courseTitle = course.courseTitle || "A new course";
+
+  await createNotifications(
+    interestedParents.map((p) => ({
+      recipientId: p.id,
+      recipientRole: R.PARENT,
+      type: T.COURSE_PUBLISHED_MATCH,
+      title: "New course in a subject you like",
+      message: `"${courseTitle}" by ${teacherName} was just listed for ${course.subject} — you marked this as a favorite subject.`,
+      link: "/parent/courses",
+    })),
+  );
+}
+
+export function notifyTeacherApprovalStatus(teacherId: string, approved: boolean) {
+  return safe("teacher approval status", async () => {
+    await createNotification({
+      recipientId: teacherId,
+      recipientRole: R.TEACHER,
+      type: approved ? T.TEACHER_APPROVED : T.TEACHER_REJECTED,
+      title: approved ? "You're approved!" : "Application rejected",
+      message: approved
+        ? "Your teacher application was approved — you can now create courses."
+        : "Your teacher application was rejected.",
+      link: approved ? "/teacher/course-management" : "/teacher/pending-approval",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+export function notifyChatMessage(roomId: string, senderRole: "PARENT" | "TEACHER") {
+  return safe("chat message", async () => {
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: {
+        parentId: true,
+        teacherId: true,
+        parent: { select: { firstName: true, lastName: true, visibleName: true } },
+        teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!room) return;
+
+    const courseTitle = room.course.courseTitle || "your enrollment";
+
+    if (senderRole === "PARENT") {
+      await createNotification({
+        recipientId: room.teacherId,
+        recipientRole: R.TEACHER,
+        type: T.CHAT_MESSAGE,
+        title: "New message",
+        message: `${displayName(room.parent)} sent you a message about "${courseTitle}".`,
+        link: `/teacher/chat/${roomId}`,
+      });
+    } else {
+      await createNotification({
+        recipientId: room.parentId,
+        recipientRole: R.PARENT,
+        type: T.CHAT_MESSAGE,
+        title: "New message",
+        message: `${displayName(room.teacher)} sent you a message about "${courseTitle}".`,
+        link: `/parent/chat/${roomId}`,
+      });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Wallet
+// ---------------------------------------------------------------------------
+
+export function notifyWalletCredited(parentId: string, amount: number, reason: string) {
+  return safe("wallet credited", async () => {
+    await createNotification({
+      recipientId: parentId,
+      recipientRole: R.PARENT,
+      type: T.WALLET_CREDITED,
+      title: "Wallet credited",
+      message: `₹${amount.toLocaleString("en-IN")} was added to your wallet — ${reason}`,
+      link: "/parent/wallet",
+    });
+  });
+}

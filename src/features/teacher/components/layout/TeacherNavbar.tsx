@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { Menu, Bell, Search, GraduationCap } from "lucide-react";
+import { Menu, Search, GraduationCap } from "lucide-react";
+
+import NotificationBell from "@/features/shared/components/NotificationBell";
 
 interface Teacher {
   firstName: string;
@@ -112,16 +114,10 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
           />
         </div>
 
-        {/* Notification — static for now. Notification Center
-            (grouped buckets, admin toggle, subscribe/unsubscribe)
-            is a Phase 2 feature, see 06-OPEN-DECISIONS.md #32. */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative w-9 h-9 rounded-full bg-violet-50 text-brand hover:bg-violet-100 flex items-center justify-center transition"
-        >
-          <Bell size={17} />
-        </button>
+        {/* Notification — replaced the static placeholder (was
+            waiting on Notification Center, 06-OPEN-DECISIONS.md #32)
+            with a working dropdown, see NotificationBell.tsx. */}
+        <NotificationBell />
 
         <div className="hidden sm:block w-px h-8 bg-violet-100" />
 

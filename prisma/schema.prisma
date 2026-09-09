@@ -587,6 +587,11 @@ model ClassSession {
   completedByRole    String?
   cancelledAt        DateTime?
   cancelReason       String?
+  /// Set once a "class starts soon" reminder notification has been
+  /// sent for this session (see /api/cron/session-reminders) — the
+  /// dedupe guard so the reminder cron never double-notifies the
+  /// same session on a later run.
+  reminderSentAt     DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   enrollment         Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -885,4 +890,70 @@ enum RescheduleRequestStatus {
 enum WalletTransactionType {
   CREDIT
   DEBIT
+}
+
+/// In-app notifications (added Sep 8, 2026). Loosely-typed recipient
+/// pointer — `recipientId` points at `ParentProfile.id`,
+/// `Teacher.id`, or `Admin.id` depending on `recipientRole`, never
+/// FK-constrained to any one of them. Same established pattern as
+/// `ChatMessage.senderId` elsewhere in this schema (see its
+/// doc-comment) — there's still no generic `User` table
+/// (06-OPEN-DECISIONS.md #33), so this is how a notification can
+/// point at any of the three roles without three separate tables.
+/// `ACCOUNTS` is included in `NotificationRecipientRole` for
+/// forward-compatibility but nothing writes it yet — Accounts-role
+/// notifications (payout verification queue, etc.) are a follow-up,
+/// not built in this pass.
+enum NotificationRecipientRole {
+  PARENT
+  TEACHER
+  ADMIN
+  ACCOUNTS
+}
+
+enum NotificationType {
+  ENROLLMENT_CREATED
+  ENROLLMENT_TEACHER_APPROVED
+  ENROLLMENT_REVISION_PROPOSED
+  ENROLLMENT_REVISION_CONFIRMED
+  ENROLLMENT_REVISION_DECLINED
+  ENROLLMENT_REJECTED
+  ENROLLMENT_ACTIVATED
+  DEMO_BOOKED
+  CLASS_SESSION_REMINDER
+  CLASS_SESSION_COMPLETED
+  CYCLE_PAYOUT_READY
+  RESCHEDULE_PROPOSED
+  RESCHEDULE_APPROVED
+  RESCHEDULE_REJECTED
+  LEAVE_REQUEST_SUBMITTED
+  LEAVE_REQUEST_APPROVED
+  LEAVE_REQUEST_REJECTED
+  HOMEWORK_ASSIGNED
+  HOMEWORK_SUBMITTED
+  HOMEWORK_GRADED
+  COURSE_APPROVED
+  COURSE_REJECTED
+  COURSE_PUBLISHED_MATCH
+  CHAT_MESSAGE
+  WALLET_CREDITED
+  TEACHER_APPROVED
+  TEACHER_REJECTED
+  GENERIC
+}
+
+model Notification {
+  id            String                    @id @default(uuid())
+  recipientId   String
+  recipientRole NotificationRecipientRole
+  type          NotificationType
+  title         String
+  message       String
+  link          String?
+  isRead        Boolean                   @default(false)
+  readAt        DateTime?
+  createdAt     DateTime                  @default(now())
+
+  @@index([recipientId, recipientRole, createdAt])
+  @@index([recipientId, recipientRole, isRead])
 }

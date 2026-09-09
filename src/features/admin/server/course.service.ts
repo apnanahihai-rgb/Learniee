@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { CourseStatus } from "@prisma/client";
+import { notifyCourseApproval } from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Courses waiting on Admin review, newest first.
@@ -41,7 +42,7 @@ export async function setCourseApproval(
   courseId: string,
   status: typeof CourseStatus.APPROVED | typeof CourseStatus.REJECTED,
 ) {
-  return prisma.course.update({
+  const updated = await prisma.course.update({
     where: {
       id: courseId,
     },
@@ -49,4 +50,8 @@ export async function setCourseApproval(
       status,
     },
   });
+
+  await notifyCourseApproval(courseId, status === CourseStatus.APPROVED);
+
+  return updated;
 }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ChatSenderRole } from "@prisma/client";
 import { SENDABLE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
+import { notifyChatMessage } from "@/features/shared/server/notificationTriggers.service";
 
 export class ChatError extends Error {
   status: number;
@@ -200,6 +201,8 @@ export async function sendMessage(input: SendMessageInput) {
       data: { lastMessageAt: new Date() },
     }),
   ]);
+
+  await notifyChatMessage(input.roomId, input.senderRole);
 
   return message;
 }

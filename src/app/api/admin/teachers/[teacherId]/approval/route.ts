@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 import { TeacherApprovalStatus } from "@prisma/client";
+import { notifyTeacherApprovalStatus } from "@/features/shared/server/notificationTriggers.service";
 
 export async function PATCH(
   req: Request,
@@ -77,6 +78,8 @@ export async function PATCH(
         approvalStatus: status,
       },
     });
+
+    await notifyTeacherApprovalStatus(teacherId, status === TeacherApprovalStatus.APPROVED);
 
     return NextResponse.json({
       success: true,

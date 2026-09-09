@@ -2,18 +2,29 @@
 
 import { useRouter } from "next/navigation";
 
+import NotificationBell from "@/features/shared/components/NotificationBell";
+
 export default function AdminDashboard() {
   const router = useRouter();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b px-8 py-5">
-        <h1 className="text-2xl font-bold text-purple-600">
-          Learniee Admin Dashboard
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage teachers, courses and approvals
-        </p>
+      <header className="bg-white border-b px-8 py-5 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-purple-600">
+            Learniee Admin Dashboard
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage teachers, courses and approvals
+          </p>
+        </div>
+
+        {/* Only this dashboard page has a shared header today — the
+            other Admin pages (teachers, courses, users, chat,
+            enrollments) each render their own, since there's no
+            shared AdminShell yet (01-PROJECT-STATUS.md §1). The bell
+            is only reachable from here until that's built. */}
+        <NotificationBell />
       </header>
 
       <main className="p-8">

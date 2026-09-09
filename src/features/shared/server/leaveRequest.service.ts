@@ -2,6 +2,10 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { LeaveRequestStatus } from "@prisma/client";
+import {
+  notifyLeaveRequestSubmitted,
+  notifyLeaveRequestResponded,
+} from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Teacher leave requests — single-step Teacher -> Admin approval.
@@ -78,7 +82,7 @@ export async function createLeaveRequest(input: CreateLeaveRequestInput) {
     throw new LeaveRequestError("End date can't be before the start date.");
   }
 
-  return prisma.leaveRequest.create({
+  const created = await prisma.leaveRequest.create({
     data: {
       teacherId: input.teacherId,
       startDate,
@@ -87,6 +91,10 @@ export async function createLeaveRequest(input: CreateLeaveRequestInput) {
       status: LeaveRequestStatus.PENDING,
     },
   });
+
+  await notifyLeaveRequestSubmitted(input.teacherId);
+
+  return created;
 }
 
 /** Every leave request this Teacher has raised, newest first. */
@@ -156,7 +164,7 @@ export async function respondToLeaveRequest(input: RespondToLeaveRequestInput) {
     throw new LeaveRequestError("This request isn't pending anymore.", 409);
   }
 
-  return prisma.leaveRequest.update({
+  const updated = await prisma.leaveRequest.update({
     where: { id: request.id },
     data: {
       status:
@@ -166,4 +174,8 @@ export async function respondToLeaveRequest(input: RespondToLeaveRequestInput) {
     },
     include: { teacher: { select: teacherSelect } },
   });
+
+  await notifyLeaveRequestResponded(request.teacherId, input.decision === "APPROVE");
+
+  return updated;
 }

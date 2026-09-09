@@ -5,6 +5,14 @@ import {
   generateSessionsForEnrollment,
   regenerateFutureSessions,
 } from "@/features/shared/server/classSession.service";
+import {
+  notifyEnrollmentTeacherApproved,
+  notifyEnrollmentRevisionProposed,
+  notifyEnrollmentRevisionConfirmed,
+  notifyEnrollmentRevisionDeclined,
+  notifyEnrollmentRejected,
+  notifyEnrollmentActivated,
+} from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Sequential dual-approval workflow (resolves 06-OPEN-DECISIONS.md
@@ -111,13 +119,17 @@ export async function teacherApproveEnrollment(
     );
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
       teacherApprovedAt: new Date(),
       status: EnrollmentStatus.PENDING_ADMIN_APPROVAL,
     },
   });
+
+  await notifyEnrollmentTeacherApproved(enrollmentId);
+
+  return updated;
 }
 
 export interface TeacherReviseInput {
@@ -232,10 +244,14 @@ export async function teacherReviseEnrollment(
     data.scheduleTime = input.scheduleTime;
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data,
   });
+
+  await notifyEnrollmentRevisionProposed(enrollmentId, input.note.trim());
+
+  return updated;
 }
 
 export async function teacherRejectEnrollment(
@@ -255,7 +271,7 @@ export async function teacherRejectEnrollment(
     );
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
       status: EnrollmentStatus.REJECTED,
@@ -263,6 +279,10 @@ export async function teacherRejectEnrollment(
       rejectionReason: reason?.trim().slice(0, 1000) || null,
     },
   });
+
+  await notifyEnrollmentRejected(enrollmentId, "TEACHER");
+
+  return updated;
 }
 
 async function loadOwnedByParent(enrollmentId: string, parentId: string) {
@@ -294,13 +314,17 @@ export async function parentConfirmRevision(
     );
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
       teacherApprovedAt: new Date(),
       status: EnrollmentStatus.PENDING_ADMIN_APPROVAL,
     },
   });
+
+  await notifyEnrollmentRevisionConfirmed(enrollmentId);
+
+  return updated;
 }
 
 /** Parent declines the Teacher's proposed revision — enrollment is cancelled. */
@@ -317,10 +341,14 @@ export async function parentDeclineRevision(
     );
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: { status: EnrollmentStatus.CANCELLED },
   });
+
+  await notifyEnrollmentRevisionDeclined(enrollmentId);
+
+  return updated;
 }
 
 async function loadPendingAdminReview(enrollmentId: string) {
@@ -360,6 +388,7 @@ export async function adminApproveEnrollment(enrollmentId: string) {
   // rows now that lectures can actually be scheduled. No-ops if
   // scheduleDays somehow ended up empty. See classSession.service.ts.
   await generateSessionsForEnrollment(updated);
+  await notifyEnrollmentActivated(enrollmentId);
 
   return updated;
 }
@@ -445,7 +474,7 @@ export async function adminRejectEnrollment(
     );
   }
 
-  return prisma.enrollment.update({
+  const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
       status: EnrollmentStatus.REJECTED,
@@ -453,4 +482,8 @@ export async function adminRejectEnrollment(
       rejectionReason: reason?.trim().slice(0, 1000) || null,
     },
   });
+
+  await notifyEnrollmentRejected(enrollmentId, "ADMIN");
+
+  return updated;
 }

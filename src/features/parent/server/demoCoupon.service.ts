@@ -9,6 +9,7 @@ import {
   isInternationalParent,
   priceWithInternationalSurcharge,
 } from "@/lib/internationalPayments";
+import { notifyDemoBooked } from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * DECIDED (06-OPEN-DECISIONS.md #26): every ParentProfile gets 2
@@ -223,6 +224,8 @@ export async function createFreeDemoBooking(
     });
   });
 
+  await notifyDemoBooked(booking.id);
+
   return { booking, usedFreeCoupon: true };
 }
 
@@ -361,6 +364,8 @@ export async function verifyDemoBookingPayment(
     },
   });
 
+  await notifyDemoBooked(booking.id);
+
   return { booking, usedFreeCoupon: false };
 }
 
@@ -430,7 +435,7 @@ export async function reconcileDemoBookingFromWebhook(
 
   const coupon = await getOrCreateDemoCoupon(parentId);
 
-  return prisma.demoBooking.create({
+  const booking = await prisma.demoBooking.create({
     data: {
       demoCouponId: coupon.id,
       parentId,
@@ -449,6 +454,10 @@ export async function reconcileDemoBookingFromWebhook(
       paidAt: new Date(),
     },
   });
+
+  await notifyDemoBooked(booking.id);
+
+  return booking;
 }
 
 /**

@@ -6,6 +6,10 @@ import {
   RescheduleRequestedBy,
   RescheduleRequestStatus,
 } from "@prisma/client";
+import {
+  notifyReschedulePropose,
+  notifyRescheduleResponded,
+} from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Reschedule requests for one already-scheduled `ClassSession` — see
@@ -168,7 +172,7 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
 
   const reason = input.reason?.trim() || null;
 
-  return prisma.rescheduleRequest.create({
+  const created = await prisma.rescheduleRequest.create({
     data: {
       classSessionId: session.id,
       enrollmentId: session.enrollmentId,
@@ -184,6 +188,10 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
     },
     include: requestInclude,
   });
+
+  await notifyReschedulePropose(created.id);
+
+  return created;
 }
 
 function assertCanRespond(
@@ -243,7 +251,7 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
   const responseNote = input.responseNote?.trim() || null;
 
   if (input.decision === "REJECT") {
-    return prisma.rescheduleRequest.update({
+    const rejected = await prisma.rescheduleRequest.update({
       where: { id: request.id },
       data: {
         status: RescheduleRequestStatus.REJECTED,
@@ -252,6 +260,10 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
       },
       include: requestInclude,
     });
+
+    await notifyRescheduleResponded(rejected.id, false);
+
+    return rejected;
   }
 
   // APPROVE
@@ -299,6 +311,8 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
       include: requestInclude,
     }),
   ]);
+
+  await notifyRescheduleResponded(updatedRequest.id, true);
 
   return updatedRequest;
 }

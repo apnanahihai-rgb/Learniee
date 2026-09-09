@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { HomeworkSubmissionStatus } from "@prisma/client";
 
 import { ACTIVE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
+import {
+  notifyHomeworkAssigned,
+  notifyHomeworkSubmitted,
+  notifyHomeworkGraded,
+} from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Homework module (added Sep 4, 2026) — deliberately a simple
@@ -121,7 +126,7 @@ export async function createHomework(teacherId: string, input: CreateHomeworkInp
     teacherId,
   });
 
-  return prisma.homework.create({
+  const created = await prisma.homework.create({
     data: {
       enrollmentId: enrollment.id,
       teacherId: enrollment.teacherId,
@@ -134,6 +139,10 @@ export async function createHomework(teacherId: string, input: CreateHomeworkInp
     },
     include: homeworkInclude,
   });
+
+  await notifyHomeworkAssigned(created.id);
+
+  return created;
 }
 
 async function requireOwnedHomework(homeworkId: string, teacherId: string) {
@@ -228,7 +237,7 @@ export async function submitHomework(
     );
   }
 
-  return prisma.homeworkSubmission.upsert({
+  const submission = await prisma.homeworkSubmission.upsert({
     where: { homeworkId },
     create: {
       homeworkId,
@@ -244,6 +253,10 @@ export async function submitHomework(
       submittedAt: new Date(),
     },
   });
+
+  await notifyHomeworkSubmitted(homeworkId);
+
+  return submission;
 }
 
 export interface ReviewSubmissionInput {
@@ -266,7 +279,7 @@ export async function reviewSubmission(
     throw new HomeworkError("No submission to review yet.", 404);
   }
 
-  return prisma.homeworkSubmission.update({
+  const reviewed = await prisma.homeworkSubmission.update({
     where: { homeworkId: homework.id },
     data: {
       status: HomeworkSubmissionStatus.REVIEWED,
@@ -274,4 +287,8 @@ export async function reviewSubmission(
       reviewedAt: new Date(),
     },
   });
+
+  await notifyHomeworkGraded(homework.id);
+
+  return reviewed;
 }
