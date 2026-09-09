@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useTeacherCourses } from "@/features/courses/hooks/useTeacherCourses";
-import { useEffect, useRef, useState } from "react";
 import CourseCard from "@/features/courses/components/CourseCard";
 export default function TeacherCourseManagementPage() {
   const router = useRouter();

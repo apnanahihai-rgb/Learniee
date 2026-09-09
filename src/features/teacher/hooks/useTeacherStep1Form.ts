@@ -27,7 +27,7 @@ export function useTeacherStep1Form() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Step1FormData>(emptyStep1FormData);
-  const [teacherId, setTeacherId] = useState<string | null>(null);
+  const [, setTeacherId] = useState<string | null>(null);
 
   const files = useTeacherStep1Files();
 
