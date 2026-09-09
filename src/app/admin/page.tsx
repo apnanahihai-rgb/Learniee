@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { User } from "lucide-react";
 
 import NotificationBell from "@/features/shared/components/NotificationBell";
 
@@ -23,8 +24,21 @@ export default function AdminDashboard() {
             other Admin pages (teachers, courses, users, chat,
             enrollments) each render their own, since there's no
             shared AdminShell yet (01-PROJECT-STATUS.md §1). The bell
-            is only reachable from here until that's built. */}
-        <NotificationBell />
+            is only reachable from here until that's built. Same
+            reasoning for the new Profile link (Sep 10, 2026) — no
+            sidebar to attach a menu item to, so it lives here too. */}
+        <div className="flex items-center gap-3">
+          <NotificationBell />
+          <button
+            type="button"
+            onClick={() => router.push("/admin/profile")}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-purple-600 transition"
+            aria-label="Your profile"
+          >
+            <User size={18} />
+            <span className="hidden sm:inline">Profile</span>
+          </button>
+        </div>
       </header>
 
       <main className="p-8">
