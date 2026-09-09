@@ -14,9 +14,106 @@ function formatDate(value: string) {
   });
 }
 
+type PendingAction = {
+  complaintId: string;
+  action: "RESOLVE" | "CLOSE";
+  subject: string;
+};
+
+/**
+ * Replaces the previous `window.prompt(...)` (the browser's native
+ * dialog — unstyled, blocks the whole tab, can't be dismissed with
+ * Escape-then-continue-typing) with an in-app modal that matches the
+ * rest of the admin UI. Same optional-note behavior: Confirm with an
+ * empty textarea still resolves/closes, it just sends no note.
+ */
+function AdminNoteModal({
+  pending,
+  note,
+  onNoteChange,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingAction;
+  note: string;
+  onNoteChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const isResolve = pending.action === "RESOLVE";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold text-gray-800">
+          {isResolve ? "Resolve" : "Close"} complaint
+        </h2>
+        <p className="text-sm text-gray-500 mt-1 truncate">&ldquo;{pending.subject}&rdquo;</p>
+
+        <label className="block text-xs font-semibold text-gray-600 mt-4">
+          Note for the raiser (optional)
+          <textarea
+            autoFocus
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="Let them know what happened"
+            rows={3}
+            maxLength={500}
+            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none text-sm text-gray-800 focus:border-purple-400 resize-none"
+          />
+        </label>
+
+        <div className="flex justify-end gap-2 mt-5">
+          <button
+            onClick={onCancel}
+            className="text-sm font-semibold text-gray-600 hover:bg-gray-100 px-4 py-2 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`text-sm font-bold text-white px-4 py-2 rounded-lg ${
+              isResolve ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-800"
+            }`}
+          >
+            {isResolve ? "Resolve" : "Close"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminComplaintsPage() {
   const { complaints, loading, error, markInProgress, resolve, close } = useAdminComplaints();
   const [showResolved, setShowResolved] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  function closeModal() {
+    setPendingAction(null);
+    setNoteDraft("");
+  }
+
+  function confirmAction() {
+    if (!pendingAction) return;
+
+    const note = noteDraft.trim() || undefined;
+
+    if (pendingAction.action === "RESOLVE") {
+      resolve(pendingAction.complaintId, note);
+    } else {
+      close(pendingAction.complaintId, note);
+    }
+
+    closeModal();
+  }
 
   const visible = showResolved
     ? complaints
@@ -96,7 +193,7 @@ export default function AdminComplaintsPage() {
                       )}
                       <button
                         onClick={() =>
-                          resolve(c.id, window.prompt("Note for the raiser (optional):") || undefined)
+                          setPendingAction({ complaintId: c.id, action: "RESOLVE", subject: c.subject })
                         }
                         className="text-sm font-bold text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-lg"
                       >
@@ -104,7 +201,7 @@ export default function AdminComplaintsPage() {
                       </button>
                       <button
                         onClick={() =>
-                          close(c.id, window.prompt("Note for the raiser (optional):") || undefined)
+                          setPendingAction({ complaintId: c.id, action: "CLOSE", subject: c.subject })
                         }
                         className="text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg"
                       >
@@ -118,6 +215,16 @@ export default function AdminComplaintsPage() {
           </div>
         )}
       </div>
+
+      {pendingAction && (
+        <AdminNoteModal
+          pending={pendingAction}
+          note={noteDraft}
+          onNoteChange={setNoteDraft}
+          onCancel={closeModal}
+          onConfirm={confirmAction}
+        />
+      )}
     </div>
   );
 }
