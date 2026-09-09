@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/verifyAdmin";
 import { adminDeleteCognitoUser } from "@/lib/cognitoAdmin";
+import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 export async function POST(req: NextRequest) {
   const admin = await requireAdmin();
@@ -31,6 +32,19 @@ export async function POST(req: NextRequest) {
   } else {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
+
+  await logActivity({
+    action: "USER_DELETED",
+    actorRole: "ADMIN",
+    ...actorFromTokenPayload({
+      sub: String(admin.sub),
+      email: typeof admin.email === "string" ? admin.email : undefined,
+      given_name: typeof admin.given_name === "string" ? admin.given_name : undefined,
+      family_name: typeof admin.family_name === "string" ? admin.family_name : undefined,
+    }),
+    description: `${role === "parent" ? "Parent" : "Teacher"} account deleted — ${email}.`,
+    metadata: { deletedEmail: email, deletedRole: role },
+  });
 
   return NextResponse.json({ success: true });
 }

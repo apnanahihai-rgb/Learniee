@@ -6,6 +6,7 @@ import { AuthenticationDetails, CognitoUser } from "amazon-cognito-identity-js";
 import Cookies from "js-cookie";
 
 import { userPool } from "@/lib/cognito";
+import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 export function useLogin() {
   const router = useRouter();
@@ -70,6 +71,7 @@ export function useLogin() {
           try {
             const idToken = session.getIdToken().getJwtToken();
             Cookies.set("idToken", idToken, { expires: 1 });
+            logClientActivity("LOGIN");
 
             const role = session.getIdToken().payload["custom:role"];
             setForcePasswordChange(false);
@@ -133,6 +135,7 @@ export function useLogin() {
           Cookies.set("idToken", idToken, {
             expires: 1,
           });
+          logClientActivity("LOGIN");
 
           const role = session.getIdToken().payload["custom:role"];
 

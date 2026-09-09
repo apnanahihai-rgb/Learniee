@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
 import { verifyWalletTopup, WalletError } from "@/features/shared/server/wallet.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
  * POST
@@ -36,6 +37,18 @@ export async function POST(req: Request) {
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
+    });
+
+    await logActivity({
+      action: "PAYMENT_WALLET_TOPUP",
+      actorRole: "PARENT",
+      actorId: parent.parentId,
+      description: `Wallet top-up received — ₹${transaction.amount} (new balance ₹${transaction.balanceAfter}).`,
+      metadata: {
+        walletTransactionId: transaction.id,
+        amount: Number(transaction.amount),
+        razorpayPaymentId: transaction.razorpayPaymentId,
+      },
     });
 
     return NextResponse.json({ success: true, transaction });

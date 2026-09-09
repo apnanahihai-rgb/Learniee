@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 import { TeacherApprovalStatus } from "@prisma/client";
 import { notifyTeacherApprovalStatus } from "@/features/shared/server/notificationTriggers.service";
+import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 export async function PATCH(
   req: Request,
@@ -80,6 +81,18 @@ export async function PATCH(
     });
 
     await notifyTeacherApprovalStatus(teacherId, status === TeacherApprovalStatus.APPROVED);
+
+    const approved = status === TeacherApprovalStatus.APPROVED;
+
+    await logActivity({
+      action: approved ? "TEACHER_APPROVED" : "TEACHER_REJECTED",
+      actorRole: "ADMIN",
+      ...actorFromTokenPayload(auth.payload),
+      description: `Teacher ${updatedTeacher.firstName} ${updatedTeacher.lastName} ${
+        approved ? "approved" : "rejected"
+      }.`,
+      metadata: { teacherId },
+    });
 
     return NextResponse.json({
       success: true,

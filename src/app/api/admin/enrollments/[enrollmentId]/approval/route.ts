@@ -6,6 +6,7 @@ import {
   adminRejectEnrollment,
   EnrollmentApprovalError,
 } from "@/features/shared/server/enrollmentApproval.service";
+import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 /**
  * PATCH
@@ -51,6 +52,14 @@ export async function PATCH(
         { status: 400 },
       );
     }
+
+    await logActivity({
+      action: action === "APPROVE" ? "ENROLLMENT_ADMIN_APPROVED" : "ENROLLMENT_REJECTED",
+      actorRole: "ADMIN",
+      ...actorFromTokenPayload(auth.payload),
+      description: `Admin ${action === "APPROVE" ? "approved" : "rejected"} enrollment ${enrollmentId}.`,
+      metadata: { enrollmentId, reason: action === "REJECT" ? body.reason : undefined },
+    });
 
     return NextResponse.json({ success: true, enrollment });
   } catch (error) {

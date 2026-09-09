@@ -6,6 +6,7 @@ import {
   DemoBookingError,
   type VerifyDemoBookingPaymentInput,
 } from "@/features/parent/server/demoCoupon.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
  * POST
@@ -50,6 +51,18 @@ export async function POST(req: Request) {
     }
 
     const result = await verifyDemoBookingPayment(parent.parentId, input);
+
+    await logActivity({
+      action: "PAYMENT_DEMO_BOOKING",
+      actorRole: "PARENT",
+      actorId: parent.parentId,
+      description: `Demo booking payment received — ₹${result.booking.amount} (Booking ${result.booking.id}).`,
+      metadata: {
+        bookingId: result.booking.id,
+        amount: Number(result.booking.amount),
+        razorpayPaymentId: result.booking.razorpayPaymentId,
+      },
+    });
 
     return NextResponse.json({ success: true, ...result }, { status: 201 });
   } catch (error) {

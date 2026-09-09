@@ -5,6 +5,7 @@ import {
   markClassSessionComplete,
   ClassSessionError,
 } from "@/features/shared/server/classSession.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
  * PATCH
@@ -40,6 +41,25 @@ export async function PATCH(
       sessionId,
       teacher.teacherId,
     );
+
+    // Covers both "lecture started" and "lecture ended" from the
+    // Activity Log's point of view — per direct instruction
+    // (StartClassSessionPage's own doc-comment), clicking "Start
+    // Session" immediately marks this same session complete rather
+    // than opening a separate in-progress state, since there's no
+    // real video room yet. There is currently no distinct
+    // "started" event to log.
+    const studentName =
+      enrollment.student.visibleName || enrollment.student.firstName;
+    const courseTitle = enrollment.course.courseTitle || "a course";
+
+    await logActivity({
+      action: "CLASS_SESSION_COMPLETED",
+      actorRole: "TEACHER",
+      actorId: teacher.teacherId,
+      description: `Class session marked complete for ${studentName} — "${courseTitle}".`,
+      metadata: { sessionId, enrollmentId: enrollment.id },
+    });
 
     return NextResponse.json({ success: true, enrollment });
   } catch (error) {

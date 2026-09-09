@@ -6,6 +6,7 @@ import Cookies from "js-cookie";
 import { Menu, Search, GraduationCap } from "lucide-react";
 
 import NotificationBell from "@/features/shared/components/NotificationBell";
+import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 interface Teacher {
   firstName: string;
@@ -44,7 +45,11 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
     fetchTeacher();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Fire the log before removing the cookie — the endpoint needs
+    // the idToken cookie to identify who's logging out.
+    await logClientActivity("LOGOUT");
+
     Cookies.remove("idToken");
     localStorage.removeItem("teacherId");
 

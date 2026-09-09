@@ -6,6 +6,7 @@ import {
   EnrollmentError,
   type VerifyEnrollmentPaymentInput,
 } from "@/features/parent/server/enrollment.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
  * POST
@@ -59,6 +60,18 @@ export async function POST(req: Request) {
     }
 
     const enrollment = await verifyEnrollmentPayment(parent.parentId, input);
+
+    await logActivity({
+      action: "PAYMENT_ENROLLMENT",
+      actorRole: "PARENT",
+      actorId: parent.parentId,
+      description: `Enrollment payment received — ₹${enrollment.amountPaid} (Enrollment ${enrollment.id}).`,
+      metadata: {
+        enrollmentId: enrollment.id,
+        amount: Number(enrollment.amountPaid),
+        razorpayPaymentId: enrollment.razorpayPaymentId,
+      },
+    });
 
     return NextResponse.json({ success: true, enrollment }, { status: 201 });
   } catch (error) {

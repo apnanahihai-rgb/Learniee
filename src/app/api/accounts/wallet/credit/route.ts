@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminOrAccounts } from "@/lib/verifyAdmin";
 import { creditWallet, WalletError } from "@/features/shared/server/wallet.service";
+import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 /**
  * POST — manually credits a parent's Wallet. This is the only way
@@ -37,6 +38,19 @@ export async function POST(req: Request) {
       reason: typeof reason === "string" ? reason : "",
       referenceType: "MANUAL_ADJUSTMENT",
       createdByStaffSub: auth.sub,
+    });
+
+    await logActivity({
+      action: "WALLET_CREDITED_MANUAL",
+      actorRole: auth["custom:role"] === "accounts" ? "ACCOUNTS" : "ADMIN",
+      ...actorFromTokenPayload({
+        sub: String(auth.sub),
+        email: typeof auth.email === "string" ? auth.email : undefined,
+        given_name: typeof auth.given_name === "string" ? auth.given_name : undefined,
+        family_name: typeof auth.family_name === "string" ? auth.family_name : undefined,
+      }),
+      description: `Wallet manually credited ₹${amount} for parent ${parentId} — "${reason}".`,
+      metadata: { parentId, amount: Number(amount), reason },
     });
 
     return NextResponse.json({ success: true, ...result });

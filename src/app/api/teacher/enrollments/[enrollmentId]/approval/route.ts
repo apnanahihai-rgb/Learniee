@@ -7,6 +7,7 @@ import {
   teacherRejectEnrollment,
   EnrollmentApprovalError,
 } from "@/features/shared/server/enrollmentApproval.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
  * PATCH
@@ -74,6 +75,21 @@ export async function PATCH(
         { error: "action must be APPROVE, REVISE, or REJECT." },
         { status: 400 },
       );
+    }
+
+    // Only the clean APPROVE path is logged as a major event here —
+    // REVISE/REJECT don't have a corresponding ActivityAction value
+    // yet (kept to the same "fixed, deliberate list" convention the
+    // enum's own doc-comment describes); add one the same way if
+    // that coverage is wanted later.
+    if (action === "APPROVE") {
+      await logActivity({
+        action: "ENROLLMENT_TEACHER_APPROVED",
+        actorRole: "TEACHER",
+        actorId: teacher.teacherId,
+        description: `Teacher approved enrollment ${enrollmentId}.`,
+        metadata: { enrollmentId },
+      });
     }
 
     return NextResponse.json({ success: true, enrollment });

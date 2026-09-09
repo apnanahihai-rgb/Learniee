@@ -7,6 +7,7 @@ import {
   getCourseByIdForAdmin,
   setCourseApproval,
 } from "@/features/admin/server/course.service";
+import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 export async function PATCH(
   req: Request,
@@ -70,6 +71,18 @@ export async function PATCH(
     // Update approval status
     // -----------------------------------------
     const updatedCourse = await setCourseApproval(courseId, status);
+
+    const approved = status === CourseStatus.APPROVED;
+
+    await logActivity({
+      action: approved ? "COURSE_APPROVED" : "COURSE_REJECTED",
+      actorRole: "ADMIN",
+      ...actorFromTokenPayload(auth.payload),
+      description: `Course "${updatedCourse.courseTitle || courseId}" ${
+        approved ? "approved" : "rejected"
+      }.`,
+      metadata: { courseId },
+    });
 
     return NextResponse.json({
       success: true,

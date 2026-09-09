@@ -5,6 +5,7 @@ import {
   respondToLeaveRequest,
   LeaveRequestError,
 } from "@/features/shared/server/leaveRequest.service";
+import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 /**
  * PATCH { action: "APPROVE" | "REJECT", adminNote? }
@@ -46,6 +47,17 @@ export async function PATCH(
       requestId,
       decision: action,
       adminNote: body?.adminNote,
+    });
+
+    const teacherName =
+      request.teacher.visibleName || `${request.teacher.firstName} ${request.teacher.lastName}`.trim();
+
+    await logActivity({
+      action: action === "APPROVE" ? "LEAVE_REQUEST_APPROVED" : "LEAVE_REQUEST_REJECTED",
+      actorRole: "ADMIN",
+      ...actorFromTokenPayload(auth.payload),
+      description: `Leave request ${action === "APPROVE" ? "approved" : "rejected"} for ${teacherName}.`,
+      metadata: { leaveRequestId: request.id, teacherId: request.teacherId },
     });
 
     return NextResponse.json({ success: true, request });
