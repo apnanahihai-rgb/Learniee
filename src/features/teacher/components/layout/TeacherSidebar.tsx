@@ -6,6 +6,7 @@ import {
   CalendarDays,
   RefreshCw,
   Calculator,
+  Landmark,
   User,
   BookOpen,
   Award,
@@ -65,6 +66,7 @@ const menuSections: MenuSection[] = [
     label: "Growth & Earnings",
     items: [
       { label: "Rate Calculator", path: "/teacher/rate-calculator", icon: Calculator },
+      { label: "Bank Account", path: "/teacher/bank-account", icon: Landmark },
       { label: "Certificate Management", path: "/teacher/certificates", icon: Award },
     ],
   },

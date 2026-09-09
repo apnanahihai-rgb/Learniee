@@ -7,6 +7,7 @@ export interface LedgerEntry {
   enrollmentId: string;
   cycleNumber: number;
   transactionDate: string;
+  teacherId: string;
   parentName: string;
   childName: string;
   teacherName: string;
@@ -20,22 +21,47 @@ export interface LedgerEntry {
   teacherRate: number;
   monthlyTeacherPay: number;
   profits: number;
-  payoutStatus: "PENDING_VERIFICATION" | "APPROVED" | "REJECTED" | "EXPIRED";
+  payoutStatus:
+    | "PENDING_VERIFICATION"
+    | "ON_HOLD"
+    | "QUEUED_FOR_PAYMENT"
+    | "PAID"
+    | "REJECTED"
+    | "EXPIRED"
+    /** @deprecated legacy-only — old rows are backfilled to QUEUED_FOR_PAYMENT, nothing writes this anymore */
+    | "APPROVED";
   verificationDeadline: string;
   verifiedByStaffSub: string | null;
   verifiedAt: string | null;
   rejectionReason: string | null;
+  holdReason: string | null;
+  adminReviewedByStaffSub: string | null;
+  adminReviewedAt: string | null;
+  adminDecision: "RELEASED" | "REOPENED" | "CONFIRMED_REJECTED" | null;
+  paidAt: string | null;
   isOverdue: boolean;
+  awaitingAdminReview: boolean;
 }
 
 export interface LedgerSummary {
   totalCyclesLedgered: number;
   pendingVerificationCount: number;
   overdueCount: number;
+  awaitingAdminReviewCount: number;
+  queuedForPaymentCount: number;
   totalApprovedPayout: number;
   totalPlatformProfit: number;
+  totalPaidOut: number;
 }
 
+/**
+ * Verify tab (Teacher Payouts, Sep 9, 2026) — Accounts' Proceed/Hold/
+ * Reject on a PENDING_VERIFICATION or EXPIRED cycle. Renamed from the
+ * old binary Approve/Reject: "Proceed" is the old "Approve" (now
+ * meaning "queued for payment," not "paid"); Hold and Reject both
+ * route to Admin instead of Reject being immediately terminal — see
+ * `LedgerPayoutStatus`'s doc-comment in schema.prisma.
+ */
 export function useTuitionLedger() {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [summary, setSummary] = useState<LedgerSummary | null>(null);
@@ -67,7 +93,7 @@ export function useTuitionLedger() {
     }
   }
 
-  async function act(entryId: string, body: { action: "APPROVE" | "REJECT"; reason?: string }) {
+  async function act(entryId: string, body: { action: "PROCEED" | "HOLD" | "REJECT"; reason?: string }) {
     try {
       setActingOn(entryId);
       const res = await fetch(`/api/accounts/ledger/${entryId}/verify`, {
@@ -98,7 +124,8 @@ export function useTuitionLedger() {
     loading,
     error,
     actingOn,
-    approve: (entryId: string) => act(entryId, { action: "APPROVE" }),
+    proceed: (entryId: string) => act(entryId, { action: "PROCEED" }),
+    hold: (entryId: string, reason?: string) => act(entryId, { action: "HOLD", reason }),
     reject: (entryId: string, reason?: string) => act(entryId, { action: "REJECT", reason }),
     reload: load,
   };

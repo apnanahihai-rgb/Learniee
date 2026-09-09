@@ -2,21 +2,24 @@ import { NextResponse } from "next/server";
 
 import { requireAdminOrAccounts } from "@/lib/verifyAdmin";
 import {
-  approveLedgerPayout,
+  proceedLedgerPayout,
+  holdLedgerPayout,
   rejectLedgerPayout,
   TuitionLedgerError,
 } from "@/features/shared/server/tuitionLedger.service";
+import { notifyPayoutHeldOrRejected } from "@/features/shared/server/notificationTriggers.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
- * PATCH — Monthly Payout Verification (08-PROJECT-KNOWLEDGE-BASE.md):
- * Accounts (or Admin) approves or rejects one cycle's teacher payout.
+ * PATCH — Accounts' Verify tab (Teacher Payouts, Sep 9, 2026).
  *
- * body: { action: "APPROVE" }
- * body: { action: "REJECT", reason?: string }
+ * body: { action: "PROCEED" }                    -> straight to Payment Queue
+ * body: { action: "HOLD", reason?: string }       -> routed to Admin for review
+ * body: { action: "REJECT", reason?: string }     -> also routed to Admin (NOT terminal until Admin confirms)
  *
- * Allowed even past `verificationDeadline` — a missed 1-day window is
- * surfaced as `isOverdue` for Admin/Accounts to notice, not a hard
- * lock that would force money to sit undecided forever.
+ * Allowed even past `verificationDeadline` / from EXPIRED — a missed
+ * 1-day window is surfaced as `isOverdue` for Accounts to notice, not
+ * a hard lock that would force money to sit undecided forever.
  */
 export async function PATCH(
   req: Request,
@@ -36,17 +39,38 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { action } = body;
+    const { action, reason } = body;
     const staffSub = auth.sub as string;
 
     let entry;
 
-    if (action === "APPROVE") {
-      entry = await approveLedgerPayout(entryId, staffSub);
+    if (action === "PROCEED") {
+      entry = await proceedLedgerPayout(entryId, staffSub);
+    } else if (action === "HOLD") {
+      entry = await holdLedgerPayout(entryId, staffSub, reason);
+      await notifyPayoutHeldOrRejected(entry.teacherId, "HOLD", reason);
+      await logActivity({
+        action: "PAYOUT_HELD_OR_REJECTED",
+        actorRole: "ACCOUNTS",
+        actorId: staffSub,
+        description: `Payout for ${entry.teacherName} (cycle #${entry.cycleNumber}) put on hold${reason ? `: ${reason}` : "."}`,
+        metadata: { ledgerEntryId: entry.id, teacherId: entry.teacherId, decision: "HOLD" },
+      });
     } else if (action === "REJECT") {
-      entry = await rejectLedgerPayout(entryId, staffSub, body.reason);
+      entry = await rejectLedgerPayout(entryId, staffSub, reason);
+      await notifyPayoutHeldOrRejected(entry.teacherId, "REJECT", reason);
+      await logActivity({
+        action: "PAYOUT_HELD_OR_REJECTED",
+        actorRole: "ACCOUNTS",
+        actorId: staffSub,
+        description: `Payout for ${entry.teacherName} (cycle #${entry.cycleNumber}) rejected${reason ? `: ${reason}` : "."}`,
+        metadata: { ledgerEntryId: entry.id, teacherId: entry.teacherId, decision: "REJECT" },
+      });
     } else {
-      return NextResponse.json({ error: "action must be APPROVE or REJECT." }, { status: 400 });
+      return NextResponse.json(
+        { error: "action must be PROCEED, HOLD, or REJECT." },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ success: true, entry });

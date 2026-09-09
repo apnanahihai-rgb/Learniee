@@ -10,6 +10,7 @@ import type {
 import { useTuitionLedger } from "@/features/accounts/hooks/useTuitionLedger";
 import OngoingCyclesPanel from "@/features/accounts/components/OngoingCyclesPanel";
 import TuitionLedgerPanel from "@/features/accounts/components/TuitionLedgerPanel";
+import PaymentQueuePanel from "@/features/accounts/components/PaymentQueuePanel";
 import RevenueLedgerPanel from "@/features/accounts/components/RevenueLedgerPanel";
 import DemoBookingsPanel from "@/features/accounts/components/DemoBookingsPanel";
 import WalletPanel from "@/features/accounts/components/WalletPanel";
@@ -28,7 +29,7 @@ interface AccountsDashboardShellProps {
   demoRows: DemoBookingRow[];
 }
 
-type TabId = "cycles" | "payouts" | "revenue" | "demos" | "wallets";
+type TabId = "cycles" | "verify" | "payment-queue" | "revenue" | "demos" | "wallets";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -68,7 +69,8 @@ export default function AccountsDashboardShell({
 
   const tabs: { id: TabId; label: string; badge?: number }[] = [
     { id: "cycles", label: "Ongoing Cycles", badge: ongoingCycleRows.length || undefined },
-    { id: "payouts", label: "Payout Verification", badge: ledger.summary?.pendingVerificationCount },
+    { id: "verify", label: "Verify Payouts", badge: ledger.summary?.pendingVerificationCount },
+    { id: "payment-queue", label: "Payment Queue", badge: ledger.summary?.queuedForPaymentCount },
     { id: "revenue", label: "Revenue Ledger" },
     { id: "demos", label: "Demo Bookings" },
     { id: "wallets", label: "Parent Wallets" },
@@ -142,17 +144,19 @@ export default function AccountsDashboardShell({
 
       <div>
         {tab === "cycles" && <OngoingCyclesPanel rows={ongoingCycleRows} />}
-        {tab === "payouts" && (
+        {tab === "verify" && (
           <TuitionLedgerPanel
             entries={ledger.entries}
             summary={ledger.summary}
             loading={ledger.loading}
             error={ledger.error}
             actingOn={ledger.actingOn}
-            approve={ledger.approve}
+            proceed={ledger.proceed}
+            hold={ledger.hold}
             reject={ledger.reject}
           />
         )}
+        {tab === "payment-queue" && <PaymentQueuePanel />}
         {tab === "revenue" && <RevenueLedgerPanel rows={ledgerRows} />}
         {tab === "demos" && <DemoBookingsPanel rows={demoRows} />}
         {tab === "wallets" && <WalletPanel />}

@@ -740,3 +740,52 @@ export function notifyWalletCredited(parentId: string, amount: number, reason: s
     });
   });
 }
+
+// ---------------------------------------------------------------------------
+// Teacher Payouts (Sep 9, 2026) — Verify -> Payment Queue -> Mass-pay.
+// See LedgerPayoutStatus's doc-comment in schema.prisma for the full
+// state machine these correspond to.
+// ---------------------------------------------------------------------------
+
+/** Accounts held or rejected a payout — notifies the Teacher, and every Admin (it now needs their review). */
+export function notifyPayoutHeldOrRejected(
+  teacherId: string,
+  action: "HOLD" | "REJECT",
+  reason: string | undefined,
+) {
+  return safe("payout held or rejected", async () => {
+    const held = action === "HOLD";
+
+    await createNotification({
+      recipientId: teacherId,
+      recipientRole: R.TEACHER,
+      type: held ? T.PAYOUT_ON_HOLD : T.PAYOUT_REJECTED,
+      title: held ? "A payout was put on hold" : "A payout was rejected",
+      message: held
+        ? `Accounts put one of your cycle payouts on hold${reason ? ` — ${reason}` : ""}. It's been sent to Admin for review.`
+        : `Accounts rejected one of your cycle payouts${reason ? ` — ${reason}` : ""}. It's been sent to Admin for review.`,
+      link: "/teacher/rate-calculator",
+    });
+
+    await notifyAllAdmins({
+      type: held ? T.PAYOUT_ON_HOLD : T.PAYOUT_REJECTED,
+      title: held ? "A teacher payout is on hold" : "A teacher payout was rejected",
+      message: `Accounts ${held ? "held" : "rejected"} a cycle payout${reason ? ` (${reason})` : ""} — needs your review.`,
+      link: "/admin/payout-review",
+    });
+  });
+}
+
+/** Accounts mass-paid one or more teachers. */
+export function notifyPayoutPaid(teacherId: string, amount: number, cycleCount: number) {
+  return safe("payout paid", async () => {
+    await createNotification({
+      recipientId: teacherId,
+      recipientRole: R.TEACHER,
+      type: T.PAYOUT_PAID,
+      title: "Payout sent",
+      message: `₹${amount.toLocaleString("en-IN")} for ${cycleCount} completed cycle${cycleCount === 1 ? "" : "s"} has been paid out.`,
+      link: "/teacher/rate-calculator",
+    });
+  });
+}

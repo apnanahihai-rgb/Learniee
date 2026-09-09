@@ -120,6 +120,7 @@ model Teacher {
   professionalInfo   TeacherProfessional?
   rescheduleRequests RescheduleRequest[]
   leaveRequests      LeaveRequest[]
+  bankAccount        BankAccount?
 }
 
 model TeacherProfessional {
@@ -407,14 +408,89 @@ model TuitionLedgerEntry {
   verifiedByStaffSub   String?
   verifiedAt           DateTime?
   rejectionReason      String?
+  /// Set alongside `payoutStatus` moving to ON_HOLD — Accounts' own note, separate from `rejectionReason`.
+  holdReason           String?
+  /// Cognito `sub` of whichever Admin acted (Release/Reopen/Confirm Reject) — null while awaiting Admin.
+  adminReviewedByStaffSub String?
+  adminReviewedAt      DateTime?
+  adminDecision        PayoutAdminDecision?
+  payoutRecordId       String?
+  paidAt               DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   enrollment           Enrollment         @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  payoutRecord         PayoutRecord?      @relation(fields: [payoutRecordId], references: [id])
 
   @@unique([enrollmentId, cycleNumber])
   @@index([parentId])
   @@index([teacherId])
   @@index([payoutStatus])
+  @@index([payoutRecordId])
+}
+
+/// Teacher's payout bank details (built Sep 9, 2026, Teacher
+/// Payouts) — previously listed as a Month-2, not-MVP entity
+/// (03-DATA-MODEL.md). One per Teacher, self-managed via
+/// `/teacher/bank-account`. Accounts/Admin never edit this directly —
+/// only read it (mass-pay grouping, the payout snapshot below).
+///
+/// **Stores account number/IFSC as plain text.** Flagged, not
+/// solved, in this patch — worth encrypting at rest (or at minimum
+/// masking on every read path that isn't the payout itself) before
+/// this carries real teacher bank details in production. See
+/// 06-OPEN-DECISIONS.md #46.
+model BankAccount {
+  id                String   @id @default(uuid())
+  teacherId         String   @unique
+  accountHolderName String
+  accountNumber     String
+  ifscCode          String
+  bankName          String?
+  branchName        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  teacher           Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
+
+/// One row per "Pay selected teachers" mass-pay click (built Sep 9,
+/// 2026, Teacher Payouts). Wraps one `PayoutRecord` per teacher that
+/// was actually part of that click.
+model PayoutBatch {
+  id                  String            @id @default(uuid())
+  initiatedByStaffSub String
+  totalAmount         Decimal           @db.Decimal(10, 2)
+  teacherCount        Int
+  successCount        Int
+  skippedCount        Int
+  status              PayoutBatchStatus @default(COMPLETED)
+  createdAt           DateTime          @default(now())
+  records             PayoutRecord[]
+}
+
+/// One row per teacher per `PayoutBatch` — aggregates every
+/// `TuitionLedgerEntry` that teacher had `QUEUED_FOR_PAYMENT` at the
+/// time of that mass-pay click. `bankAccountSnapshot` freezes the
+/// account details used for THIS payout (a Teacher editing their
+/// bank details later must never retroactively change what an
+/// already-paid record says was paid where — audit trail, not a live
+/// join). `razorpayPayoutId` is null today — see
+/// `src/lib/teacherPayoutGateway.ts`'s stub doc-comment.
+model PayoutRecord {
+  id                  String              @id @default(uuid())
+  payoutBatchId       String
+  teacherId           String
+  amount              Decimal             @db.Decimal(10, 2)
+  cycleCount          Int
+  status              PayoutRecordStatus  @default(SUCCESS)
+  bankAccountSnapshot Json?
+  razorpayPayoutId    String?
+  failureReason       String?
+  createdAt           DateTime            @default(now())
+  batch               PayoutBatch         @relation(fields: [payoutBatchId], references: [id], onDelete: Cascade)
+  ledgerEntries       TuitionLedgerEntry[]
+
+  @@index([teacherId])
+  @@index([payoutBatchId])
 }
 
 /// One chat room per Enrollment — i.e. one per (parent, teacher,
@@ -809,11 +885,70 @@ enum DemoBookingStatus {
   CANCELLED
 }
 
+/// UPDATED Sep 9, 2026 — Teacher Payouts. `APPROVED` is now a
+/// LEGACY-ONLY value (same established pattern as
+/// `EnrollmentStatus.PENDING_APPROVAL`/`APPROVED` — see
+/// 03-DATA-MODEL.md): existing rows are backfilled to
+/// `QUEUED_FOR_PAYMENT` by the migration that introduces this
+/// change, and no code writes `APPROVED` anymore. The real flow now
+/// has two extra stops after Accounts' original Approve/Reject:
+///
+///   PENDING_VERIFICATION (Accounts' 24h window)
+///     -> Accounts "Proceed"  -> QUEUED_FOR_PAYMENT
+///     -> Accounts "Hold"     -> ON_HOLD              (routes to Admin)
+///     -> Accounts "Reject"   -> REJECTED              (routes to Admin, NOT terminal until Admin confirms)
+///     -> (lazy, unchanged)   -> EXPIRED               (same re-decide-able semantics as before)
+///
+///   ON_HOLD / REJECTED, only while `TuitionLedgerEntry.adminReviewedAt`
+///   is still null (i.e. Admin hasn't looked at it yet):
+///     -> Admin "Release"        -> QUEUED_FOR_PAYMENT
+///     -> Admin "Reopen"         -> PENDING_VERIFICATION (back to Accounts, deadline refreshed)
+///     -> Admin "Confirm Reject" -> REJECTED, `adminReviewedAt` set (now genuinely terminal)
+///
+///   QUEUED_FOR_PAYMENT (Payment tab, grouped by Teacher):
+///     -> Accounts mass-pay -> PAID (`TuitionLedgerEntry.payoutRecordId`/`paidAt` set)
+///
+/// See 06-OPEN-DECISIONS.md #46 for what's still a stub (real
+/// RazorpayX Payouts vs. `initiateStubTeacherPayout()`).
 enum LedgerPayoutStatus {
   PENDING_VERIFICATION
-  APPROVED
+  ON_HOLD
+  QUEUED_FOR_PAYMENT
+  PAID
   REJECTED
   EXPIRED
+  /// @deprecated legacy-only, see doc-comment above — no code writes this anymore
+  APPROVED
+}
+
+/// Records which of the three Admin actions was taken on an ON_HOLD/
+/// REJECTED ledger entry — lets the Admin queue tell "awaiting review"
+/// apart from "already reviewed" without a second enum on
+/// `payoutStatus` (same row can be REJECTED either because Accounts
+/// just rejected it, awaiting Admin, or because Admin confirmed the
+/// rejection — `adminReviewedAt`/`adminDecision` is what disambiguates).
+enum PayoutAdminDecision {
+  RELEASED
+  REOPENED
+  CONFIRMED_REJECTED
+}
+
+/// A single mass-pay action by Accounts (built Sep 9, 2026, Teacher
+/// Payouts) — one row per "Pay selected teachers" click, wrapping
+/// one `PayoutRecord` per teacher actually included. `COMPLETED`
+/// means every selected teacher had a bank account on file and was
+/// paid; `PARTIALLY_COMPLETED` means at least one was skipped for
+/// missing bank details (see `PayoutRecordStatus.SKIPPED_NO_BANK_ACCOUNT`)
+/// and stayed `QUEUED_FOR_PAYMENT` for the next batch.
+enum PayoutBatchStatus {
+  COMPLETED
+  PARTIALLY_COMPLETED
+}
+
+enum PayoutRecordStatus {
+  SUCCESS
+  SKIPPED_NO_BANK_ACCOUNT
+  FAILED
 }
 
 enum EnrollmentStatus {
@@ -939,6 +1074,10 @@ enum NotificationType {
   WALLET_CREDITED
   TEACHER_APPROVED
   TEACHER_REJECTED
+  /// Teacher Payouts (Sep 9, 2026) — see LedgerPayoutStatus's doc-comment.
+  PAYOUT_ON_HOLD
+  PAYOUT_REJECTED
+  PAYOUT_PAID
   GENERIC
 }
 
@@ -1021,5 +1160,9 @@ enum ActivityAction {
   COURSE_APPROVED
   COURSE_REJECTED
   USER_DELETED
+  /// Teacher Payouts (Sep 9, 2026)
+  PAYOUT_HELD_OR_REJECTED
+  PAYOUT_ADMIN_DECISION
+  PAYOUT_MASS_PAID
   GENERIC
 }

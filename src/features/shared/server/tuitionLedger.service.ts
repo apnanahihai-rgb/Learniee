@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Prisma, LedgerPayoutStatus } from "@prisma/client";
+import { Prisma, LedgerPayoutStatus, PayoutAdminDecision } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -24,6 +24,15 @@ import { prisma } from "@/lib/prisma";
  * lists the ledger — rather than via a background job. EXPIRED is
  * just a flag for Admin/Accounts to re-decide; it never silently
  * pays or silently withholds money.
+ *
+ * UPDATED Sep 9, 2026 — Teacher Payouts. Accounts' old binary
+ * Approve/Reject is now Proceed/Hold/Reject, and "Approve" no longer
+ * means "paid" — it means "queued for the Payment tab." See
+ * `LedgerPayoutStatus`'s doc-comment in schema.prisma for the full
+ * state machine, and `teacherPayout.service.ts` for the
+ * Payment-Queue/mass-pay half of this that lives in a separate file
+ * (it needs `BankAccount`/`PayoutBatch`/`PayoutRecord`, which have
+ * nothing to do with the Verify-stage logic below).
  */
 
 const TEACHER_SHARE = 0.7; // 06-OPEN-DECISIONS.md #1: teacher keeps 70%
@@ -158,6 +167,7 @@ function toLedgerEntryView(
     enrollmentId: row.enrollmentId,
     cycleNumber: row.cycleNumber,
     transactionDate: row.transactionDate,
+    teacherId: enrollment.teacherId,
     parentName: displayName(enrollment.parent.firstName, enrollment.parent.lastName),
     childName: displayName(enrollment.student.firstName, undefined, enrollment.student.visibleName),
     teacherName: displayName(
@@ -180,9 +190,19 @@ function toLedgerEntryView(
     verifiedByStaffSub: row.verifiedByStaffSub,
     verifiedAt: row.verifiedAt,
     rejectionReason: row.rejectionReason,
+    holdReason: row.holdReason,
+    adminReviewedByStaffSub: row.adminReviewedByStaffSub,
+    adminReviewedAt: row.adminReviewedAt,
+    adminDecision: row.adminDecision,
+    paidAt: row.paidAt,
     isOverdue:
       row.payoutStatus === LedgerPayoutStatus.PENDING_VERIFICATION &&
       row.verificationDeadline < new Date(),
+    /** Awaiting Admin's Release/Reopen/Confirm-Reject action — drives the Admin queue. */
+    awaitingAdminReview:
+      (row.payoutStatus === LedgerPayoutStatus.ON_HOLD ||
+        row.payoutStatus === LedgerPayoutStatus.REJECTED) &&
+      !row.adminReviewedAt,
   };
 }
 
@@ -200,12 +220,16 @@ export async function listLedgerEntries(): Promise<TuitionLedgerEntryView[]> {
   return rows.map(toLedgerEntryView);
 }
 
-/** Just the rows Accounts/Admin still need to act on. */
+/** Just the rows Accounts still needs to Verify (Proceed/Hold/Reject) — the Verify tab. */
 export async function listPendingPayoutVerifications(): Promise<TuitionLedgerEntryView[]> {
   await expireOverdueEntries();
 
   const rows = await prisma.tuitionLedgerEntry.findMany({
-    where: { payoutStatus: LedgerPayoutStatus.PENDING_VERIFICATION },
+    where: {
+      payoutStatus: {
+        in: [LedgerPayoutStatus.PENDING_VERIFICATION, LedgerPayoutStatus.EXPIRED],
+      },
+    },
     include: ledgerEntryInclude,
     orderBy: { verificationDeadline: "asc" },
   });
@@ -213,42 +237,90 @@ export async function listPendingPayoutVerifications(): Promise<TuitionLedgerEnt
   return rows.map(toLedgerEntryView);
 }
 
-async function findActionableEntry(entryId: string) {
+/** The rows Admin still needs to review — ON_HOLD/REJECTED, not yet reviewed. Admin's payout-review queue. */
+export async function listPendingAdminPayoutReview(): Promise<TuitionLedgerEntryView[]> {
+  const rows = await prisma.tuitionLedgerEntry.findMany({
+    where: {
+      payoutStatus: { in: [LedgerPayoutStatus.ON_HOLD, LedgerPayoutStatus.REJECTED] },
+      adminReviewedAt: null,
+    },
+    include: ledgerEntryInclude,
+    orderBy: { updatedAt: "asc" },
+  });
+
+  return rows.map(toLedgerEntryView);
+}
+
+async function findVerifiableEntry(entryId: string) {
   const entry = await prisma.tuitionLedgerEntry.findUnique({ where: { id: entryId } });
 
   if (!entry) {
     throw new TuitionLedgerError("Ledger entry not found.", 404);
   }
 
-  if (entry.payoutStatus === LedgerPayoutStatus.APPROVED) {
-    throw new TuitionLedgerError("This payout has already been approved.", 409);
-  }
+  const verifiable: LedgerPayoutStatus[] = [
+    LedgerPayoutStatus.PENDING_VERIFICATION,
+    LedgerPayoutStatus.EXPIRED,
+  ];
 
-  if (entry.payoutStatus === LedgerPayoutStatus.REJECTED) {
-    throw new TuitionLedgerError("This payout has already been rejected.", 409);
+  if (!verifiable.includes(entry.payoutStatus)) {
+    throw new TuitionLedgerError(
+      "This payout has already moved past Verification — check the Payment Queue or Admin Review tab.",
+      409,
+    );
   }
 
   return entry;
 }
 
-/** Approves a teacher payout. Allowed even if the row already expired — a missed deadline is a flag to notice, not a hard lock. */
-export async function approveLedgerPayout(entryId: string, staffSub: string) {
-  await findActionableEntry(entryId);
+/**
+ * Accounts "Proceed" — moves a cycle straight to the Payment Queue,
+ * skipping Admin entirely (same as the old "Approve," just renamed
+ * to make clear it isn't a payment yet). Allowed even from EXPIRED —
+ * a missed 24h window is a flag to notice, not a hard lock.
+ */
+export async function proceedLedgerPayout(entryId: string, staffSub: string) {
+  await findVerifiableEntry(entryId);
 
   return prisma.tuitionLedgerEntry.update({
     where: { id: entryId },
     data: {
-      payoutStatus: LedgerPayoutStatus.APPROVED,
+      payoutStatus: LedgerPayoutStatus.QUEUED_FOR_PAYMENT,
       verifiedByStaffSub: staffSub,
       verifiedAt: new Date(),
       rejectionReason: null,
+      holdReason: null,
     },
     include: ledgerEntryInclude,
   }).then(toLedgerEntryView);
 }
 
+/** Accounts "Hold" — pauses the cycle and routes it to Admin for review. Not a payment decision either way. */
+export async function holdLedgerPayout(entryId: string, staffSub: string, reason?: string) {
+  await findVerifiableEntry(entryId);
+
+  return prisma.tuitionLedgerEntry.update({
+    where: { id: entryId },
+    data: {
+      payoutStatus: LedgerPayoutStatus.ON_HOLD,
+      verifiedByStaffSub: staffSub,
+      verifiedAt: new Date(),
+      holdReason: reason ?? null,
+      adminReviewedAt: null,
+      adminReviewedByStaffSub: null,
+      adminDecision: null,
+    },
+    include: ledgerEntryInclude,
+  }).then(toLedgerEntryView);
+}
+
+/**
+ * Accounts "Reject" — NOT terminal by itself anymore (06-OPEN-DECISIONS.md
+ * #46): routes to Admin for review/confirmation, same as Hold. Admin
+ * can still overturn it (Release) or send it back to Accounts (Reopen).
+ */
 export async function rejectLedgerPayout(entryId: string, staffSub: string, reason?: string) {
-  await findActionableEntry(entryId);
+  await findVerifiableEntry(entryId);
 
   return prisma.tuitionLedgerEntry.update({
     where: { id: entryId },
@@ -257,6 +329,84 @@ export async function rejectLedgerPayout(entryId: string, staffSub: string, reas
       verifiedByStaffSub: staffSub,
       verifiedAt: new Date(),
       rejectionReason: reason ?? null,
+      adminReviewedAt: null,
+      adminReviewedByStaffSub: null,
+      adminDecision: null,
+    },
+    include: ledgerEntryInclude,
+  }).then(toLedgerEntryView);
+}
+
+async function findAdminReviewableEntry(entryId: string) {
+  const entry = await prisma.tuitionLedgerEntry.findUnique({ where: { id: entryId } });
+
+  if (!entry) {
+    throw new TuitionLedgerError("Ledger entry not found.", 404);
+  }
+
+  const reviewable: LedgerPayoutStatus[] = [
+    LedgerPayoutStatus.ON_HOLD,
+    LedgerPayoutStatus.REJECTED,
+  ];
+
+  if (!reviewable.includes(entry.payoutStatus) || entry.adminReviewedAt) {
+    throw new TuitionLedgerError(
+      "This payout isn't currently awaiting Admin review.",
+      409,
+    );
+  }
+
+  return entry;
+}
+
+const VERIFICATION_WINDOW_MS_REOPEN = 24 * 60 * 60 * 1000;
+
+/** Admin "Release" — overrides Accounts' hold/reject and sends the cycle straight to the Payment Queue. */
+export async function adminReleaseLedgerPayout(entryId: string, adminSub: string) {
+  await findAdminReviewableEntry(entryId);
+
+  return prisma.tuitionLedgerEntry.update({
+    where: { id: entryId },
+    data: {
+      payoutStatus: LedgerPayoutStatus.QUEUED_FOR_PAYMENT,
+      adminReviewedByStaffSub: adminSub,
+      adminReviewedAt: new Date(),
+      adminDecision: PayoutAdminDecision.RELEASED,
+    },
+    include: ledgerEntryInclude,
+  }).then(toLedgerEntryView);
+}
+
+/** Admin "Reopen" — sends the cycle back to Accounts' Verify tab with a fresh 24h window. */
+export async function adminReopenLedgerPayout(entryId: string, adminSub: string) {
+  await findAdminReviewableEntry(entryId);
+
+  return prisma.tuitionLedgerEntry.update({
+    where: { id: entryId },
+    data: {
+      payoutStatus: LedgerPayoutStatus.PENDING_VERIFICATION,
+      verificationDeadline: new Date(Date.now() + VERIFICATION_WINDOW_MS_REOPEN),
+      holdReason: null,
+      rejectionReason: null,
+      adminReviewedByStaffSub: adminSub,
+      adminReviewedAt: new Date(),
+      adminDecision: PayoutAdminDecision.REOPENED,
+    },
+    include: ledgerEntryInclude,
+  }).then(toLedgerEntryView);
+}
+
+/** Admin "Confirm Reject" — the only genuinely terminal rejection in this workflow. */
+export async function adminConfirmRejectLedgerPayout(entryId: string, adminSub: string) {
+  await findAdminReviewableEntry(entryId);
+
+  return prisma.tuitionLedgerEntry.update({
+    where: { id: entryId },
+    data: {
+      payoutStatus: LedgerPayoutStatus.REJECTED,
+      adminReviewedByStaffSub: adminSub,
+      adminReviewedAt: new Date(),
+      adminDecision: PayoutAdminDecision.CONFIRMED_REJECTED,
     },
     include: ledgerEntryInclude,
   }).then(toLedgerEntryView);
@@ -268,11 +418,18 @@ export async function getLedgerSummary(rows: TuitionLedgerEntryView[]) {
     totalCyclesLedgered: rows.length,
     pendingVerificationCount: rows.filter((r) => r.payoutStatus === "PENDING_VERIFICATION").length,
     overdueCount: rows.filter((r) => r.isOverdue).length,
+    awaitingAdminReviewCount: rows.filter((r) => r.awaitingAdminReview).length,
+    queuedForPaymentCount: rows.filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT").length,
+    // Legacy 'APPROVED' rows are backfilled to QUEUED_FOR_PAYMENT by the
+    // migration, so this only ever needs to check the one status now.
     totalApprovedPayout: rows
-      .filter((r) => r.payoutStatus === "APPROVED")
+      .filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT" || r.payoutStatus === "PAID")
       .reduce((s, r) => s + r.monthlyTeacherPay, 0),
     totalPlatformProfit: rows
-      .filter((r) => r.payoutStatus === "APPROVED")
+      .filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT" || r.payoutStatus === "PAID")
       .reduce((s, r) => s + r.profits, 0),
+    totalPaidOut: rows
+      .filter((r) => r.payoutStatus === "PAID")
+      .reduce((s, r) => s + r.monthlyTeacherPay, 0),
   };
 }
