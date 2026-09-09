@@ -17,6 +17,7 @@ import {
   Radio,
   MessageCircle,
   ListChecks,
+  AlertCircle,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -60,6 +61,7 @@ const menuSections: MenuSection[] = [
       { label: "HW & Tests", path: "/teacher/hw-tests", icon: ClipboardCheck },
       { label: "Reschedule", path: "/teacher/reschedule", icon: RefreshCw },
       { label: "Leave", path: "/teacher/leave", icon: CalendarOff },
+      { label: "Complain", path: "/teacher/complain", icon: AlertCircle },
     ],
   },
   {

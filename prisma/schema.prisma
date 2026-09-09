@@ -760,6 +760,42 @@ model LeaveRequest {
   @@index([status])
 }
 
+/// Parent/Teacher complaints & support (added Sep 10, 2026) — fills
+/// the long-standing "Complaints: not built" gap flagged since Week
+/// 6 (01-PROJECT-STATUS.md §2/§4, 04-BUILD-PLAN-TIMELINE.md).
+/// Deliberately modeled after `LeaveRequest` (single-step, Admin is
+/// the only responder) rather than `RescheduleRequest`'s two-party
+/// back-and-forth — a complaint only ever needs Admin's attention,
+/// never the other role's.
+///
+/// Unlike `LeaveRequest` (Teacher-only), a complaint can come from
+/// either a Parent or a Teacher, so `raiserId`/`raiserRole` uses the
+/// same loosely-typed pointer pattern as `Notification.recipientId`/
+/// `ActivityLog.actorId` (no FK — see those models' doc-comments)
+/// instead of two nullable relation columns, one per role.
+/// `raiserName`/`raiserEmail` are a denormalized snapshot taken at
+/// submission time, same reasoning as `ActivityLog.actorName`/
+/// `actorEmail` — stays readable even if the underlying account is
+/// later deleted (`/admin/users` supports hard-deleting a
+/// Parent/Teacher).
+model Complaint {
+  id          String          @id @default(uuid())
+  raiserId    String
+  raiserRole  ComplainantRole
+  raiserName  String?
+  raiserEmail String?
+  subject     String
+  description String
+  status      ComplaintStatus @default(OPEN)
+  adminNote   String?
+  resolvedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([raiserId, raiserRole])
+  @@index([status])
+}
+
 /// Refer & Earn (added Sep 8, 2026) — a Parent's own shareable code
 /// (`ParentProfile.referralCode`, lazily generated the first time
 /// they open /parent/referral, same lazy-creation pattern as
@@ -1009,6 +1045,22 @@ enum LeaveRequestStatus {
   CANCELLED
 }
 
+/// Same two roles as `RescheduleRequestedBy`/`ChatSenderRole`, kept
+/// as its own enum (rather than reused) since `Complaint.raiserRole`
+/// is a distinct concept — who raised the issue, not who's replying
+/// in a two-party thread.
+enum ComplainantRole {
+  PARENT
+  TEACHER
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 enum RescheduleRequestedBy {
   PARENT
   TEACHER
@@ -1078,6 +1130,9 @@ enum NotificationType {
   PAYOUT_ON_HOLD
   PAYOUT_REJECTED
   PAYOUT_PAID
+  /// Complaints (Sep 10, 2026) — see the `Complaint` model's doc-comment.
+  COMPLAINT_SUBMITTED
+  COMPLAINT_RESOLVED
   GENERIC
 }
 
@@ -1164,5 +1219,7 @@ enum ActivityAction {
   PAYOUT_HELD_OR_REJECTED
   PAYOUT_ADMIN_DECISION
   PAYOUT_MASS_PAID
+  /// Complaints (Sep 10, 2026)
+  COMPLAINT_STATUS_UPDATED
   GENERIC
 }

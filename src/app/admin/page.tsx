@@ -115,6 +115,21 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
+              Complaints
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              Parent/Teacher issues waiting for a response.
+            </p>
+            <button
+              onClick={() => router.push("/admin/complaints")}
+              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              View Complaints
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800">
               Payout Review
             </h3>
             <p className="text-sm text-gray-500 mt-2">

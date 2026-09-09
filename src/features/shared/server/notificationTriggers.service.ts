@@ -1,7 +1,12 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { NotificationRecipientRole, NotificationType } from "@prisma/client";
+import {
+  NotificationRecipientRole,
+  NotificationType,
+  ComplainantRole,
+  ComplaintStatus,
+} from "@prisma/client";
 
 import {
   createNotification,
@@ -786,6 +791,56 @@ export function notifyPayoutPaid(teacherId: string, amount: number, cycleCount: 
       title: "Payout sent",
       message: `₹${amount.toLocaleString("en-IN")} for ${cycleCount} completed cycle${cycleCount === 1 ? "" : "s"} has been paid out.`,
       link: "/teacher/rate-calculator",
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Complaints (Sep 10, 2026) — Parent/Teacher raises -> Admin resolves.
+// See the `Complaint` model's doc-comment in schema.prisma.
+// ---------------------------------------------------------------------------
+
+/** A Parent or Teacher raised a new complaint — every Admin gets told (same "any Admin can act" pattern as leave requests). */
+export function notifyComplaintSubmitted(input: {
+  raiserRole: ComplainantRole;
+  raiserName: string | null;
+  subject: string;
+}) {
+  return safe("complaint submitted", async () => {
+    const roleLabel = input.raiserRole === ComplainantRole.PARENT ? "A parent" : "A teacher";
+
+    await notifyAllAdmins({
+      type: T.COMPLAINT_SUBMITTED,
+      title: "New complaint",
+      message: `${input.raiserName ?? roleLabel} raised a complaint: "${input.subject}".`,
+      link: "/admin/complaints",
+    });
+  });
+}
+
+const COMPLAINT_STATUS_COPY: Record<string, string> = {
+  IN_PROGRESS: "is now being looked into",
+  RESOLVED: "has been resolved",
+  CLOSED: "has been closed",
+};
+
+/** Admin moved a complaint along — notifies whichever role (Parent or Teacher) raised it. */
+export function notifyComplaintResolved(input: {
+  raiserId: string;
+  raiserRole: ComplainantRole;
+  status: ComplaintStatus;
+}) {
+  return safe("complaint responded", async () => {
+    const recipientRole = input.raiserRole === ComplainantRole.PARENT ? R.PARENT : R.TEACHER;
+    const link = input.raiserRole === ComplainantRole.PARENT ? "/parent/complain" : "/teacher/complain";
+
+    await createNotification({
+      recipientId: input.raiserId,
+      recipientRole,
+      type: T.COMPLAINT_RESOLVED,
+      title: "Complaint update",
+      message: `Your complaint ${COMPLAINT_STATUS_COPY[input.status] ?? "was updated"} by Admin.`,
+      link,
     });
   });
 }
