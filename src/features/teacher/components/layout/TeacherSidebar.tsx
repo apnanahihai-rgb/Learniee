@@ -18,6 +18,7 @@ import {
   MessageCircle,
   ListChecks,
   AlertCircle,
+  Settings,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -82,7 +83,10 @@ const menuSections: MenuSection[] = [
   },
   {
     label: "Account",
-    items: [{ label: "Profile", path: "/teacher/profile", icon: User }],
+    items: [
+      { label: "Profile", path: "/teacher/profile", icon: User },
+      { label: "Settings", path: "/teacher/settings", icon: Settings },
+    ],
   },
 ];
 

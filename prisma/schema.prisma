@@ -35,6 +35,14 @@ model ParentProfile {
   howDidYouHear       String?
   suggestions         String?
   onboardingComplete  Boolean             @default(false)
+  /// Account Settings (Sep 10, 2026) — master in-app notification
+  /// toggle backing `/parent/settings`. Checked in
+  /// notification.service.ts before any Notification row is written
+  /// for this recipient; turning it off never deletes existing
+  /// notifications, only stops new ones. MVP-minimal, same spirit as
+  /// the Notification model itself — see 06-OPEN-DECISIONS.md #32 for
+  /// the fuller per-category version still deferred to Phase 2.
+  notificationsEnabled Boolean            @default(true)
   createdAt           DateTime            @default(now())
   chatRooms           ChatRoom[]
   classSessions       ClassSession[]
@@ -109,6 +117,9 @@ model Teacher {
   currentStep        Int                   @default(1)
   onboardingStatus   String                @default("IN_PROGRESS")
   panCardNumber      String?
+  /// Account Settings (Sep 10, 2026) — same toggle as
+  /// `ParentProfile.notificationsEnabled`, backing `/teacher/settings`.
+  notificationsEnabled Boolean             @default(true)
   chatRooms          ChatRoom[]
   classSessions      ClassSession[]
   courses            Course[]

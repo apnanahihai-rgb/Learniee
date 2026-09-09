@@ -31,14 +31,80 @@ export interface CreateNotificationInput {
 }
 
 /**
+ * Account Settings (Sep 10, 2026) — `/parent/settings` and
+ * `/teacher/settings` each expose a master "in-app notifications"
+ * toggle (`ParentProfile.notificationsEnabled` /
+ * `Teacher.notificationsEnabled`). Rather than threading a
+ * preference check through every one of the ~40 call sites in
+ * notificationTriggers.service.ts, it's enforced once here, at the
+ * single choke point every trigger already goes through. Admin/
+ * Accounts have no toggle (no settings page for those roles yet), so
+ * they're always left enabled.
+ *
+ * Batched to a single query per role rather than one lookup per
+ * recipient, since `createNotifications` is also used for fan-out
+ * (every Admin, every interested Parent on a course match, etc.).
+ */
+async function filterNotificationsEnabled(
+  inputs: CreateNotificationInput[],
+): Promise<CreateNotificationInput[]> {
+  const parentIds = [
+    ...new Set(
+      inputs
+        .filter((input) => input.recipientRole === NotificationRecipientRole.PARENT)
+        .map((input) => input.recipientId),
+    ),
+  ];
+  const teacherIds = [
+    ...new Set(
+      inputs
+        .filter((input) => input.recipientRole === NotificationRecipientRole.TEACHER)
+        .map((input) => input.recipientId),
+    ),
+  ];
+
+  const [optedOutParents, optedOutTeachers] = await Promise.all([
+    parentIds.length
+      ? prisma.parentProfile.findMany({
+          where: { id: { in: parentIds }, notificationsEnabled: false },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    teacherIds.length
+      ? prisma.teacher.findMany({
+          where: { id: { in: teacherIds }, notificationsEnabled: false },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const optedOutIds = new Set([
+    ...optedOutParents.map((p) => p.id),
+    ...optedOutTeachers.map((t) => t.id),
+  ]);
+
+  return inputs.filter((input) => !optedOutIds.has(input.recipientId));
+}
+
+/**
  * Writes one notification. Callers that invoke this from inside
  * another feature's business logic (enrollment approval, chat, etc.)
  * should always wrap the call in try/catch — a notification-write
  * failure must never block or roll back the primary action it's
  * attached to. This mirrors the existing convention already used for
  * `processReferralRewardForNewEnrollment()` in referral.service.ts.
+ *
+ * Silently skips the write (returns `null`) if the recipient has
+ * turned in-app notifications off in Settings — that's an intentional
+ * no-op, not a failure.
  */
 export async function createNotification(input: CreateNotificationInput) {
+  const [allowed] = await filterNotificationsEnabled([input]);
+
+  if (!allowed) {
+    return null;
+  }
+
   return prisma.notification.create({
     data: {
       recipientId: input.recipientId,
@@ -57,8 +123,14 @@ export async function createNotifications(inputs: CreateNotificationInput[]) {
     return;
   }
 
+  const allowed = await filterNotificationsEnabled(inputs);
+
+  if (allowed.length === 0) {
+    return;
+  }
+
   await prisma.notification.createMany({
-    data: inputs.map((input) => ({
+    data: allowed.map((input) => ({
       recipientId: input.recipientId,
       recipientRole: input.recipientRole,
       type: input.type,
