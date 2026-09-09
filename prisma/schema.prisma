@@ -1133,6 +1133,9 @@ enum NotificationType {
   /// Complaints (Sep 10, 2026) — see the `Complaint` model's doc-comment.
   COMPLAINT_SUBMITTED
   COMPLAINT_RESOLVED
+  /// Enrollment auto-lapse (Sep 10, 2026) — see the cron doc-comment
+  /// on `enrollmentAutoLapse.service.ts`.
+  ENROLLMENT_LAPSED
   GENERIC
 }
 
@@ -1221,5 +1224,7 @@ enum ActivityAction {
   PAYOUT_MASS_PAID
   /// Complaints (Sep 10, 2026)
   COMPLAINT_STATUS_UPDATED
+  /// Enrollment auto-lapse (Sep 10, 2026)
+  ENROLLMENT_AUTO_LAPSED
   GENERIC
 }

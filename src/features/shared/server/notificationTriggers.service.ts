@@ -255,6 +255,41 @@ export function notifyEnrollmentActivated(enrollmentId: string) {
   });
 }
 
+export function notifyEnrollmentLapsed(enrollmentId: string) {
+  return safe("enrollment auto-lapsed", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+    const studentName = displayName({ firstName: e.student.firstName, visibleName: e.student.visibleName });
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_LAPSED,
+      title: "Enrollment marked as lapsed",
+      message: `${studentName}'s enrollment in "${courseTitle}" was marked lapsed after 45 days with no class conducted. Contact the teacher or Admin to resume.`,
+      link: "/parent/enrollments",
+    });
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.ENROLLMENT_LAPSED,
+      title: "Enrollment marked as lapsed",
+      message: `The enrollment for ${studentName} in "${courseTitle}" was marked lapsed after 45 days with no class conducted.`,
+      link: "/teacher/enrollments",
+    });
+
+    await notifyAllAdmins({
+      type: T.ENROLLMENT_LAPSED,
+      title: "Enrollment auto-lapsed",
+      message: `${studentName}'s enrollment in "${courseTitle}" auto-lapsed after 45 days with no class conducted.`,
+      link: "/admin/enrollments",
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Class sessions
 // ---------------------------------------------------------------------------
