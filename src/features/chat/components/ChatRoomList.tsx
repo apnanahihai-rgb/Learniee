@@ -8,6 +8,7 @@ import {
   getEnrollmentStatusLabel,
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 function formatTimestamp(value: string | null) {
   if (!value) return "No messages yet";
@@ -46,7 +47,7 @@ export default function ChatRoomList({
   }
 
   if (error) {
-    return <div className="bg-red-100 text-red-700 p-4 rounded-lg">{error}</div>;
+    return <ErrorBanner spacing={false}>{error}</ErrorBanner>;
   }
 
   if (rooms.length === 0) {

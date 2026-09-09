@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTeacherCourses } from "@/features/courses/hooks/useTeacherCourses";
 import CourseCard from "@/features/courses/components/CourseCard";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 export default function TeacherCourseManagementPage() {
   const router = useRouter();
 
@@ -63,9 +64,7 @@ export default function TeacherCourseManagementPage() {
 
         {/* ERROR */}
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
-            {error}
-          </div>
+          <ErrorBanner>{error}</ErrorBanner>
         )}
 
         {/* APPROVED COURSES */}

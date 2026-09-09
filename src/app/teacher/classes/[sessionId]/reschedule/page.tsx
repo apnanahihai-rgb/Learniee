@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarClock, CheckCircle2 } from "lucide-react";
 
 import { useProposeSessionReschedule } from "@/features/teacher/hooks/useProposeSessionReschedule";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 /**
  * Reached from the "Request a reschedule" picker on
@@ -67,7 +68,7 @@ export default function TeacherProposeReschedulePage({
         Propose a new date/time for this class. The parent will need to approve it.
       </p>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>}
+      {error && <ErrorBanner size="compact">{error}</ErrorBanner>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

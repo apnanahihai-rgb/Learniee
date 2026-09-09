@@ -5,6 +5,7 @@ import { ClipboardCheck, ChevronRight } from "lucide-react";
 
 import { useParentEnrollments } from "@/features/parent/hooks/useEnrollments";
 import { ACTIVE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 /**
  * "Home works/tests" sidebar entry — previously pointed at
@@ -36,7 +37,7 @@ export default function ParentHomeworkTestsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       {loading ? (

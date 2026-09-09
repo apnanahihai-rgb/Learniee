@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Landmark } from "lucide-react";
 
 import { useBankAccount } from "@/features/teacher/hooks/useBankAccount";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 /**
  * "Bank Account" (Teacher Payouts, Sep 9, 2026) — previously not
@@ -72,9 +73,9 @@ export default function TeacherBankAccountPage() {
         <p className="text-gray-500">Loading…</p>
       ) : (
         <form onSubmit={handleSubmit} className="bg-white border rounded-2xl p-6 shadow-sm space-y-5">
-          {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{error}</div>}
+          {error && <ErrorBanner size="compact" spacing={false}>{error}</ErrorBanner>}
           {mismatchError && (
-            <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{mismatchError}</div>
+            <ErrorBanner size="compact" spacing={false}>{mismatchError}</ErrorBanner>
           )}
           {success && !error && (
             <div className="bg-green-100 text-green-700 p-3 rounded-lg text-sm">

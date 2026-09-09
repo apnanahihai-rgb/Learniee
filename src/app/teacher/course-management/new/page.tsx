@@ -3,6 +3,7 @@
 import CreateCourseForm from "@/features/courses/components/CreateCourseForm";
 import CourseMediaUpload from "@/features/courses/components/CourseMediaUpload";
 import { useCreateCourse } from "@/features/courses/hooks/useCreateCourse";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 export default function NewCoursePage() {
   const {
@@ -54,7 +55,7 @@ export default function NewCoursePage() {
             </div>
 
             {error && (
-              <div className="mb-6 p-4 rounded-lg bg-red-100 text-red-700">{error}</div>
+              <ErrorBanner>{error}</ErrorBanner>
             )}
 
             <div className="bg-white border rounded-2xl p-6 sm:p-8 shadow-sm">

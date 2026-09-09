@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminPayoutReview } from "@/features/admin/hooks/usePayoutReview";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -41,7 +42,7 @@ export default function AdminPayoutReviewPage() {
           </p>
         </div>
 
-        {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>}
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
         {loading ? (
           <p className="text-gray-500">Loading…</p>

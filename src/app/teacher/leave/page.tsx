@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { CalendarOff, X } from "lucide-react";
 
 import { useTeacherLeaveRequests } from "@/features/teacher/hooks/useLeaveRequests";
+import { getLeaveRequestStatusStyle } from "@/features/shared/utils/leaveRequestStatus";
 
 /**
  * "Leave" sidebar entry — previously a dead link (see
@@ -13,13 +14,6 @@ import { useTeacherLeaveRequests } from "@/features/teacher/hooks/useLeaveReques
  * counter-proposal like RescheduleRequest has. See
  * `leaveRequest.service.ts`.
  */
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  CANCELLED: "bg-gray-200 text-gray-600",
-};
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Awaiting admin",
@@ -187,7 +181,7 @@ export default function TeacherLeavePage() {
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <span
                       className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                        STATUS_STYLES[r.status] ?? "bg-gray-100 text-gray-600"
+                        getLeaveRequestStatusStyle(r.status)
                       }`}
                     >
                       {STATUS_LABELS[r.status] ?? r.status}

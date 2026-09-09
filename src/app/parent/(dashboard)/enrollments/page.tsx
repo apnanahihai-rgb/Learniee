@@ -1,6 +1,7 @@
 "use client";
 
 import { useParentEnrollments } from "@/features/parent/hooks/useEnrollments";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 import EnrollmentStatusCard from "@/features/parent/components/enrollments/EnrollmentStatusCard";
 
 export default function ParentEnrollmentsPage() {
@@ -17,7 +18,7 @@ export default function ParentEnrollmentsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       {loading ? (

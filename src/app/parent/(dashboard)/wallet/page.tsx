@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { useWallet } from "@/features/parent/hooks/useWallet";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -48,7 +49,7 @@ export default function ParentWalletPage() {
       </div>
 
       {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <div className="bg-white border rounded-xl p-6 mb-6 shadow-sm">

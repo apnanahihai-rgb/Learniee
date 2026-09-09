@@ -10,6 +10,7 @@ import {
   type ActivityLogFiltersState,
   EMPTY_FILTERS,
 } from "@/features/admin/hooks/useActivityLogs";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 const ACTION_LABELS: Record<ActivityAction, string> = {
   AUTH_LOGIN: "Logged in",
@@ -216,7 +217,7 @@ export default function AdminActivityLogsPage() {
           </div>
         </form>
 
-        {error && <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>}
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
         <div className="bg-white border rounded-xl overflow-hidden">
           {loading ? (

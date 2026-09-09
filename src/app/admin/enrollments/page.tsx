@@ -2,6 +2,7 @@
 
 import { useAdminEnrollments } from "@/features/admin/hooks/useEnrollments";
 import EnrollmentApprovalCard from "@/features/admin/components/EnrollmentApprovalCard";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 export default function AdminEnrollmentsPage() {
   const { enrollments, loading, error, updateApproval } = useAdminEnrollments();
@@ -26,7 +27,7 @@ export default function AdminEnrollmentsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+          <ErrorBanner>{error}</ErrorBanner>
         )}
 
         {enrollments.length === 0 ? (

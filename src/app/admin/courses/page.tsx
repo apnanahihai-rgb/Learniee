@@ -2,6 +2,7 @@
 
 import { useCoursesList } from "@/features/admin/hooks/useCoursesList";
 import CourseApprovalCard from "@/features/admin/components/CourseApprovalCard";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 export default function AdminCoursesPage() {
   const { courses, loading, error, updateApproval } = useCoursesList();
@@ -26,7 +27,7 @@ export default function AdminCoursesPage() {
         </div>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+          <ErrorBanner>{error}</ErrorBanner>
         )}
 
         {courses.length === 0 ? (

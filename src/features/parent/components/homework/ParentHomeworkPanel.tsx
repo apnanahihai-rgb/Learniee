@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Paperclip } from "lucide-react";
 
 import { useParentHomework, type Homework } from "@/features/parent/hooks/useHomework";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 function formatDate(value: string | null) {
   if (!value) return null;
@@ -129,7 +130,7 @@ export default function ParentHomeworkPanel({ enrollmentId }: { enrollmentId: st
 
   return (
     <div className="space-y-4">
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{error}</div>}
+      {error && <ErrorBanner size="compact" spacing={false}>{error}</ErrorBanner>}
 
       {loading ? (
         <p className="text-gray-500 text-sm">Loading homework…</p>

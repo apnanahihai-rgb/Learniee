@@ -7,6 +7,7 @@ import CurrentWorkSection from "@/features/teacher/components/onboarding/step2/C
 import TeachingPreferencesSection from "@/features/teacher/components/onboarding/step2/TeachingPreferencesSection";
 import EquipmentSkillsSection from "@/features/teacher/components/onboarding/step2/EquipmentSkillsSection";
 import AdditionalInfoAndSocialSection from "@/features/teacher/components/onboarding/step2/AdditionalInfoAndSocialSection";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 export default function TeacherStep2() {
   const {
   formData,
@@ -45,7 +46,7 @@ export default function TeacherStep2() {
       </h2>
 
       {error && (
-        <div className="mb-6 rounded-lg bg-red-100 text-red-700 p-4">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">

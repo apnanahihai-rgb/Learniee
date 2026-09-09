@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useReferral } from "@/features/parent/hooks/useReferral";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 /**
  * "Referral" sidebar entry — previously a placeholder link with no
@@ -85,7 +86,7 @@ export default function ParentReferralPage() {
       </div>
 
       {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       {/* Your code */}

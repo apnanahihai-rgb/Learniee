@@ -5,6 +5,7 @@ import { useParentCalendar } from "@/features/parent/hooks/useCalendar";
 import RescheduleRequestCard from "@/features/shared/components/RescheduleRequestCard";
 import UpcomingClassPicker from "@/features/shared/components/reschedule/UpcomingClassPicker";
 import { isPendingOnViewer } from "@/features/shared/utils/rescheduleStatus";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 function currentMonthKey() {
   const now = new Date();
@@ -48,7 +49,7 @@ export default function ParentReschedulePage() {
         />
       </section>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>}
+      {error && <ErrorBanner size="compact">{error}</ErrorBanner>}
 
       {!loading && requests.length > 0 && (
         <div className="space-y-6">

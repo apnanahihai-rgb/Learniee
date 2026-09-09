@@ -5,6 +5,7 @@ import { Paperclip, Trash2 } from "lucide-react";
 
 import { uploadFileToS3 } from "@/lib/uploadFileToS3";
 import { useTeacherHomework, type Homework } from "@/features/teacher/hooks/useHomework";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 function formatDate(value: string | null) {
   if (!value) return null;
@@ -214,7 +215,7 @@ export default function TeacherHomeworkPanel({ enrollmentId }: { enrollmentId: s
 
   return (
     <div className="space-y-4">
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">{error}</div>}
+      {error && <ErrorBanner size="compact" spacing={false}>{error}</ErrorBanner>}
 
       <CreateHomeworkForm onCreate={create} />
 

@@ -3,13 +3,8 @@
 import { useState } from "react";
 
 import { useAdminLeaveRequests } from "@/features/admin/hooks/useLeaveRequests";
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  CANCELLED: "bg-gray-200 text-gray-600",
-};
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import { getLeaveRequestStatusStyle } from "@/features/shared/utils/leaveRequestStatus";
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-IN", {
@@ -50,7 +45,7 @@ export default function AdminLeaveRequestsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">{error}</div>
+          <ErrorBanner>{error}</ErrorBanner>
         )}
 
         {loading ? (
@@ -83,7 +78,7 @@ export default function AdminLeaveRequestsPage() {
                 <div className="flex flex-col items-end gap-3">
                   <span
                     className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${
-                      STATUS_STYLES[r.status] ?? "bg-gray-100 text-gray-600"
+                      getLeaveRequestStatusStyle(r.status)
                     }`}
                   >
                     {r.status}
