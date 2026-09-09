@@ -20,6 +20,12 @@ export async function GET(req: Request) {
         currentStep: true,
         onboardingStatus: true,
         approvalStatus: true,
+        // Bank Account Approval (Sep 10, 2026) — the login flow uses
+        // this to send a newly-approved Teacher to fill in payout
+        // details as their first required step (see useLogin.ts).
+        // Only the status is needed here, not the account details
+        // themselves.
+        bankAccount: { select: { status: true } },
       },
     });
 
@@ -30,6 +36,7 @@ export async function GET(req: Request) {
         currentStep: 0,
         onboardingStatus: "NOT_STARTED",
         approvalStatus: null,
+        bankAccountStatus: "MISSING",
       });
     }
 
@@ -45,6 +52,9 @@ export async function GET(req: Request) {
 
       approvalStatus:
         teacher.approvalStatus,
+
+      // "MISSING" (never submitted) / "PENDING" / "APPROVED" / "REJECTED"
+      bankAccountStatus: teacher.bankAccount?.status ?? "MISSING",
     });
 
   } catch (error) {

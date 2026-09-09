@@ -440,16 +440,27 @@ model TuitionLedgerEntry {
 /// this carries real teacher bank details in production. See
 /// 06-OPEN-DECISIONS.md #46.
 model BankAccount {
-  id                String   @id @default(uuid())
-  teacherId         String   @unique
-  accountHolderName String
-  accountNumber     String
-  ifscCode          String
-  bankName          String?
-  branchName        String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  teacher           Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(uuid())
+  teacherId          String            @unique
+  accountHolderName  String
+  accountNumber      String
+  ifscCode           String
+  bankName           String?
+  branchName         String?
+  /// Bank Account Approval (Sep 10, 2026). Every create AND every
+  /// edit resets this to PENDING — mass-pay only ever treats an
+  /// APPROVED row as payable (see `listPaymentQueueGroupedByTeacher`
+  /// in teacherPayout.service.ts). A Teacher editing already-approved
+  /// details mid-review does not retroactively change what any past
+  /// `PayoutRecord.bankAccountSnapshot` says was paid where — that
+  /// snapshot is frozen at payout time regardless of this field.
+  status             BankAccountStatus @default(PENDING)
+  reviewedByStaffSub String?
+  reviewedAt         DateTime?
+  rejectionReason    String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  teacher            Teacher           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 }
 
 /// One row per "Pay selected teachers" mass-pay click (built Sep 9,
@@ -981,6 +992,14 @@ enum PayoutBatchStatus {
   PARTIALLY_COMPLETED
 }
 
+/// Bank Account Approval (Sep 10, 2026) — see the `BankAccount`
+/// model's doc-comment.
+enum BankAccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum PayoutRecordStatus {
   SUCCESS
   SKIPPED_NO_BANK_ACCOUNT
@@ -1130,6 +1149,11 @@ enum NotificationType {
   PAYOUT_ON_HOLD
   PAYOUT_REJECTED
   PAYOUT_PAID
+  /// Bank Account Approval (Sep 10, 2026) — see the `BankAccount`
+  /// model's doc-comment.
+  BANK_ACCOUNT_SUBMITTED
+  BANK_ACCOUNT_APPROVED
+  BANK_ACCOUNT_REJECTED
   /// Complaints (Sep 10, 2026) — see the `Complaint` model's doc-comment.
   COMPLAINT_SUBMITTED
   COMPLAINT_RESOLVED
@@ -1222,6 +1246,8 @@ enum ActivityAction {
   PAYOUT_HELD_OR_REJECTED
   PAYOUT_ADMIN_DECISION
   PAYOUT_MASS_PAID
+  /// Bank Account Approval (Sep 10, 2026)
+  BANK_ACCOUNT_APPROVAL_DECISION
   /// Complaints (Sep 10, 2026)
   COMPLAINT_STATUS_UPDATED
   /// Enrollment auto-lapse (Sep 10, 2026)

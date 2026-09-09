@@ -192,6 +192,20 @@ export function useLogin() {
             // ADMIN APPROVED
             // -----------------------------
             if (data.approvalStatus === "APPROVED") {
+              // Bank Account Approval (Sep 10, 2026) — the very first
+              // thing an approved Teacher needs to do is submit payout
+              // bank details for Admin's separate approval, so they're
+              // ready to be paid once cycles start completing. Only
+              // gate on "never submitted" (MISSING) — once they've
+              // submitted once, PENDING/APPROVED/REJECTED all mean
+              // they've already engaged with the form, so don't force
+              // a redirect there on every login; the sidebar link and
+              // the page's own status banner cover the rest.
+              if (data.bankAccountStatus === "MISSING") {
+                router.push("/teacher/bank-account");
+                return;
+              }
+
               router.push("/teacher");
               return;
             }

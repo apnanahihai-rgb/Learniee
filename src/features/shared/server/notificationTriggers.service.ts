@@ -816,6 +816,48 @@ export function notifyPayoutHeldOrRejected(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Bank Account Approval (Sep 10, 2026) — Teacher submits/edits ->
+// every Admin gets told (same "any Admin can act" pattern as leave
+// requests) -> Admin's decision notifies the Teacher back.
+// ---------------------------------------------------------------------------
+
+export function notifyBankAccountSubmitted(teacherId: string) {
+  return safe("bank account submitted", async () => {
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      select: { firstName: true, lastName: true, visibleName: true },
+    });
+    if (!teacher) return;
+
+    await notifyAllAdmins({
+      type: T.BANK_ACCOUNT_SUBMITTED,
+      title: "Bank details submitted for review",
+      message: `${displayName(teacher)} submitted payout bank details for approval.`,
+      link: "/admin/bank-accounts",
+    });
+  });
+}
+
+export function notifyBankAccountReviewed(
+  teacherId: string,
+  approved: boolean,
+  rejectionReason?: string | null,
+) {
+  return safe("bank account reviewed", async () => {
+    await createNotification({
+      recipientId: teacherId,
+      recipientRole: R.TEACHER,
+      type: approved ? T.BANK_ACCOUNT_APPROVED : T.BANK_ACCOUNT_REJECTED,
+      title: approved ? "Bank details approved" : "Bank details rejected",
+      message: approved
+        ? "Your payout bank details were approved by Admin. You're now eligible for payouts."
+        : `Your payout bank details were rejected by Admin${rejectionReason ? ` — ${rejectionReason}` : ""}. Please review and resubmit.`,
+      link: "/teacher/bank-account",
+    });
+  });
+}
+
 /** Accounts mass-paid one or more teachers. */
 export function notifyPayoutPaid(teacherId: string, amount: number, cycleCount: number) {
   return safe("payout paid", async () => {

@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Landmark } from "lucide-react";
+import { Landmark, ShieldCheck, Clock, ShieldAlert } from "lucide-react";
 
 import { useBankAccount } from "@/features/teacher/hooks/useBankAccount";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+
+const STATUS_STYLE: Record<string, string> = {
+  PENDING: "bg-amber-100 text-amber-700",
+  APPROVED: "bg-green-100 text-green-700",
+  REJECTED: "bg-red-100 text-red-700",
+};
 
 /**
  * "Bank Account" (Teacher Payouts, Sep 9, 2026) — previously not
  * modeled at all (03-DATA-MODEL.md listed `BankAccount` as a Month-2
  * entity). Accounts' Payment Queue mass-pay skips any teacher without
  * one of these on file, so this is the piece that unblocks that.
+ *
+ * **Bank Account Approval (Sep 10, 2026):** every save (first-time or
+ * an edit) now goes to Admin for review before it's usable for a
+ * payout — see `status` below. This is also the first thing a newly
+ * Admin-approved Teacher is sent to fill in (see useLogin.ts).
  *
  * Plain-text account number/IFSC for now — flagged, not solved, see
  * 06-OPEN-DECISIONS.md #46.
@@ -65,9 +76,37 @@ export default function TeacherBankAccountPage() {
           <h1 className="text-2xl font-bold text-gray-800">Bank Account</h1>
           <p className="text-sm text-gray-500 mt-1">
             Where Accounts pays your cycle earnings once a payout is verified and queued.
+            Every submission — new or edited — needs Admin&apos;s approval first.
           </p>
         </div>
       </div>
+
+      {!loading && bankAccount && (
+        <div
+          className={`mb-5 rounded-xl p-4 flex items-start gap-3 text-sm ${STATUS_STYLE[bankAccount.status] ?? "bg-gray-100 text-gray-600"}`}
+        >
+          {bankAccount.status === "APPROVED" && <ShieldCheck size={18} className="shrink-0 mt-0.5" />}
+          {bankAccount.status === "PENDING" && <Clock size={18} className="shrink-0 mt-0.5" />}
+          {bankAccount.status === "REJECTED" && <ShieldAlert size={18} className="shrink-0 mt-0.5" />}
+          <div>
+            {bankAccount.status === "APPROVED" && (
+              <p className="font-medium">Approved — you&apos;re eligible for payouts to this account.</p>
+            )}
+            {bankAccount.status === "PENDING" && (
+              <p className="font-medium">Pending Admin approval — this can&apos;t be paid out to yet.</p>
+            )}
+            {bankAccount.status === "REJECTED" && (
+              <>
+                <p className="font-medium">Rejected by Admin.</p>
+                {bankAccount.rejectionReason && (
+                  <p className="mt-0.5">{bankAccount.rejectionReason}</p>
+                )}
+                <p className="mt-0.5">Update the details below and resubmit.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-gray-500">Loading…</p>
@@ -79,7 +118,7 @@ export default function TeacherBankAccountPage() {
           )}
           {success && !error && (
             <div className="bg-green-100 text-green-700 p-3 rounded-lg text-sm">
-              Bank details saved.
+              Bank details submitted for Admin approval.
             </div>
           )}
 
@@ -160,7 +199,11 @@ export default function TeacherBankAccountPage() {
             disabled={saving}
             className="w-full bg-brand hover:bg-brand-dark text-white font-medium py-2.5 rounded-lg disabled:opacity-50"
           >
-            {saving ? "Saving…" : bankAccount ? "Update Bank Details" : "Save Bank Details"}
+            {saving
+              ? "Submitting…"
+              : bankAccount
+                ? "Resubmit for Approval"
+                : "Submit for Approval"}
           </button>
         </form>
       )}

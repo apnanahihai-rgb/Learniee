@@ -1,11 +1,21 @@
 import "server-only";
 
-import { Prisma, LedgerPayoutStatus, PayoutRecordStatus, PayoutBatchStatus } from "@prisma/client";
+import {
+  Prisma,
+  LedgerPayoutStatus,
+  PayoutRecordStatus,
+  PayoutBatchStatus,
+  BankAccountStatus,
+} from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { initiateStubTeacherPayout } from "@/lib/teacherPayoutGateway";
 import { logActivity } from "@/features/shared/server/activityLog.service";
-import { notifyPayoutPaid } from "@/features/shared/server/notificationTriggers.service";
+import {
+  notifyPayoutPaid,
+  notifyBankAccountSubmitted,
+  notifyBankAccountReviewed,
+} from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Teacher Payouts — the Payment Queue / mass-pay half (Sep 9, 2026).
@@ -70,7 +80,13 @@ export async function upsertBankAccountForTeacher(
     throw new TeacherPayoutError("Enter a valid IFSC code (e.g. HDFC0001234).");
   }
 
-  return prisma.bankAccount.upsert({
+  // Every save — first-time or an edit to already-APPROVED details —
+  // resets status to PENDING and clears any prior review. This is
+  // the actual approval gate: mass-pay only ever reads an APPROVED
+  // row as payable (see below), so an edited-but-not-yet-reviewed
+  // account simply can't be paid out from until Admin looks at it
+  // again, without needing a separate "propose vs. live" pair of rows.
+  const bankAccount = await prisma.bankAccount.upsert({
     where: { teacherId },
     create: {
       teacherId,
@@ -79,6 +95,7 @@ export async function upsertBankAccountForTeacher(
       ifscCode,
       bankName: input.bankName?.trim() || null,
       branchName: input.branchName?.trim() || null,
+      status: BankAccountStatus.PENDING,
     },
     update: {
       accountHolderName,
@@ -86,8 +103,119 @@ export async function upsertBankAccountForTeacher(
       ifscCode,
       bankName: input.bankName?.trim() || null,
       branchName: input.branchName?.trim() || null,
+      status: BankAccountStatus.PENDING,
+      reviewedByStaffSub: null,
+      reviewedAt: null,
+      rejectionReason: null,
     },
   });
+
+  await notifyBankAccountSubmitted(teacherId);
+
+  return bankAccount;
+}
+
+// ---------------------------------------------------------------------------
+// Bank account — Admin approval
+// ---------------------------------------------------------------------------
+
+export interface AdminBankAccountRow {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  email: string;
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string | null;
+  branchName: string | null;
+  status: BankAccountStatus;
+  rejectionReason: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Every Teacher's bank account, newest-submitted first — Admin's approval queue. */
+export async function listBankAccountsForAdmin(): Promise<AdminBankAccountRow[]> {
+  const rows = await prisma.bankAccount.findMany({
+    include: {
+      teacher: {
+        select: { firstName: true, lastName: true, visibleName: true, email: true },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    teacherId: row.teacherId,
+    teacherName: teacherDisplayName(row.teacher),
+    email: row.teacher.email,
+    accountHolderName: row.accountHolderName,
+    accountNumber: row.accountNumber,
+    ifscCode: row.ifscCode,
+    bankName: row.bankName,
+    branchName: row.branchName,
+    status: row.status,
+    rejectionReason: row.rejectionReason,
+    reviewedAt: row.reviewedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
+}
+
+/**
+ * Admin's Approve/Reject decision on a submitted bank account.
+ * Terminal either way — a Teacher who wants to fix a REJECTED
+ * account just edits the form again, which re-submits it as a fresh
+ * PENDING row via `upsertBankAccountForTeacher()` above.
+ */
+export async function reviewBankAccount(
+  bankAccountId: string,
+  decision: "APPROVE" | "REJECT",
+  staffSub: string,
+  rejectionReason?: string,
+) {
+  const existing = await prisma.bankAccount.findUnique({
+    where: { id: bankAccountId },
+    include: {
+      teacher: { select: { firstName: true, lastName: true, visibleName: true, email: true } },
+    },
+  });
+
+  if (!existing) {
+    throw new TeacherPayoutError("Bank account not found.", 404);
+  }
+
+  if (existing.status !== BankAccountStatus.PENDING) {
+    throw new TeacherPayoutError("This bank account has already been reviewed.", 409);
+  }
+
+  if (decision === "REJECT" && !rejectionReason?.trim()) {
+    throw new TeacherPayoutError("A reason is required to reject bank details.");
+  }
+
+  const updated = await prisma.bankAccount.update({
+    where: { id: bankAccountId },
+    data: {
+      status: decision === "APPROVE" ? BankAccountStatus.APPROVED : BankAccountStatus.REJECTED,
+      reviewedByStaffSub: staffSub,
+      reviewedAt: new Date(),
+      rejectionReason: decision === "REJECT" ? rejectionReason!.trim() : null,
+    },
+  });
+
+  await notifyBankAccountReviewed(
+    existing.teacherId,
+    decision === "APPROVE",
+    updated.rejectionReason,
+  );
+
+  return {
+    ...updated,
+    teacherName: teacherDisplayName(existing.teacher),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -98,7 +226,10 @@ export interface PayoutQueueTeacherGroup {
   teacherId: string;
   teacherName: string;
   email: string;
+  /** True only once the teacher's BankAccount is Admin-APPROVED — see BankAccountStatus. */
   hasBankAccount: boolean;
+  /** NONE / PENDING / APPROVED / REJECTED — lets the UI explain *why* a teacher isn't payable. */
+  bankAccountStatus: BankAccountStatus | "NONE";
   cycleCount: number;
   totalAmount: number;
   entryIds: string[];
@@ -126,7 +257,7 @@ export async function listPaymentQueueGroupedByTeacher(): Promise<PayoutQueueTea
               lastName: true,
               visibleName: true,
               email: true,
-              bankAccount: { select: { id: true } },
+              bankAccount: { select: { id: true, status: true } },
             },
           },
         },
@@ -151,7 +282,8 @@ export async function listPaymentQueueGroupedByTeacher(): Promise<PayoutQueueTea
         teacherId: teacher.id,
         teacherName: teacherDisplayName(teacher),
         email: teacher.email,
-        hasBankAccount: !!teacher.bankAccount,
+        hasBankAccount: teacher.bankAccount?.status === BankAccountStatus.APPROVED,
+        bankAccountStatus: teacher.bankAccount?.status ?? "NONE",
         cycleCount: 1,
         totalAmount: amount,
         entryIds: [entry.id],
@@ -227,8 +359,19 @@ export async function massPayTeachers(
 
   for (const group of skipped) {
     // Recorded as a SKIPPED PayoutRecord (audit trail of "we tried,
-    // no bank account on file") but never touches the ledger
-    // entries — they stay QUEUED_FOR_PAYMENT for the next batch.
+    // not payable yet") but never touches the ledger entries — they
+    // stay QUEUED_FOR_PAYMENT for the next batch. The reason
+    // distinguishes "never filled in" from "filled in but Admin
+    // hasn't approved it yet" from "Admin rejected it" — all three
+    // are equally un-payable, but for different reasons worth
+    // surfacing to Accounts.
+    const failureReason =
+      group.bankAccountStatus === "PENDING"
+        ? "Bank account submitted but not yet approved by Admin."
+        : group.bankAccountStatus === "REJECTED"
+          ? "Bank account was rejected by Admin — awaiting a resubmission."
+          : "No bank account on file for this teacher.";
+
     await prisma.payoutRecord.create({
       data: {
         payoutBatchId: batch.id,
@@ -236,7 +379,7 @@ export async function massPayTeachers(
         amount: group.totalAmount,
         cycleCount: group.cycleCount,
         status: PayoutRecordStatus.SKIPPED_NO_BANK_ACCOUNT,
-        failureReason: "No bank account on file for this teacher.",
+        failureReason,
       },
     });
   }
@@ -247,8 +390,10 @@ export async function massPayTeachers(
     const bankAccount = await prisma.bankAccount.findUnique({ where: { teacherId: group.teacherId } });
 
     // Defensive — hasBankAccount came from the same query moments
-    // ago, but re-check rather than assume nothing changed.
-    if (!bankAccount) {
+    // ago, but re-check rather than assume nothing changed (the
+    // teacher could have edited their details, resetting status back
+    // to PENDING, in the gap between listing and this loop running).
+    if (!bankAccount || bankAccount.status !== BankAccountStatus.APPROVED) {
       await prisma.payoutRecord.create({
         data: {
           payoutBatchId: batch.id,
@@ -256,7 +401,9 @@ export async function massPayTeachers(
           amount: group.totalAmount,
           cycleCount: group.cycleCount,
           status: PayoutRecordStatus.SKIPPED_NO_BANK_ACCOUNT,
-          failureReason: "Bank account was removed between listing and payout.",
+          failureReason: bankAccount
+            ? "Bank account was edited (back to PENDING) between listing and payout."
+            : "Bank account was removed between listing and payout.",
         },
       });
       continue;

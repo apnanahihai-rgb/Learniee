@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+export type BankAccountApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export interface BankAccount {
   id: string;
   accountHolderName: string;
@@ -9,6 +11,10 @@ export interface BankAccount {
   ifscCode: string;
   bankName: string | null;
   branchName: string | null;
+  // Bank Account Approval (Sep 10, 2026) — every save (first-time or
+  // an edit) resets this to PENDING until Admin reviews it again.
+  status: BankAccountApprovalStatus;
+  rejectionReason: string | null;
   updatedAt: string;
 }
 

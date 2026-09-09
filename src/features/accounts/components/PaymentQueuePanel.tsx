@@ -139,11 +139,22 @@ export default function PaymentQueuePanel() {
                 <td className="px-3 py-2 text-right">{g.cycleCount}</td>
                 <td className="px-3 py-2 text-right font-medium">{currency.format(g.totalAmount)}</td>
                 <td className="px-3 py-2">
-                  {g.hasBankAccount ? (
+                  {g.bankAccountStatus === "APPROVED" && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                      On file
+                      Approved
                     </span>
-                  ) : (
+                  )}
+                  {g.bankAccountStatus === "PENDING" && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                      Awaiting Admin approval
+                    </span>
+                  )}
+                  {g.bankAccountStatus === "REJECTED" && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      Rejected — can&apos;t pay yet
+                    </span>
+                  )}
+                  {g.bankAccountStatus === "NONE" && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                       Missing — can&apos;t pay yet
                     </span>

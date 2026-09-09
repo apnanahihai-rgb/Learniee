@@ -6,7 +6,10 @@ export interface PayoutQueueTeacherGroup {
   teacherId: string;
   teacherName: string;
   email: string;
+  /** True only once the teacher's bank account is Admin-approved. */
   hasBankAccount: boolean;
+  /** "NONE" | "PENDING" | "APPROVED" | "REJECTED" — see Bank Account Approval, Sep 10, 2026. */
+  bankAccountStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
   cycleCount: number;
   totalAmount: number;
   entryIds: string[];
