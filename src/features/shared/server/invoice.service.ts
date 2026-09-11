@@ -99,20 +99,96 @@ export async function listInvoicesForParent(parentId: string) {
   });
 }
 
+export interface ParentInvoiceView {
+  id: string;
+  invoiceNumber: string;
+  type: InvoiceType;
+  amount: number;
+  currency: string;
+  description: string;
+  referenceType: string;
+  referenceId: string;
+  razorpayOrderId: string | null;
+  razorpayPaymentId: string | null;
+  issuedAt: Date;
+  createdAt: Date;
+  billTo: {
+    name: string;
+    email: string;
+    phone: string;
+    addressLines: string[];
+  };
+}
+
 /**
  * A single invoice, scoped to the requesting Parent — returns null
  * (not a 403) if the invoice exists but belongs to someone else, so
  * the route can 404 rather than confirm another parent's invoice ID
  * is valid.
+ *
+ * Also attaches a `billTo` block (name/email/phone/address) so the
+ * printable invoice view has a proper "billed to" section instead of
+ * just an amount — pulled fresh from `ParentProfile` rather than
+ * denormalized onto `Invoice`, since billing details can change
+ * after an invoice is issued and the receipt should reflect the
+ * account's current details, the same way a bank statement would.
  */
-export async function getInvoiceForParent(parentId: string, invoiceId: string) {
+export async function getInvoiceForParent(
+  parentId: string,
+  invoiceId: string,
+): Promise<ParentInvoiceView | null> {
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
 
   if (!invoice || invoice.payerId !== parentId || invoice.payerRole !== InvoicePayerRole.PARENT) {
     return null;
   }
 
-  return invoice;
+  const parent = await prisma.parentProfile.findUnique({
+    where: { id: parentId },
+    select: {
+      firstName: true,
+      lastName: true,
+      visibleName: true,
+      email: true,
+      phone: true,
+      address: true,
+      city: true,
+      country: true,
+      pincode: true,
+    },
+  });
+
+  const name =
+    parent?.visibleName || [parent?.firstName, parent?.lastName].filter(Boolean).join(" ").trim() || "—";
+
+  const addressLines = [
+    parent?.address,
+    [parent?.city, parent?.pincode].filter(Boolean).join(" "),
+    parent?.country,
+  ]
+    .map((line) => line?.trim())
+    .filter((line): line is string => Boolean(line));
+
+  return {
+    id: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    type: invoice.type,
+    amount: Number(invoice.amount),
+    currency: invoice.currency,
+    description: invoice.description,
+    referenceType: invoice.referenceType,
+    referenceId: invoice.referenceId,
+    razorpayOrderId: invoice.razorpayOrderId,
+    razorpayPaymentId: invoice.razorpayPaymentId,
+    issuedAt: invoice.issuedAt,
+    createdAt: invoice.createdAt,
+    billTo: {
+      name,
+      email: parent?.email ?? "",
+      phone: parent?.phone ?? "",
+      addressLines,
+    },
+  };
 }
 
 export interface AccountsInvoiceRow {

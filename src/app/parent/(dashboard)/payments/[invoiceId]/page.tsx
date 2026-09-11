@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Printer } from "lucide-react";
 
-import type { InvoiceView } from "@/features/parent/hooks/useInvoices";
+import type { InvoiceType, InvoiceView } from "@/features/parent/hooks/useInvoices";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import { COMPANY_INFO } from "@/lib/companyInfo";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -17,9 +18,21 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
   month: "short",
   year: "numeric",
+});
+
+const dateTimeFmt = new Intl.DateTimeFormat("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
 });
+
+const ITEM_LABEL: Record<InvoiceType, string> = {
+  ENROLLMENT_PAYMENT: "Course enrollment",
+  DEMO_BOOKING_PAYMENT: "Demo session booking",
+  WALLET_TOPUP: "Wallet top-up",
+};
 
 /** Printable single-invoice view — `window.print()` is the "download as PDF" path, no PDF-generation dependency needed. */
 export default function ParentInvoiceDetailPage() {
@@ -58,7 +71,7 @@ export default function ParentInvoiceDetailPage() {
   }, [invoiceId]);
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 max-w-3xl mx-auto print:p-0 print:max-w-none">
       <div className="flex items-center justify-between mb-6 print:hidden">
         <button
           type="button"
@@ -72,7 +85,7 @@ export default function ParentInvoiceDetailPage() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex items-center gap-1 text-sm bg-violet-600 text-white px-4 py-2 rounded-full font-medium hover:bg-violet-700"
+            className="flex items-center gap-1 text-sm bg-brand text-white px-4 py-2 rounded-full font-medium hover:bg-brand-dark"
           >
             <Printer size={15} /> Print / Save as PDF
           </button>
@@ -84,45 +97,126 @@ export default function ParentInvoiceDetailPage() {
       {loading ? (
         <p className="text-gray-500 text-center py-8">Loading…</p>
       ) : invoice ? (
-        <div className="bg-white border rounded-xl p-8 shadow-sm">
-          <div className="flex items-start justify-between mb-8">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm print:border-0 print:shadow-none font-sans text-gray-900">
+          {/* Letterhead */}
+          <div className="flex items-start justify-between gap-6 px-8 sm:px-10 pt-10 pb-6 border-b-2 border-gray-900">
             <div>
-              <h1 className="text-xl font-bold text-violet-900">Learnie</h1>
-              <p className="text-xs text-gray-400 mt-1">Payment invoice</p>
-            </div>
-            <div className="text-right">
-              <p className="font-mono text-sm text-gray-700">{invoice.invoiceNumber}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {dateFmt.format(new Date(invoice.issuedAt))}
-              </p>
-            </div>
-          </div>
-
-          <div className="border-t border-b py-4 mb-4">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
-              Description
-            </p>
-            <p className="text-gray-800">{invoice.description}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-            {invoice.razorpayPaymentId && (
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
-                  Payment reference
-                </p>
-                <p className="font-mono text-xs text-gray-600 break-all">
-                  {invoice.razorpayPaymentId}
-                </p>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                {COMPANY_INFO.legalName}
+              </h1>
+              <p className="text-xs text-gray-500 mt-0.5">{COMPANY_INFO.tagline}</p>
+              <div className="text-xs text-gray-500 mt-3 leading-relaxed">
+                {COMPANY_INFO.addressLines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+                {(COMPANY_INFO.email || COMPANY_INFO.phone) && (
+                  <p className="mt-1">
+                    {COMPANY_INFO.email}
+                    {COMPANY_INFO.email && COMPANY_INFO.phone ? " · " : ""}
+                    {COMPANY_INFO.phone}
+                  </p>
+                )}
+                {COMPANY_INFO.gstin && <p>GSTIN: {COMPANY_INFO.gstin}</p>}
               </div>
-            )}
+            </div>
+
+            <div className="text-right shrink-0">
+              <p className="text-lg font-semibold uppercase tracking-wide text-gray-800">
+                Receipt
+              </p>
+              <span className="inline-block mt-1 text-[11px] font-semibold uppercase tracking-wide text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                Paid
+              </span>
+              <dl className="mt-3 text-xs text-gray-500 space-y-1">
+                <div className="flex justify-end gap-2">
+                  <dt>Receipt No.</dt>
+                  <dd className="font-mono text-gray-800">{invoice.invoiceNumber}</dd>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <dt>Date</dt>
+                  <dd className="text-gray-800">{dateFmt.format(new Date(invoice.issuedAt))}</dd>
+                </div>
+              </dl>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between border-t pt-4">
-            <p className="text-sm font-semibold text-gray-700">Amount paid</p>
-            <p className="text-2xl font-bold text-violet-900">
-              {currency.format(invoice.amount)}
+          {/* Bill to / payment details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 px-8 sm:px-10 py-6 border-b border-gray-200">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+                Billed to
+              </p>
+              <p className="text-sm font-medium text-gray-900">{invoice.billTo?.name ?? "—"}</p>
+              {invoice.billTo?.addressLines.map((line) => (
+                <p key={line} className="text-xs text-gray-500">
+                  {line}
+                </p>
+              ))}
+              {invoice.billTo?.email && (
+                <p className="text-xs text-gray-500 mt-1">{invoice.billTo.email}</p>
+              )}
+              {invoice.billTo?.phone && (
+                <p className="text-xs text-gray-500">{invoice.billTo.phone}</p>
+              )}
+            </div>
+
+            <div className="sm:text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+                Payment details
+              </p>
+              <p className="text-xs text-gray-500">
+                Paid on {dateTimeFmt.format(new Date(invoice.issuedAt))}
+              </p>
+              {invoice.razorpayPaymentId && (
+                <p className="text-xs text-gray-500 break-all">
+                  Reference: <span className="font-mono">{invoice.razorpayPaymentId}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Line items */}
+          <div className="px-8 sm:px-10 py-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-300 text-left text-[11px] uppercase tracking-wide text-gray-400">
+                  <th className="pb-2 font-semibold">Description</th>
+                  <th className="pb-2 font-semibold text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="py-4 pr-4">
+                    <p className="font-medium text-gray-900">{ITEM_LABEL[invoice.type]}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{invoice.description}</p>
+                  </td>
+                  <td className="py-4 text-right tabular-nums text-gray-900">
+                    {currency.format(invoice.amount)}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className="pt-4 text-sm font-semibold text-gray-900">Total paid</td>
+                  <td className="pt-4 text-right text-lg font-bold tabular-nums text-gray-900">
+                    {currency.format(invoice.amount)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 sm:px-10 py-5 border-t border-gray-200 bg-gray-50 print:bg-white rounded-b-lg">
+            <p className="text-xs text-gray-500">
+              This is a system-generated receipt for a payment made on {COMPANY_INFO.legalName}{" "}
+              and does not require a signature or stamp.
             </p>
+            {COMPANY_INFO.email && (
+              <p className="text-xs text-gray-500 mt-1">
+                Questions about this receipt? Write to {COMPANY_INFO.email}.
+              </p>
+            )}
           </div>
         </div>
       ) : (

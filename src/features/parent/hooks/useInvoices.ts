@@ -17,6 +17,13 @@ export interface InvoiceView {
   razorpayPaymentId: string | null;
   issuedAt: string;
   createdAt: string;
+  /** Only present on the single-invoice detail view (`GET /api/parent/invoices/[invoiceId]`), not the list. */
+  billTo?: {
+    name: string;
+    email: string;
+    phone: string;
+    addressLines: string[];
+  };
 }
 
 /** Backs `/parent/payments` — the logged-in parent's own invoices. */
