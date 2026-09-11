@@ -1265,3 +1265,68 @@ enum ActivityAction {
   ENROLLMENT_AUTO_LAPSED
   GENERIC
 }
+
+/// Invoices (Sep 11, 2026). One row per completed payment —
+/// Enrollment fee, a paid Demo booking, or a self-funded Wallet
+/// top-up — a receipt the payer, Accounts, and Admin can all look
+/// up later. Deliberately NOT a general ledger entry:
+/// `TuitionLedgerEntry` already owns the cycle/payout-math side of
+/// an Enrollment's money; `Invoice` only ever records "this much was
+/// actually charged via Razorpay, here's proof." A manual Wallet
+/// credit (Accounts issuing a refund with no gateway charge behind
+/// it — see `Wallet`'s doc-comment) deliberately does NOT get an
+/// Invoice, since there's no real payment to receipt.
+///
+/// `payerId`/`payerRole` is the same loosely-typed pointer pattern
+/// already used by `Notification.recipientId` / `ChatMessage.senderId`
+/// / `ActivityLog.actorId` (06-OPEN-DECISIONS.md #33 — still no
+/// generic `User` table). `payerRole` is always `PARENT` today (the
+/// only role that pays for anything in this app) but kept as its own
+/// enum rather than a hardcoded literal, same forward-compatibility
+/// reasoning `NotificationRecipientRole.ACCOUNTS` already uses.
+///
+/// `invoiceSeq` is a real DB-level autoincrement (a Postgres
+/// sequence), not a counted `COUNT(*) + 1` — the safe way to get a
+/// collision-free sequential number under concurrent writes without
+/// taking a lock. `invoiceNumber` (e.g. "INV-000123") is the
+/// human-readable string formatted from it once the row exists (see
+/// `invoice.service.ts`), stored so it never needs recomputing at
+/// read time.
+///
+/// Idempotent the same way every payment-writing model in this
+/// schema already is: unique on `razorpayOrderId`. The Enrollment/
+/// DemoBooking/Wallet-topup verify routes AND their webhook
+/// reconciliation fallback both call into invoice generation — this
+/// is what stops that from ever producing two invoices for the same
+/// order.
+model Invoice {
+  id                String           @id @default(uuid())
+  invoiceSeq        Int              @default(autoincrement())
+  invoiceNumber     String           @unique
+  type              InvoiceType
+  payerId           String
+  payerRole         InvoicePayerRole @default(PARENT)
+  amount            Decimal          @db.Decimal(10, 2)
+  currency          String           @default("INR")
+  description       String
+  referenceType     String
+  referenceId       String
+  razorpayOrderId   String?          @unique
+  razorpayPaymentId String?          @unique
+  issuedAt          DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+
+  @@index([payerId, payerRole, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+enum InvoiceType {
+  ENROLLMENT_PAYMENT
+  DEMO_BOOKING_PAYMENT
+  WALLET_TOPUP
+}
+
+/// Always PARENT today — see the `Invoice` model's doc-comment.
+enum InvoicePayerRole {
+  PARENT
+}

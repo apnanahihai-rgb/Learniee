@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { DemoBookingStatus } from "@prisma/client";
+import { DemoBookingStatus, InvoiceType } from "@prisma/client";
 import {
   getRazorpayClient,
   rupeesToPaise,
@@ -10,6 +10,7 @@ import {
   priceWithInternationalSurcharge,
 } from "@/lib/internationalPayments";
 import { notifyDemoBooked } from "@/features/shared/server/notificationTriggers.service";
+import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 
 /**
  * DECIDED (06-OPEN-DECISIONS.md #26): every ParentProfile gets 2
@@ -366,6 +367,24 @@ export async function verifyDemoBookingPayment(
 
   await notifyDemoBooked(booking.id);
 
+  // Invoices (Sep 11, 2026) — a receipt for this demo's payment,
+  // visible to this Parent and to Accounts/Admin. Never lets a
+  // receipt-generation failure block the booking response.
+  try {
+    await generateInvoiceForPayment({
+      type: InvoiceType.DEMO_BOOKING_PAYMENT,
+      payerId: parentId,
+      amount: Number(booking.amount ?? pricing.amountPayable),
+      description: `Demo booking payment${validated.subject ? ` — ${validated.subject}` : ""}`,
+      referenceType: "DEMO_BOOKING",
+      referenceId: booking.id,
+      razorpayOrderId: booking.razorpayOrderId,
+      razorpayPaymentId: booking.razorpayPaymentId,
+    });
+  } catch (err) {
+    console.error("Invoice generation failed (demo booking still succeeded):", err);
+  }
+
   return { booking, usedFreeCoupon: false };
 }
 
@@ -456,6 +475,24 @@ export async function reconcileDemoBookingFromWebhook(
   });
 
   await notifyDemoBooked(booking.id);
+
+  // Same Invoice hook as verifyDemoBookingPayment() — this path is
+  // the safety net for a payment that captured on Razorpay's side
+  // but whose client never confirmed back.
+  try {
+    await generateInvoiceForPayment({
+      type: InvoiceType.DEMO_BOOKING_PAYMENT,
+      payerId: parentId,
+      amount: Number(booking.amount ?? pricing.amountPayable),
+      description: `Demo booking payment${subject ? ` — ${subject}` : ""}`,
+      referenceType: "DEMO_BOOKING",
+      referenceId: booking.id,
+      razorpayOrderId: booking.razorpayOrderId,
+      razorpayPaymentId: booking.razorpayPaymentId,
+    });
+  } catch (err) {
+    console.error("Invoice generation failed (webhook demo booking still succeeded):", err);
+  }
 
   return booking;
 }

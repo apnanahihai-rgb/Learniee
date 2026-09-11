@@ -14,6 +14,7 @@ import PaymentQueuePanel from "@/features/accounts/components/PaymentQueuePanel"
 import RevenueLedgerPanel from "@/features/accounts/components/RevenueLedgerPanel";
 import DemoBookingsPanel from "@/features/accounts/components/DemoBookingsPanel";
 import WalletPanel from "@/features/accounts/components/WalletPanel";
+import InvoicesPanel from "@/features/accounts/components/InvoicesPanel";
 
 interface AccountsDashboardShellProps {
   heading: string;
@@ -29,7 +30,7 @@ interface AccountsDashboardShellProps {
   demoRows: DemoBookingRow[];
 }
 
-type TabId = "cycles" | "verify" | "payment-queue" | "revenue" | "demos" | "wallets";
+type TabId = "cycles" | "verify" | "payment-queue" | "revenue" | "demos" | "wallets" | "invoices";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -74,6 +75,7 @@ export default function AccountsDashboardShell({
     { id: "revenue", label: "Revenue Ledger" },
     { id: "demos", label: "Demo Bookings" },
     { id: "wallets", label: "Parent Wallets" },
+    { id: "invoices", label: "Invoices" },
   ];
 
   return (
@@ -160,6 +162,7 @@ export default function AccountsDashboardShell({
         {tab === "revenue" && <RevenueLedgerPanel rows={ledgerRows} />}
         {tab === "demos" && <DemoBookingsPanel rows={demoRows} />}
         {tab === "wallets" && <WalletPanel />}
+        {tab === "invoices" && <InvoicesPanel />}
       </div>
     </div>
   );

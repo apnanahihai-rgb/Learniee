@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { EnrollmentStatus } from "@prisma/client";
+import { EnrollmentStatus, InvoiceType } from "@prisma/client";
 import {
   getRazorpayClient,
   rupeesToPaise,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/internationalPayments";
 import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
 import { notifyEnrollmentCreated } from "@/features/shared/server/notificationTriggers.service";
+import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 
 /**
  * Cycle rule (updated Aug 31, 2026, per direct clarification —
@@ -404,6 +405,25 @@ export async function verifyEnrollmentPayment(
 
   await notifyEnrollmentCreated(enrollment.id);
 
+  // Invoices (Sep 11, 2026) — a receipt for the payment that just
+  // cleared, visible to this Parent and to Accounts/Admin. Never
+  // lets a receipt-generation failure block the response the Parent
+  // is waiting on (same reasoning as the referral try/catch above).
+  try {
+    await generateInvoiceForPayment({
+      type: InvoiceType.ENROLLMENT_PAYMENT,
+      payerId: parentId,
+      amount: Number(enrollment.amountPaid),
+      description: `Enrollment payment${priced.subject ? ` — ${priced.subject}` : ""}`,
+      referenceType: "ENROLLMENT",
+      referenceId: enrollment.id,
+      razorpayOrderId: enrollment.razorpayOrderId,
+      razorpayPaymentId: enrollment.razorpayPaymentId,
+    });
+  } catch (err) {
+    console.error("Invoice generation failed (enrollment still succeeded):", err);
+  }
+
   return enrollment;
 }
 
@@ -522,6 +542,25 @@ export async function reconcileEnrollmentFromWebhook(
   }
 
   await notifyEnrollmentCreated(enrollment.id);
+
+  // Same Invoice hook as verifyEnrollmentPayment() — this path is
+  // the safety net for a payment that captured on Razorpay's side
+  // but whose client never confirmed back, so it needs the same
+  // receipt written, not just the happy path.
+  try {
+    await generateInvoiceForPayment({
+      type: InvoiceType.ENROLLMENT_PAYMENT,
+      payerId: parentId,
+      amount: Number(enrollment.amountPaid),
+      description: `Enrollment payment${priced.subject ? ` — ${priced.subject}` : ""}`,
+      referenceType: "ENROLLMENT",
+      referenceId: enrollment.id,
+      razorpayOrderId: enrollment.razorpayOrderId,
+      razorpayPaymentId: enrollment.razorpayPaymentId,
+    });
+  } catch (err) {
+    console.error("Invoice generation failed (webhook enrollment still succeeded):", err);
+  }
 
   return enrollment;
 }

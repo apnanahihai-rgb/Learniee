@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { WalletTransactionType } from "@prisma/client";
+import { WalletTransactionType, InvoiceType } from "@prisma/client";
 import {
   getRazorpayClient,
   rupeesToPaise,
@@ -10,6 +10,7 @@ import {
   WALLET_TOPUP_MAX_AMOUNT,
 } from "@/features/shared/utils/walletTopup";
 import { notifyWalletCredited } from "@/features/shared/server/notificationTriggers.service";
+import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 
 /**
  * Wallet (06-OPEN-DECISIONS.md #28) — closed-loop credit ledger per
@@ -135,6 +136,29 @@ export async function creditWallet(input: WalletAdjustmentInput) {
   });
 
   await notifyWalletCredited(input.parentId, input.amount, input.reason);
+
+  // Invoices (Sep 11, 2026) — only self-funded top-ups (the caller
+  // passes `razorpayOrderId`) are a real payment worth a receipt.
+  // Accounts' manual credits (refunds, adjustments) go through this
+  // exact same function with no Razorpay ids attached — those
+  // deliberately stay un-invoiced, since there's no gateway charge
+  // behind them to receipt (see the Invoice model's doc-comment).
+  if (input.razorpayOrderId) {
+    try {
+      await generateInvoiceForPayment({
+        type: InvoiceType.WALLET_TOPUP,
+        payerId: input.parentId,
+        amount: input.amount,
+        description: "Wallet top-up",
+        referenceType: "WALLET_TOPUP",
+        referenceId: result.transaction.id,
+        razorpayOrderId: input.razorpayOrderId,
+        razorpayPaymentId: input.razorpayPaymentId,
+      });
+    } catch (err) {
+      console.error("Invoice generation failed (wallet top-up still succeeded):", err);
+    }
+  }
 
   return result;
 }
