@@ -47,6 +47,7 @@ model ParentProfile {
   chatRooms           ChatRoom[]
   classSessions       ClassSession[]
   demoCoupon          DemoCoupon?
+  demoCouponPurchases DemoCouponPurchase[]
   enrollments         Enrollment[]
   homeworks           Homework[]
   students            Student[]
@@ -248,6 +249,33 @@ model DemoCoupon {
   updatedAt   DateTime      @updatedAt
   bookings    DemoBooking[]
   parent      ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+}
+
+/// One row per completed "buy extra demo coupons ahead of time"
+/// payment (added Sep 11, 2026) — distinct from DemoBooking's own
+/// pay-per-demo Razorpay flow (createDemoBookingOrder in
+/// demoCoupon.service.ts), which only ever charges the flat ₹100
+/// fee for one demo at the moment it's booked. This is the
+/// previously-placeholder "Buy more coupons" flow
+/// (06-OPEN-DECISIONS.md #26's paid path, extended) — a parent can
+/// top up their DemoCoupon.totalIssued balance in bulk before they
+/// actually book anything. Exists purely as an idempotent payment
+/// record (`razorpayOrderId` unique, same pattern as
+/// WalletTransaction/Invoice) plus an audit trail of how many
+/// coupons were bought and when — DemoCoupon.totalIssued is the
+/// actual balance these purchases increment.
+model DemoCouponPurchase {
+  id                String        @id @default(uuid())
+  parentId          String
+  quantity          Int
+  amount            Decimal       @db.Decimal(10, 2)
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  paidAt            DateTime      @default(now())
+  createdAt         DateTime      @default(now())
+  parent            ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
 }
 
 /// One row per booked demo session. `subject` defaults to "" (never
@@ -1242,6 +1270,7 @@ enum ActivityAction {
   PAYMENT_ENROLLMENT
   PAYMENT_DEMO_BOOKING
   PAYMENT_WALLET_TOPUP
+  PAYMENT_DEMO_COUPON_PURCHASE
   WALLET_CREDITED_MANUAL
   LEAVE_REQUEST_APPROVED
   LEAVE_REQUEST_REJECTED
@@ -1324,6 +1353,7 @@ enum InvoiceType {
   ENROLLMENT_PAYMENT
   DEMO_BOOKING_PAYMENT
   WALLET_TOPUP
+  DEMO_COUPON_PURCHASE
 }
 
 /// Always PARENT today — see the `Invoice` model's doc-comment.

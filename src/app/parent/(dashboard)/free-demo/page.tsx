@@ -22,12 +22,10 @@ import {
  * sidebar). Deliberately scoped to just two things, per request:
  *
  * 1. Buying demo coupons (beyond the 2 free ones every account
- *    gets — 06-OPEN-DECISIONS.md #26). Reuses the same
- *    POST /api/parent/demo-coupons/purchase endpoint as the
- *    navbar's DemoCouponButton, which intentionally returns 501
- *    until Razorpay is wired up (02-ARCHITECTURE.md) — this page
- *    shows that same "coming soon" message rather than pretending
- *    a purchase went through.
+ *    gets — 06-OPEN-DECISIONS.md #26). Uses the same
+ *    useDemoCoupons()'s `purchaseCoupons` flow as the navbar's
+ *    DemoCouponButton (added Sep 11, 2026) — a real Razorpay
+ *    Checkout, order → verify, before any coupons are added.
  * 2. The parent's scheduled demo lectures — every DemoBooking on
  *    the account, most recent first, split into "Upcoming" and
  *    "Past / other" so a long history doesn't bury what's next.
@@ -39,7 +37,12 @@ import {
  * management — those stay on the main dashboard and course pages.
  */
 export default function FreeDemoPage() {
-  const { balance, loading: balanceLoading } = useDemoCoupons();
+  const {
+    balance,
+    loading: balanceLoading,
+    purchaseCoupons,
+    purchasing,
+  } = useDemoCoupons();
   const {
     bookings,
     loading: bookingsLoading,
@@ -86,6 +89,8 @@ export default function FreeDemoPage() {
         remainingFree={remainingFree}
         paidDemoPrice={paidDemoPrice}
         balanceLoading={balanceLoading}
+        purchaseCoupons={purchaseCoupons}
+        purchasing={purchasing}
       />
 
       <section className="mt-8">
@@ -164,37 +169,26 @@ function BuyCouponsCard({
   remainingFree,
   paidDemoPrice,
   balanceLoading,
+  purchaseCoupons,
+  purchasing,
 }: {
   remainingFree: number;
   paidDemoPrice: number;
   balanceLoading: boolean;
+  purchaseCoupons: (
+    quantity: number,
+  ) => Promise<{ ok: boolean; message: string }>;
+  purchasing: boolean;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [purchaseNotice, setPurchaseNotice] = useState("");
-  const [purchasing, setPurchasing] = useState(false);
 
   async function handleBuy() {
-    setPurchasing(true);
     setPurchaseNotice("");
 
-    try {
-      const res = await fetch("/api/parent/demo-coupons/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity }),
-      });
+    const { message } = await purchaseCoupons(quantity);
 
-      const data = await res.json();
-
-      setPurchaseNotice(
-        data.error || "Something went wrong — try again in a moment.",
-      );
-    } catch (err) {
-      console.error("Buy demo coupons error:", err);
-      setPurchaseNotice("Something went wrong — try again in a moment.");
-    } finally {
-      setPurchasing(false);
-    }
+    setPurchaseNotice(message);
   }
 
   return (

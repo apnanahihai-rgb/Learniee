@@ -15,20 +15,23 @@ import { useDemoBookings } from "@/features/parent/hooks/useDemoBookings";
  * request, Aug 30, 2026) — account-level, not per child, see
  * 06-OPEN-DECISIONS.md #26.
  *
- * "Buy more" currently calls POST /api/parent/demo-coupons/purchase,
- * which intentionally returns 501 — Razorpay isn't integrated yet
- * (02-ARCHITECTURE.md), so this shows the server's "coming soon"
- * message rather than silently granting coupons with no real
- * charge. Swap this over to a real checkout once the gateway exists.
+ * "Buy more" opens a real Razorpay Checkout (added Sep 11, 2026, via
+ * useDemoCoupons()'s `purchaseCoupons` — order → Checkout → verify,
+ * same pattern as the Enrollment/DemoBooking/Wallet payment flows)
+ * before any coupons are actually added.
  */
 export default function DemoCouponButton() {
   const [open, setOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [purchaseNotice, setPurchaseNotice] = useState("");
-  const [purchasing, setPurchasing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { balance, loading: balanceLoading } = useDemoCoupons();
+  const {
+    balance,
+    loading: balanceLoading,
+    purchaseCoupons,
+    purchasing,
+  } = useDemoCoupons();
   const { bookings, loading: bookingsLoading } = useDemoBookings();
 
   useEffect(() => {
@@ -61,27 +64,11 @@ export default function DemoCouponButton() {
   const paidDemoPrice = balance?.paidDemoPrice ?? 100;
 
   async function handleBuy() {
-    setPurchasing(true);
     setPurchaseNotice("");
 
-    try {
-      const res = await fetch("/api/parent/demo-coupons/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity }),
-      });
+    const { message } = await purchaseCoupons(quantity);
 
-      const data = await res.json();
-
-      setPurchaseNotice(
-        data.error || "Something went wrong — try again in a moment.",
-      );
-    } catch (err) {
-      console.error("Buy demo coupons error:", err);
-      setPurchaseNotice("Something went wrong — try again in a moment.");
-    } finally {
-      setPurchasing(false);
-    }
+    setPurchaseNotice(message);
   }
 
   return (
