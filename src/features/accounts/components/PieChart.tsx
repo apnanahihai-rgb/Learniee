@@ -60,7 +60,13 @@ export default function PieChart({ slices, centerLabel, centerSubLabel, size = 2
     total > 0
       ? positiveSlices.map((s) => {
           const sweep = (s.value / total) * 360;
-          const path = arcPath(cursor, cursor + sweep);
+          // A sweep of exactly 360° (a single slice holding 100%) makes the
+          // arc's start and end points coincide, which collapses the SVG
+          // arc path to nothing and renders an invisible ring. Capping just
+          // shy of a full circle keeps the arc drawable while leaving a gap
+          // too small to see.
+          const endAngle = cursor + Math.min(sweep, 359.99);
+          const path = arcPath(cursor, endAngle);
           cursor += sweep;
           return { ...s, path };
         })
