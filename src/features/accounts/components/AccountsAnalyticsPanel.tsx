@@ -13,9 +13,13 @@ import {
   PiggyBank,
   ReceiptText,
   PieChart as PieChartIcon,
+  ListChecks,
 } from "lucide-react";
 
-import { useAccountsAnalytics } from "@/features/accounts/hooks/useAccountsAnalytics";
+import {
+  useAccountsAnalytics,
+  type AccountsAnalytics,
+} from "@/features/accounts/hooks/useAccountsAnalytics";
 import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
 import StatCard from "@/features/accounts/components/StatCard";
 import {
@@ -53,6 +57,73 @@ const PAYOUT_STATUS_COLORS: Partial<Record<LedgerPayoutStatus, string>> = {
   EXPIRED: "#9ca3af", // gray — stale
   APPROVED: "#0d9488", // teal — legacy status
 };
+
+// Every figure the "Build Your Own Breakdown" donut can show, each with a
+// fixed color and how to read it off `AccountsAnalytics`. Ticking any subset
+// treats those figures as slices of one combined total — it doesn't assume
+// the ticked figures are mutually-exclusive parts of a single whole (Net
+// Profit, for instance, is *derived from* Revenue and Expense, not separate
+// money), so it's a flexible comparison view, not another "100% of X" chart.
+type MetricKey =
+  | "totalRevenue"
+  | "tuitionRevenue"
+  | "demoRevenue"
+  | "totalExpense"
+  | "teacherPayouts"
+  | "referralRewards"
+  | "walletCredits"
+  | "netProfit"
+  | "netLoss"
+  | "platformProfit";
+
+const METRIC_DEFS: Record<
+  MetricKey,
+  { label: string; color: string; getValue: (a: AccountsAnalytics) => number }
+> = {
+  totalRevenue: { label: "Total Revenue", color: REVENUE_MAIN, getValue: (a) => a.revenue.totalRevenue },
+  tuitionRevenue: { label: "Tuition Revenue", color: REVENUE_TINTS[0], getValue: (a) => a.revenue.tuitionRevenue },
+  demoRevenue: { label: "Demo Revenue", color: REVENUE_TINTS[1], getValue: (a) => a.revenue.demoRevenue },
+  totalExpense: { label: "Total Expense", color: EXPENSE_MAIN, getValue: (a) => a.expense.totalExpense },
+  teacherPayouts: { label: "Teacher Payouts", color: EXPENSE_TINTS[0], getValue: (a) => a.expense.teacherPayouts },
+  referralRewards: {
+    label: "Referral Rewards",
+    color: EXPENSE_TINTS[1],
+    getValue: (a) => a.expense.referralRewards,
+  },
+  walletCredits: {
+    label: "Wallet Credits",
+    color: EXPENSE_TINTS[2],
+    getValue: (a) => a.expense.manualWalletCredits,
+  },
+  netProfit: { label: "Net Profit", color: "#0ea5e9", getValue: (a) => a.net.profit },
+  netLoss: { label: "Net Loss", color: "#f97316", getValue: (a) => a.net.loss },
+  platformProfit: { label: "Platform Profit", color: "#7e2bf1", getValue: (a) => a.profit.platformProfit },
+};
+
+const METRIC_ORDER: MetricKey[] = [
+  "totalRevenue",
+  "tuitionRevenue",
+  "demoRevenue",
+  "totalExpense",
+  "teacherPayouts",
+  "referralRewards",
+  "walletCredits",
+  "netProfit",
+  "netLoss",
+  "platformProfit",
+];
+
+// A sensible starting selection — roughly what was asked for: Profit, Loss,
+// Total Expense, Total Revenue, Teacher Payouts. Net Profit and Net Loss are
+// both ticked by default but one of them is always ₹0 (only one applies for
+// any given period), so only the one that applies actually shows up.
+const DEFAULT_SELECTED_METRICS: MetricKey[] = [
+  "totalRevenue",
+  "totalExpense",
+  "teacherPayouts",
+  "netProfit",
+  "netLoss",
+];
 
 type PresetId = "all" | "this_month" | "last_month" | "this_year" | "custom";
 
@@ -201,6 +272,7 @@ export default function AccountsAnalyticsPanel() {
       {!loading && analytics && (
         <>
           <KpiRow analytics={analytics} rangeLabel={rangeLabel} />
+          <CustomBreakdownDonut analytics={analytics} rangeLabel={rangeLabel} />
           <div className="grid xl:grid-cols-2 gap-6">
             <RevenueVsExpenseDonut analytics={analytics} rangeLabel={rangeLabel} />
             <PayoutStatusDonut analytics={analytics} rangeLabel={rangeLabel} />
@@ -268,6 +340,109 @@ function KpiRow({
           tone="brand"
           sublabel="Resolved 70/30 ledger formula"
         />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Build Your Own Breakdown — tick any of the figures on the page (revenue
+ * lines, expense lines, Net Profit / Net Loss, Platform Profit) and see
+ * them side by side as shares of one combined total, in one donut. Ticked
+ * figures with nothing to show for the selected period (e.g. Net Loss
+ * during a profitable month) are simply left out of the ring rather than
+ * drawn as a zero-width slice.
+ */
+function CustomBreakdownDonut({
+  analytics,
+  rangeLabel,
+}: {
+  analytics: AccountsAnalytics | null;
+  rangeLabel: string;
+}) {
+  const [selected, setSelected] = useState<Set<MetricKey>>(() => new Set(DEFAULT_SELECTED_METRICS));
+
+  if (!analytics) return null;
+
+  function toggle(key: MetricKey) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  const slices: PieChartSlice[] = METRIC_ORDER.filter((key) => selected.has(key))
+    .map((key) => {
+      const def = METRIC_DEFS[key];
+      return { label: def.label, value: def.getValue(analytics), color: def.color };
+    })
+    .filter((s) => s.value > 0);
+
+  const total = slices.reduce((sum, s) => sum + s.value, 0);
+
+  return (
+    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b flex items-baseline justify-between flex-wrap gap-2 bg-gray-50">
+        <div className="flex items-center gap-2">
+          <ListChecks size={16} className="text-gray-400" />
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Build Your Own Breakdown</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Tick any figures below to compare them as shares of one total.
+            </p>
+          </div>
+        </div>
+        <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
+      </div>
+
+      <div className="p-6 flex flex-col gap-6">
+        <div className="flex flex-wrap gap-2">
+          {METRIC_ORDER.map((key) => {
+            const def = METRIC_DEFS[key];
+            const value = def.getValue(analytics);
+            const active = selected.has(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => toggle(key)}
+                aria-pressed={active}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                  active
+                    ? "border-transparent text-white"
+                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                }`}
+                style={active ? { backgroundColor: def.color } : undefined}
+              >
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: active ? "rgba(255,255,255,0.9)" : def.color }}
+                />
+                {def.label}
+                <span className={active ? "text-white/85" : "text-gray-400"}>
+                  {currency.format(value)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {slices.length > 0 ? (
+          <PieChart
+            slices={slices}
+            centerLabel={currency.format(total)}
+            centerSubLabel={`${slices.length} selected`}
+            size={200}
+          />
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-10">
+            {selected.size === 0
+              ? "Tick at least one figure above to see the breakdown."
+              : "The figures you've selected are all ₹0 for this period."}
+          </p>
+        )}
       </div>
     </div>
   );
