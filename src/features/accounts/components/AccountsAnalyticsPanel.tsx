@@ -3,10 +3,22 @@
 import { useMemo, useState } from "react";
 
 import type { LedgerPayoutStatus } from "@prisma/client";
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, ListChecks } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  IndianRupee,
+  Wallet2,
+  PiggyBank,
+  ReceiptText,
+  BarChart3,
+} from "lucide-react";
 
 import { useAccountsAnalytics } from "@/features/accounts/hooks/useAccountsAnalytics";
 import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
+import StatCard from "@/features/accounts/components/StatCard";
+import BarChart, { StackedBar } from "@/features/accounts/components/BarChart";
 import {
   daysInMonth,
   toDateKey,
@@ -20,9 +32,26 @@ const currency = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
+const compactCurrency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 // Brand violet/yellow first, then a small extended palette for the
 // remaining slices — see globals.css for --brand-violet/--brand-yellow.
 const PALETTE = ["#7e2bf1", "#f4c01e", "#0ea5a4", "#ef4444", "#3b82f6", "#22c55e", "#f97316"];
+
+const PAYOUT_STATUS_COLORS: Partial<Record<LedgerPayoutStatus, string>> = {
+  PENDING_VERIFICATION: "#3b82f6",
+  ON_HOLD: "#f4c01e",
+  QUEUED_FOR_PAYMENT: "#7e2bf1",
+  PAID: "#22c55e",
+  REJECTED: "#ef4444",
+  EXPIRED: "#9ca3af",
+  APPROVED: "#0ea5a4",
+};
 
 type MetricId = "pl" | "expense" | "revenue" | "payout_status";
 type PresetId = "all" | "this_month" | "last_month" | "this_year" | "custom";
@@ -80,23 +109,21 @@ function presetRange(preset: PresetId): { from?: string; to?: string } {
 }
 
 /**
- * Accounts Analytics — Financial Statement layout.
+ * Accounts Analytics — visual dashboard layout.
  *
- * Redesigned as a professional ledger statement instead of a single
- * switchable pie chart: a fixed "Statement of Accounts" (Income /
- * Expenses / Net Result, in the same debit-credit-style layout an
- * accountant would expect) and a "Teacher Payout Status" ledger table
- * are always visible for the selected period, with the original
- * selectable donut chart kept below as a supplementary visual. The
- * underlying data and the "Overall Performance" period picker (All
- * Time / This Month / Last Month / This Year / a custom date range)
- * are unchanged.
+ * Redesigned so the period's numbers are read off charts and bars
+ * instead of ledger-style text tables: a KPI row up top, an
+ * Income-vs-Expense comparison bar chart with composition bars for
+ * each side, and a horizontal bar chart for Teacher Payout Status
+ * (replacing the old data table). The original selectable donut chart
+ * is kept for the four metrics (Profit & Loss / Expense Distribution /
+ * Revenue Breakdown / Teacher Payout Status).
  *
- * All figures are computed together server-side for the selected
- * range in `accountsAnalytics.service.ts` and fetched via
- * `useAccountsAnalytics()` — see that file's doc-comment for exactly
- * what counts as "realized" and how the Net Profit/Loss view differs
- * from the resolved ledger Profits formula.
+ * The underlying data and the "Period" picker (All Time / This Month /
+ * Last Month / This Year / a custom date range) are unchanged — see
+ * `accountsAnalytics.service.ts` for exactly what counts as "realized"
+ * and how the Net Profit/Loss view differs from the resolved ledger
+ * Profits formula.
  */
 export default function AccountsAnalyticsPanel() {
   const [metric, setMetric] = useState<MetricId>("pl");
@@ -151,7 +178,7 @@ export default function AccountsAnalyticsPanel() {
     return analytics.payoutStatusBreakdown.map((row, i) => ({
       label: `${PAYOUT_STATUS_LABELS[row.status] ?? row.status} (${row.count})`,
       value: row.amount,
-      color: PALETTE[i % PALETTE.length],
+      color: PAYOUT_STATUS_COLORS[row.status] ?? PALETTE[i % PALETTE.length],
     }));
   }, [analytics, metric]);
 
@@ -205,32 +232,6 @@ export default function AccountsAnalyticsPanel() {
             </span>
           )}
         </div>
-
-        <div className="h-px bg-gray-100" />
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">
-            Chart
-          </span>
-          {METRICS.map((m) => {
-            const active = metric === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMetric(m.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  active
-                    ? "bg-gray-800 border-gray-800 text-white"
-                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-                }`}
-                aria-pressed={active}
-              >
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {loading && (
@@ -247,15 +248,37 @@ export default function AccountsAnalyticsPanel() {
 
       {!loading && analytics && (
         <>
-          <StatementOfAccounts analytics={analytics} rangeLabel={rangeLabel} />
+          <KpiRow analytics={analytics} rangeLabel={rangeLabel} />
+
+          <IncomeVsExpenseChart analytics={analytics} rangeLabel={rangeLabel} />
 
           <div className="grid xl:grid-cols-5 gap-6 items-start">
             <div className="xl:col-span-3">
-              <PayoutStatusLedger analytics={analytics} rangeLabel={rangeLabel} />
+              <PayoutStatusChart analytics={analytics} rangeLabel={rangeLabel} />
             </div>
 
             <div className="xl:col-span-2 bg-white rounded-xl border shadow-sm p-6">
-              <div className="mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                {METRICS.map((m) => {
+                  const active = metric === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMetric(m.id)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        active
+                          ? "bg-gray-800 border-gray-800 text-white"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                      }`}
+                      aria-pressed={active}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mb-1 mt-3">
                 <h2 className="text-lg font-semibold text-gray-800">
                   {METRICS.find((m) => m.id === metric)?.label}
                 </h2>
@@ -285,58 +308,11 @@ export default function AccountsAnalyticsPanel() {
 }
 
 /**
- * Ledger-style row: a label on the left and a right-aligned, tabular
- * figure on the right, optionally indented (line item) or emphasized
- * (subtotal/total). Shared by every section of the statement below.
+ * Top-of-page KPI tiles — the four headline numbers at a glance
+ * (Total Revenue, Total Expense, Net Profit/Loss, Platform Profit)
+ * instead of having to find them inside a ledger table below.
  */
-function LedgerRow({
-  label,
-  value,
-  indent = false,
-  emphasis = false,
-  tone,
-  topBorder = false,
-}: {
-  label: string;
-  value: number;
-  indent?: boolean;
-  emphasis?: boolean;
-  tone?: "positive" | "negative";
-  topBorder?: boolean;
-}) {
-  const valueColor =
-    tone === "positive" ? "text-green-700" : tone === "negative" ? "text-red-600" : "text-gray-800";
-
-  return (
-    <div
-      className={`flex items-baseline justify-between gap-4 py-2 ${
-        topBorder ? "border-t border-gray-200 mt-1 pt-3" : ""
-      }`}
-    >
-      <span
-        className={`${indent ? "pl-4 text-gray-500" : "text-gray-700"} ${
-          emphasis ? "font-semibold text-gray-800" : ""
-        } text-sm`}
-      >
-        {label}
-      </span>
-      <span
-        className={`tabular-nums text-sm ${emphasis ? "font-bold text-base" : "font-medium"} ${valueColor}`}
-      >
-        {currency.format(value)}
-      </span>
-    </div>
-  );
-}
-
-/**
- * "Statement of Accounts" — a fixed Income / Expenses / Net Result
- * ledger for the selected period, laid out the way a printed P&L
- * statement is: line items, an indented breakdown, a ruled subtotal,
- * and a bold net-result line. Read-only summary of the same
- * `AccountsAnalytics` payload the chart below also uses.
- */
-function StatementOfAccounts({
+function KpiRow({
   analytics,
   rangeLabel,
 }: {
@@ -347,40 +323,115 @@ function StatementOfAccounts({
   const isProfit = analytics.net.profit > 0 || analytics.net.loss === 0;
 
   return (
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-sm font-semibold text-gray-500">Overview</h2>
+        <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
+      </div>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Revenue"
+          value={currency.format(analytics.revenue.totalRevenue)}
+          icon={IndianRupee}
+          tone="brand"
+          sublabel="Tuition + Demo"
+        />
+        <StatCard
+          label="Total Expense"
+          value={currency.format(analytics.expense.totalExpense)}
+          icon={Wallet2}
+          tone="negative"
+          sublabel="Payouts + Rewards + Wallet"
+        />
+        <StatCard
+          label={isProfit ? "Net Profit" : "Net Loss"}
+          value={isProfit ? currency.format(analytics.net.profit) : `(${currency.format(analytics.net.loss)})`}
+          icon={isProfit ? TrendingUp : TrendingDown}
+          tone={isProfit ? "positive" : "negative"}
+          sublabel="Revenue − Expense"
+        />
+        <StatCard
+          label="Platform Profit"
+          value={currency.format(analytics.profit.platformProfit)}
+          icon={PiggyBank}
+          tone="brand"
+          sublabel="Resolved 70/30 ledger formula"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Income vs. Expense — a two-bar comparison chart (sharing one scale)
+ * plus a composition bar under each side, replacing the old text-only
+ * "Statement of Accounts" ledger rows. The bold Net Profit/Loss banner
+ * from before is kept since it's already a visual callout.
+ */
+function IncomeVsExpenseChart({
+  analytics,
+  rangeLabel,
+}: {
+  analytics: ReturnType<typeof useAccountsAnalytics>["analytics"];
+  rangeLabel: string;
+}) {
+  if (!analytics) return null;
+  const isProfit = analytics.net.profit > 0 || analytics.net.loss === 0;
+  const scale = Math.max(1, analytics.revenue.totalRevenue, analytics.expense.totalExpense);
+
+  return (
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b flex items-baseline justify-between flex-wrap gap-2 bg-gray-50">
         <div className="flex items-center gap-2">
-          <ListChecks size={16} className="text-gray-400" />
+          <BarChart3 size={16} className="text-gray-400" />
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">Statement of Accounts</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Income, expenses and net result for the period.</p>
+            <h2 className="text-lg font-semibold text-gray-800">Income vs. Expense</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Visual comparison for the period.</p>
           </div>
         </div>
         <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
       </div>
 
-      <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-        <div className="p-6 border-l-4 border-l-emerald-400">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-600 mb-1">
-            <TrendingUp size={14} /> Income
-          </p>
-          <LedgerRow label="Tuition Revenue" value={analytics.revenue.tuitionRevenue} indent />
-          <LedgerRow label="Demo Revenue" value={analytics.revenue.demoRevenue} indent />
-          <LedgerRow label="Total Revenue" value={analytics.revenue.totalRevenue} emphasis topBorder />
-        </div>
+      <div className="p-6">
+        <BarChart
+          maxValue={scale}
+          valueFormatter={(n) => currency.format(n)}
+          data={[
+            { label: "Total Revenue", value: analytics.revenue.totalRevenue, color: "#10b981" },
+            { label: "Total Expense", value: analytics.expense.totalExpense, color: "#f43f5e" },
+          ]}
+        />
+      </div>
 
-        <div className="p-6 border-l-4 border-l-rose-300">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600 mb-1">
-            <TrendingDown size={14} /> Expenses
+      <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-t">
+        <div className="p-6">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-600 mb-3">
+            <TrendingUp size={14} /> Revenue composition
           </p>
-          <LedgerRow label="Teacher Payouts" value={analytics.expense.teacherPayouts} indent />
-          <LedgerRow label="Referral Rewards" value={analytics.expense.referralRewards} indent />
-          <LedgerRow label="Wallet Credits (Refunds)" value={analytics.expense.manualWalletCredits} indent />
-          <LedgerRow label="Total Expenses" value={analytics.expense.totalExpense} emphasis topBorder />
+          <StackedBar
+            valueFormatter={(n) => currency.format(n)}
+            segments={[
+              { label: "Tuition", value: analytics.revenue.tuitionRevenue, color: PALETTE[0] },
+              { label: "Demo", value: analytics.revenue.demoRevenue, color: PALETTE[1] },
+            ]}
+          />
+        </div>
+        <div className="p-6">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600 mb-3">
+            <TrendingDown size={14} /> Expense composition
+          </p>
+          <StackedBar
+            valueFormatter={(n) => currency.format(n)}
+            segments={[
+              { label: "Teacher Payouts", value: analytics.expense.teacherPayouts, color: PALETTE[0] },
+              { label: "Referral Rewards", value: analytics.expense.referralRewards, color: PALETTE[1] },
+              { label: "Wallet Credits", value: analytics.expense.manualWalletCredits, color: PALETTE[2] },
+            ]}
+          />
         </div>
       </div>
 
-      <div className="px-6 pb-6 pt-2">
+      <div className="px-6 pb-6 pt-4 border-t">
         <div
           className={`rounded-lg border px-4 py-4 flex flex-wrap items-center justify-between gap-3 ${
             isProfit ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
@@ -407,25 +458,17 @@ function StatementOfAccounts({
             {isProfit ? currency.format(analytics.net.profit) : `(${currency.format(analytics.net.loss)})`}
           </span>
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Platform Profit (resolved 70/30 ledger formula, realized cycles only):{" "}
-          <span className="font-medium text-gray-600">
-            {currency.format(analytics.profit.platformProfit)}
-          </span>{" "}
-          — differs from Net Profit above, which also nets out Referral Rewards and Wallet credits.
-        </p>
       </div>
     </div>
   );
 }
 
 /**
- * Teacher Payout Status ledger — every Tuition Ledger row for the
- * period, bucketed by its current payout status, as a ruled table
- * with a grand-total row instead of only being visible by switching
- * the chart's metric dropdown to "Teacher Payout Status".
+ * Teacher Payout Status — a horizontal bar per status (replacing the
+ * old ruled data table), scaled to the largest bucket, with the row
+ * count shown next to each amount.
  */
-function PayoutStatusLedger({
+function PayoutStatusChart({
   analytics,
   rangeLabel,
 }: {
@@ -441,7 +484,7 @@ function PayoutStatusLedger({
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b flex items-baseline justify-between flex-wrap gap-2 bg-gray-50">
         <div className="flex items-center gap-2">
-          <ListChecks size={16} className="text-gray-400" />
+          <ReceiptText size={16} className="text-gray-400" />
           <div>
             <h2 className="text-lg font-semibold text-gray-800">Teacher Payout Status</h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -451,46 +494,27 @@ function PayoutStatusLedger({
         </div>
         <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
-            <tr>
-              <th className="px-6 py-2.5 font-medium">Status</th>
-              <th className="px-6 py-2.5 font-medium text-right">Rows</th>
-              <th className="px-6 py-2.5 font-medium text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.status} className="border-t">
-                <td className="px-6 py-2.5 text-gray-700">
-                  {PAYOUT_STATUS_LABELS[r.status] ?? r.status}
-                </td>
-                <td className="px-6 py-2.5 text-right text-gray-500 tabular-nums">{r.count}</td>
-                <td className="px-6 py-2.5 text-right font-medium text-gray-800 tabular-nums">
-                  {currency.format(r.amount)}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-gray-400">
-                  No ledger entries for this period.
-                </td>
-              </tr>
-            )}
-          </tbody>
-          {rows.length > 0 && (
-            <tfoot>
-              <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold text-gray-800">
-                <td className="px-6 py-3">Total</td>
-                <td className="px-6 py-3 text-right tabular-nums">{totalCount}</td>
-                <td className="px-6 py-3 text-right tabular-nums">{currency.format(totalAmount)}</td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
+
+      <div className="p-6">
+        <BarChart
+          data={rows.map((r) => ({
+            label: PAYOUT_STATUS_LABELS[r.status] ?? r.status,
+            value: r.amount,
+            color: PAYOUT_STATUS_COLORS[r.status] ?? "#9ca3af",
+            sublabel: `(${r.count})`,
+          }))}
+          valueFormatter={(n) => compactCurrency.format(n)}
+        />
       </div>
+
+      {rows.length > 0 && (
+        <div className="px-6 py-3 border-t bg-gray-50 flex items-center justify-between text-sm">
+          <span className="font-semibold text-gray-700">Total</span>
+          <span className="font-semibold text-gray-800 tabular-nums">
+            {currency.format(totalAmount)} <span className="text-gray-400 font-normal">({totalCount} rows)</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
