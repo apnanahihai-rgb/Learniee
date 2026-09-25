@@ -173,19 +173,12 @@ function presetRange(preset: PresetId): { from?: string; to?: string } {
 }
 
 /**
- * Accounts Analytics — pie/donut-led layout.
- *
- * Third pass: the previous version mixed bar charts and one donut. Every
- * chart here is now a donut (a pie with a hole for a center total), because
- * every question this page answers is a "what share of the whole" question:
- * revenue vs. expense, what revenue is made of, what expense is made of, and
- * what share of payouts sits in each status. The KPI tiles up top stay as
- * exact numbers for the cases where a shape isn't what you want; the four
- * donuts below are the redesign the diagrams live in. Colors keep the
- * project's fixed-meaning rule: green = revenue, rose = expense, and the
- * payout-status palette is reused identically wherever a status appears.
+ * One independent "Period" selection (preset + optional custom range +
+ * derived label). Pulled out so the top-of-page filter and the Build Your
+ * Own Breakdown card can each hold their own period without sharing state —
+ * switching one to "This Month" must not move the other.
  */
-export default function AccountsAnalyticsPanel() {
+function usePeriodRange() {
   const [preset, setPreset] = useState<PresetId>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -197,8 +190,6 @@ export default function AccountsAnalyticsPanel() {
     return presetRange(preset);
   }, [preset, customFrom, customTo]);
 
-  const { analytics, loading, error } = useAccountsAnalytics(range);
-
   const rangeLabel = useMemo(() => {
     if (preset !== "custom") return PRESETS.find((p) => p.id === preset)?.label ?? "";
     if (range.from && range.to) return `${range.from} to ${range.to}`;
@@ -207,54 +198,107 @@ export default function AccountsAnalyticsPanel() {
     return "All Time";
   }, [preset, range]);
 
+  return { preset, setPreset, customFrom, setCustomFrom, customTo, setCustomTo, range, rangeLabel };
+}
+
+/** The row of period preset buttons (+ custom date inputs) — rendered by whoever owns a `usePeriodRange()`. */
+function PeriodPicker({
+  preset,
+  onPresetChange,
+  customFrom,
+  onCustomFromChange,
+  customTo,
+  onCustomToChange,
+}: {
+  preset: PresetId;
+  onPresetChange: (p: PresetId) => void;
+  customFrom: string;
+  onCustomFromChange: (v: string) => void;
+  customTo: string;
+  onCustomToChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">Period</span>
+      {PRESETS.map((p) => {
+        const active = preset === p.id;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPresetChange(p.id)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              active
+                ? "bg-brand border-brand text-white"
+                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+            }`}
+            aria-pressed={active}
+          >
+            {p.label}
+          </button>
+        );
+      })}
+
+      {preset === "custom" && (
+        <span className="flex items-center gap-2 ml-1">
+          <input
+            aria-label="From date"
+            type="date"
+            value={customFrom}
+            max={customTo || undefined}
+            onChange={(e) => onCustomFromChange(e.target.value)}
+            className="border rounded-lg px-2.5 py-1.5 text-sm text-gray-700"
+          />
+          <span className="text-gray-400 text-sm">to</span>
+          <input
+            aria-label="To date"
+            type="date"
+            value={customTo}
+            min={customFrom || undefined}
+            onChange={(e) => onCustomToChange(e.target.value)}
+            className="border rounded-lg px-2.5 py-1.5 text-sm text-gray-700"
+          />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Accounts Analytics — pie/donut-led layout.
+ *
+ * Third pass: the previous version mixed bar charts and one donut. Every
+ * chart here is now a donut (a pie with a hole for a center total), because
+ * every question this page answers is a "what share of the whole" question:
+ * revenue vs. expense, what revenue is made of, what expense is made of, and
+ * what share of payouts sits in each status. The KPI tiles up top stay as
+ * exact numbers for the cases where a shape isn't what you want; the four
+ * donuts below are the redesign the diagrams live in. Colors keep the
+ * project's fixed-meaning rule: green = revenue, rose = expense, and the
+ * payout-status palette is reused identically wherever a status appears.
+ *
+ * The Build Your Own Breakdown card keeps its own `usePeriodRange()` and
+ * fetches independently — it's meant to be checked against a different
+ * window than the rest of the page without disturbing it, so it never
+ * shares the period state or data below.
+ */
+export default function AccountsAnalyticsPanel() {
+  const { preset, setPreset, customFrom, setCustomFrom, customTo, setCustomTo, range, rangeLabel } =
+    usePeriodRange();
+
+  const { analytics, loading, error } = useAccountsAnalytics(range);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">
-            Period
-          </span>
-          {PRESETS.map((p) => {
-            const active = preset === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setPreset(p.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  active
-                    ? "bg-brand border-brand text-white"
-                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-                }`}
-                aria-pressed={active}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-
-          {preset === "custom" && (
-            <span className="flex items-center gap-2 ml-1">
-              <input
-                aria-label="From date"
-                type="date"
-                value={customFrom}
-                max={customTo || undefined}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="border rounded-lg px-2.5 py-1.5 text-sm text-gray-700"
-              />
-              <span className="text-gray-400 text-sm">to</span>
-              <input
-                aria-label="To date"
-                type="date"
-                value={customTo}
-                min={customFrom || undefined}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="border rounded-lg px-2.5 py-1.5 text-sm text-gray-700"
-              />
-            </span>
-          )}
-        </div>
+        <PeriodPicker
+          preset={preset}
+          onPresetChange={setPreset}
+          customFrom={customFrom}
+          onCustomFromChange={setCustomFrom}
+          customTo={customTo}
+          onCustomToChange={setCustomTo}
+        />
       </div>
 
       {loading && (
@@ -272,7 +316,7 @@ export default function AccountsAnalyticsPanel() {
       {!loading && analytics && (
         <>
           <KpiRow analytics={analytics} rangeLabel={rangeLabel} />
-          <CustomBreakdownDonut analytics={analytics} rangeLabel={rangeLabel} />
+          <CustomBreakdownDonut />
           <div className="grid xl:grid-cols-2 gap-6">
             <RevenueVsExpenseDonut analytics={analytics} rangeLabel={rangeLabel} />
             <PayoutStatusDonut analytics={analytics} rangeLabel={rangeLabel} />
@@ -352,17 +396,17 @@ function KpiRow({
  * figures with nothing to show for the selected period (e.g. Net Loss
  * during a profitable month) are simply left out of the ring rather than
  * drawn as a zero-width slice.
+ *
+ * Holds its own `usePeriodRange()` and its own `useAccountsAnalytics` fetch
+ * — deliberately not the page's period/data, so this card can be checked
+ * against, say, This Month while the rest of the page stays on All Time.
  */
-function CustomBreakdownDonut({
-  analytics,
-  rangeLabel,
-}: {
-  analytics: AccountsAnalytics | null;
-  rangeLabel: string;
-}) {
-  const [selected, setSelected] = useState<Set<MetricKey>>(() => new Set(DEFAULT_SELECTED_METRICS));
+function CustomBreakdownDonut() {
+  const { preset, setPreset, customFrom, setCustomFrom, customTo, setCustomTo, range, rangeLabel } =
+    usePeriodRange();
+  const { analytics, loading, error } = useAccountsAnalytics(range);
 
-  if (!analytics) return null;
+  const [selected, setSelected] = useState<Set<MetricKey>>(() => new Set(DEFAULT_SELECTED_METRICS));
 
   function toggle(key: MetricKey) {
     setSelected((prev) => {
@@ -373,12 +417,14 @@ function CustomBreakdownDonut({
     });
   }
 
-  const slices: PieChartSlice[] = METRIC_ORDER.filter((key) => selected.has(key))
-    .map((key) => {
-      const def = METRIC_DEFS[key];
-      return { label: def.label, value: def.getValue(analytics), color: def.color };
-    })
-    .filter((s) => s.value > 0);
+  const slices: PieChartSlice[] = analytics
+    ? METRIC_ORDER.filter((key) => selected.has(key))
+        .map((key) => {
+          const def = METRIC_DEFS[key];
+          return { label: def.label, value: def.getValue(analytics), color: def.color };
+        })
+        .filter((s) => s.value > 0)
+    : [];
 
   const total = slices.reduce((sum, s) => sum + s.value, 0);
 
@@ -390,58 +436,80 @@ function CustomBreakdownDonut({
           <div>
             <h2 className="text-lg font-semibold text-gray-800">Build Your Own Breakdown</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Tick any figures below to compare them as shares of one total.
+              Tick any figures below to compare them as shares of one total. Has its own period,
+              separate from the filter above.
             </p>
           </div>
         </div>
         <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
       </div>
 
-      <div className="p-6 flex flex-col gap-6">
-        <div className="flex flex-wrap gap-2">
-          {METRIC_ORDER.map((key) => {
-            const def = METRIC_DEFS[key];
-            const value = def.getValue(analytics);
-            const active = selected.has(key);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => toggle(key)}
-                aria-pressed={active}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  active
-                    ? "border-transparent text-white"
-                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
-                }`}
-                style={active ? { backgroundColor: def.color } : undefined}
-              >
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: active ? "rgba(255,255,255,0.9)" : def.color }}
-                />
-                {def.label}
-                <span className={active ? "text-white/85" : "text-gray-400"}>
-                  {currency.format(value)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="px-6 pt-4">
+        <PeriodPicker
+          preset={preset}
+          onPresetChange={setPreset}
+          customFrom={customFrom}
+          onCustomFromChange={setCustomFrom}
+          customTo={customTo}
+          onCustomToChange={setCustomTo}
+        />
+      </div>
 
-        {slices.length > 0 ? (
-          <PieChart
-            slices={slices}
-            centerLabel={currency.format(total)}
-            centerSubLabel={`${slices.length} selected`}
-            size={200}
-          />
-        ) : (
-          <p className="text-sm text-gray-400 text-center py-10">
-            {selected.size === 0
-              ? "Tick at least one figure above to see the breakdown."
-              : "The figures you've selected are all ₹0 for this period."}
-          </p>
+      <div className="p-6 flex flex-col gap-6">
+        {loading && <p className="text-sm text-gray-400 text-center py-10">Loading…</p>}
+
+        {!loading && (error || !analytics) && (
+          <p className="text-sm text-red-500 text-center py-10">{error || "Unable to load this breakdown."}</p>
+        )}
+
+        {!loading && analytics && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {METRIC_ORDER.map((key) => {
+                const def = METRIC_DEFS[key];
+                const value = def.getValue(analytics);
+                const active = selected.has(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggle(key)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                      active
+                        ? "border-transparent text-white"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                    }`}
+                    style={active ? { backgroundColor: def.color } : undefined}
+                  >
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: active ? "rgba(255,255,255,0.9)" : def.color }}
+                    />
+                    {def.label}
+                    <span className={active ? "text-white/85" : "text-gray-400"}>
+                      {currency.format(value)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {slices.length > 0 ? (
+              <PieChart
+                slices={slices}
+                centerLabel={currency.format(total)}
+                centerSubLabel={`${slices.length} selected`}
+                size={200}
+              />
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-10">
+                {selected.size === 0
+                  ? "Tick at least one figure above to see the breakdown."
+                  : "The figures you've selected are all ₹0 for this period."}
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
