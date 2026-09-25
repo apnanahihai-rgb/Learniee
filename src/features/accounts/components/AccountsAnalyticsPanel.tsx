@@ -39,29 +39,31 @@ const compactCurrency = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 1,
 });
 
-// Brand violet/yellow first, then a small extended palette for the
-// remaining slices — see globals.css for --brand-violet/--brand-yellow.
-const PALETTE = ["#7e2bf1", "#f4c01e", "#0ea5a4", "#ef4444", "#3b82f6", "#22c55e", "#f97316"];
+// One color family per *meaning*, reused everywhere that meaning shows up,
+// instead of a different rainbow per chart. Green always means "revenue /
+// money in / good"; rose always means "expense / money out"; the two
+// composition scales are just lighter tints of the same hue so a
+// sub-category still visibly belongs to its parent total.
+const REVENUE_MAIN = "#059669"; // emerald-600
+const REVENUE_TINTS = ["#059669", "#6ee7b7"]; // Tuition, Demo
+const EXPENSE_MAIN = "#e11d48"; // rose-600
+const EXPENSE_TINTS = ["#e11d48", "#fb7185", "#fecdd3"]; // Teacher Payouts, Referral Rewards, Wallet Credits
 
+// Payout status is a workflow stage, not a revenue/expense split, so it gets
+// its own small palette — but each color still means one fixed thing
+// everywhere it appears (the status bar chart and the status donut below use
+// the exact same map), not a new color per chart.
 const PAYOUT_STATUS_COLORS: Partial<Record<LedgerPayoutStatus, string>> = {
-  PENDING_VERIFICATION: "#3b82f6",
-  ON_HOLD: "#f4c01e",
-  QUEUED_FOR_PAYMENT: "#7e2bf1",
-  PAID: "#22c55e",
-  REJECTED: "#ef4444",
-  EXPIRED: "#9ca3af",
-  APPROVED: "#0ea5a4",
+  PENDING_VERIFICATION: "#64748b", // slate — waiting
+  ON_HOLD: "#f59e0b", // amber — needs a decision
+  QUEUED_FOR_PAYMENT: "#7e2bf1", // brand violet — on its way
+  PAID: "#059669", // emerald — done
+  REJECTED: "#e11d48", // rose — money not going out
+  EXPIRED: "#9ca3af", // gray — stale
+  APPROVED: "#0d9488", // teal — legacy status
 };
 
-type MetricId = "pl" | "expense" | "revenue" | "payout_status";
 type PresetId = "all" | "this_month" | "last_month" | "this_year" | "custom";
-
-const METRICS: { id: MetricId; label: string }[] = [
-  { id: "pl", label: "Profit & Loss" },
-  { id: "expense", label: "Expense Distribution" },
-  { id: "revenue", label: "Revenue Breakdown" },
-  { id: "payout_status", label: "Teacher Payout Status" },
-];
 
 const PRESETS: { id: PresetId; label: string }[] = [
   { id: "all", label: "All Time" },
@@ -111,13 +113,19 @@ function presetRange(preset: PresetId): { from?: string; to?: string } {
 /**
  * Accounts Analytics — visual dashboard layout.
  *
- * Redesigned so the period's numbers are read off charts and bars
- * instead of ledger-style text tables: a KPI row up top, an
- * Income-vs-Expense comparison bar chart with composition bars for
- * each side, and a horizontal bar chart for Teacher Payout Status
- * (replacing the old data table). The original selectable donut chart
- * is kept for the four metrics (Profit & Loss / Expense Distribution /
- * Revenue Breakdown / Teacher Payout Status).
+ * Second pass: the first redesign added charts but colored each one from
+ * its own arbitrary palette, so the same rupee amount could be purple in
+ * one card and yellow in another — more noise than signal. This version
+ * uses exactly two hue families with a fixed meaning everywhere they
+ * appear (green = revenue, rose = expense), plus one small status
+ * palette reused identically by the payout bar chart and the payout
+ * donut next to it. It also drops the earlier switchable "pick a metric,
+ * see a pie" panel: the Revenue/Expense pies it offered showed the exact
+ * same percentages the composition bars below already show, just in a
+ * different shape and different colors — pure duplication, not a second
+ * insight. The only place a bar chart AND a donut both earn their keep is
+ * Teacher Payout Status, where "how much per status" and "what share of
+ * the total" are genuinely two different questions.
  *
  * The underlying data and the "Period" picker (All Time / This Month /
  * Last Month / This Year / a custom date range) are unchanged — see
@@ -126,7 +134,6 @@ function presetRange(preset: PresetId): { from?: string; to?: string } {
  * Profits formula.
  */
 export default function AccountsAnalyticsPanel() {
-  const [metric, setMetric] = useState<MetricId>("pl");
   const [preset, setPreset] = useState<PresetId>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -147,42 +154,6 @@ export default function AccountsAnalyticsPanel() {
     if (range.to) return `Up to ${range.to}`;
     return "All Time";
   }, [preset, range]);
-
-  const slices: PieChartSlice[] = useMemo(() => {
-    if (!analytics) return [];
-
-    if (metric === "pl") {
-      return [
-        { label: "Net Profit", value: analytics.net.profit, color: PALETTE[0] },
-        { label: "Net Loss", value: analytics.net.loss, color: PALETTE[3] },
-        { label: "Expense (Payouts + Rewards)", value: analytics.expense.totalExpense, color: PALETTE[1] },
-      ];
-    }
-
-    if (metric === "expense") {
-      return [
-        { label: "Teacher Payouts", value: analytics.expense.teacherPayouts, color: PALETTE[0] },
-        { label: "Referral Rewards", value: analytics.expense.referralRewards, color: PALETTE[1] },
-        { label: "Wallet Credits (Refunds)", value: analytics.expense.manualWalletCredits, color: PALETTE[2] },
-      ];
-    }
-
-    if (metric === "revenue") {
-      return [
-        { label: "Tuition Revenue", value: analytics.revenue.tuitionRevenue, color: PALETTE[0] },
-        { label: "Demo Revenue", value: analytics.revenue.demoRevenue, color: PALETTE[1] },
-      ];
-    }
-
-    // payout_status
-    return analytics.payoutStatusBreakdown.map((row, i) => ({
-      label: `${PAYOUT_STATUS_LABELS[row.status] ?? row.status} (${row.count})`,
-      value: row.amount,
-      color: PAYOUT_STATUS_COLORS[row.status] ?? PALETTE[i % PALETTE.length],
-    }));
-  }, [analytics, metric]);
-
-  const centerTotal = useMemo(() => slices.reduce((sum, s) => sum + Math.max(0, s.value), 0), [slices]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -249,58 +220,8 @@ export default function AccountsAnalyticsPanel() {
       {!loading && analytics && (
         <>
           <KpiRow analytics={analytics} rangeLabel={rangeLabel} />
-
           <IncomeVsExpenseChart analytics={analytics} rangeLabel={rangeLabel} />
-
-          <div className="grid xl:grid-cols-5 gap-6 items-start">
-            <div className="xl:col-span-3">
-              <PayoutStatusChart analytics={analytics} rangeLabel={rangeLabel} />
-            </div>
-
-            <div className="xl:col-span-2 bg-white rounded-xl border shadow-sm p-6">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                {METRICS.map((m) => {
-                  const active = metric === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setMetric(m.id)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        active
-                          ? "bg-gray-800 border-gray-800 text-white"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-                      }`}
-                      aria-pressed={active}
-                    >
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mb-1 mt-3">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  {METRICS.find((m) => m.id === metric)?.label}
-                </h2>
-                <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
-              </div>
-              <p className="text-xs text-gray-400 mb-6">
-                {metric === "pl" &&
-                  "Total revenue (Tuition + Demo) vs. total expense (Teacher Payouts, Referral Rewards, Wallet credits) for the selected period. Net Loss is 0 unless expense exceeds revenue."}
-                {metric === "expense" &&
-                  "Realized (queued-for-payment or paid) Teacher Payouts, Referral Rewards, and manual Wallet credits. Wallet top-ups are excluded — that's a parent's own money, not a platform expense."}
-                {metric === "revenue" && "Tuition + Demo revenue for the selected period."}
-                {metric === "payout_status" &&
-                  "Every Tuition Ledger row for the selected period, bucketed by its current payout status."}
-              </p>
-              <PieChart
-                slices={slices}
-                centerLabel={currency.format(centerTotal)}
-                centerSubLabel="Total"
-                size={160}
-              />
-            </div>
-          </div>
+          <PayoutStatusChart analytics={analytics} rangeLabel={rangeLabel} />
         </>
       )}
     </div>
@@ -310,7 +231,13 @@ export default function AccountsAnalyticsPanel() {
 /**
  * Top-of-page KPI tiles — the four headline numbers at a glance
  * (Total Revenue, Total Expense, Net Profit/Loss, Platform Profit)
- * instead of having to find them inside a ledger table below.
+ * instead of having to find them inside a ledger table below. Colors
+ * follow the same rule as the rest of the page: revenue-side numbers
+ * are green, expense-side are rose. Platform Profit is the one
+ * deliberate exception — it's a *different* profit figure (the
+ * resolved 70/30 ledger formula, not Revenue − Expense), so it's kept
+ * in brand violet specifically so it never gets visually mistaken for
+ * Net Profit.
  */
 function KpiRow({
   analytics,
@@ -333,7 +260,7 @@ function KpiRow({
           label="Total Revenue"
           value={currency.format(analytics.revenue.totalRevenue)}
           icon={IndianRupee}
-          tone="brand"
+          tone="positive"
           sublabel="Tuition + Demo"
         />
         <StatCard
@@ -363,10 +290,10 @@ function KpiRow({
 }
 
 /**
- * Income vs. Expense — a two-bar comparison chart (sharing one scale)
- * plus a composition bar under each side, replacing the old text-only
- * "Statement of Accounts" ledger rows. The bold Net Profit/Loss banner
- * from before is kept since it's already a visual callout.
+ * Income vs. Expense — a two-bar comparison chart (sharing one scale,
+ * always green vs. rose) plus a same-hue-family composition bar under
+ * each side, so a glance tells you "this shade of green/rose belongs to
+ * revenue/expense" without reading a legend first.
  */
 function IncomeVsExpenseChart({
   analytics,
@@ -397,8 +324,8 @@ function IncomeVsExpenseChart({
           maxValue={scale}
           valueFormatter={(n) => currency.format(n)}
           data={[
-            { label: "Total Revenue", value: analytics.revenue.totalRevenue, color: "#10b981" },
-            { label: "Total Expense", value: analytics.expense.totalExpense, color: "#f43f5e" },
+            { label: "Total Revenue", value: analytics.revenue.totalRevenue, color: REVENUE_MAIN },
+            { label: "Total Expense", value: analytics.expense.totalExpense, color: EXPENSE_MAIN },
           ]}
         />
       </div>
@@ -411,8 +338,8 @@ function IncomeVsExpenseChart({
           <StackedBar
             valueFormatter={(n) => currency.format(n)}
             segments={[
-              { label: "Tuition", value: analytics.revenue.tuitionRevenue, color: PALETTE[0] },
-              { label: "Demo", value: analytics.revenue.demoRevenue, color: PALETTE[1] },
+              { label: "Tuition", value: analytics.revenue.tuitionRevenue, color: REVENUE_TINTS[0] },
+              { label: "Demo", value: analytics.revenue.demoRevenue, color: REVENUE_TINTS[1] },
             ]}
           />
         </div>
@@ -423,9 +350,9 @@ function IncomeVsExpenseChart({
           <StackedBar
             valueFormatter={(n) => currency.format(n)}
             segments={[
-              { label: "Teacher Payouts", value: analytics.expense.teacherPayouts, color: PALETTE[0] },
-              { label: "Referral Rewards", value: analytics.expense.referralRewards, color: PALETTE[1] },
-              { label: "Wallet Credits", value: analytics.expense.manualWalletCredits, color: PALETTE[2] },
+              { label: "Teacher Payouts", value: analytics.expense.teacherPayouts, color: EXPENSE_TINTS[0] },
+              { label: "Referral Rewards", value: analytics.expense.referralRewards, color: EXPENSE_TINTS[1] },
+              { label: "Wallet Credits", value: analytics.expense.manualWalletCredits, color: EXPENSE_TINTS[2] },
             ]}
           />
         </div>
@@ -464,9 +391,12 @@ function IncomeVsExpenseChart({
 }
 
 /**
- * Teacher Payout Status — a horizontal bar per status (replacing the
- * old ruled data table), scaled to the largest bucket, with the row
- * count shown next to each amount.
+ * Teacher Payout Status — one dataset, two views that each answer a
+ * different question: a bar chart for "how much sits in each status"
+ * (absolute amounts, easy to compare) and a donut for "what share of
+ * total payouts is in each status" (proportion). Both read from the
+ * same `PAYOUT_STATUS_COLORS` map, so a color always means the same
+ * status whichever chart you're looking at.
  */
 function PayoutStatusChart({
   analytics,
@@ -479,6 +409,12 @@ function PayoutStatusChart({
   const rows = analytics.payoutStatusBreakdown;
   const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
   const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
+
+  const donutSlices: PieChartSlice[] = rows.map((r) => ({
+    label: `${PAYOUT_STATUS_LABELS[r.status] ?? r.status} (${r.count})`,
+    value: r.amount,
+    color: PAYOUT_STATUS_COLORS[r.status] ?? "#9ca3af",
+  }));
 
   return (
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
@@ -495,16 +431,33 @@ function PayoutStatusChart({
         <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
       </div>
 
-      <div className="p-6">
-        <BarChart
-          data={rows.map((r) => ({
-            label: PAYOUT_STATUS_LABELS[r.status] ?? r.status,
-            value: r.amount,
-            color: PAYOUT_STATUS_COLORS[r.status] ?? "#9ca3af",
-            sublabel: `(${r.count})`,
-          }))}
-          valueFormatter={(n) => compactCurrency.format(n)}
-        />
+      <div className="grid xl:grid-cols-5 divide-y xl:divide-y-0 xl:divide-x divide-gray-100">
+        <div className="xl:col-span-3 p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+            Amount by status
+          </p>
+          <BarChart
+            data={rows.map((r) => ({
+              label: PAYOUT_STATUS_LABELS[r.status] ?? r.status,
+              value: r.amount,
+              color: PAYOUT_STATUS_COLORS[r.status] ?? "#9ca3af",
+              sublabel: `(${r.count})`,
+            }))}
+            valueFormatter={(n) => compactCurrency.format(n)}
+          />
+        </div>
+
+        <div className="xl:col-span-2 p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+            Share of total
+          </p>
+          <PieChart
+            slices={donutSlices}
+            centerLabel={currency.format(totalAmount)}
+            centerSubLabel="Total"
+            size={140}
+          />
+        </div>
       </div>
 
       {rows.length > 0 && (
