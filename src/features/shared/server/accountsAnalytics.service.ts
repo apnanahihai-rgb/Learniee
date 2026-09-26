@@ -4,6 +4,8 @@ import { LedgerPayoutStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { getManualAccountsSummary, type ManualAccountsSummary } from "./manualAccounts.service";
+
 /**
  * Pie-chart-ready aggregates for the Accounts/Admin "Analytics" tab
  * (`AccountsAnalyticsPanel.tsx`). Deliberately reuses the same
@@ -77,6 +79,13 @@ export interface AccountsAnalytics {
     loss: number;
   };
   payoutStatusBreakdown: PayoutStatusSlice[];
+  /**
+   * Totals from the manual/historical accounts import (`ManualAccountEntry`),
+   * kept separate from revenue/expense/profit/net above by design — see
+   * `manualAccounts.service.ts`. `null` when nothing has ever been imported,
+   * so the frontend can hide this section entirely rather than show zeros.
+   */
+  manualAccounts: ManualAccountsSummary | null;
 }
 
 function round2(n: number) {
@@ -102,7 +111,7 @@ export async function getAccountsAnalytics(
   const paidAt = dateFilter(range);
   const createdAt = dateFilter(range);
 
-  const [ledgerTotalAgg, ledgerRealizedAgg, demoAgg, walletAgg, payoutStatusAgg] =
+  const [ledgerTotalAgg, ledgerRealizedAgg, demoAgg, walletAgg, payoutStatusAgg, manualAccounts] =
     await Promise.all([
       prisma.tuitionLedgerEntry.aggregate({
         where: transactionDate ? { transactionDate } : undefined,
@@ -138,6 +147,7 @@ export async function getAccountsAnalytics(
         _sum: { totalAmount: true },
         _count: { _all: true },
       }),
+      getManualAccountsSummary(range),
     ]);
 
   const tuitionRevenue = Number(ledgerTotalAgg._sum.totalAmount ?? 0);
@@ -186,5 +196,6 @@ export async function getAccountsAnalytics(
       loss: round2(Math.max(0, -netResult)),
     },
     payoutStatusBreakdown,
+    manualAccounts: manualAccounts.entryCount > 0 ? manualAccounts : null,
   };
 }

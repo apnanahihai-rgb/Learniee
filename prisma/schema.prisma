@@ -1845,3 +1845,67 @@ enum InvoiceType {
 enum InvoicePayerRole {
   PARENT
 }
+
+/// Manual/historical monthly accounts import (Sep 26, 2026). Holds rows
+/// from a spreadsheet the business tracked BEFORE (or outside) the app's
+/// own Enrollment/EnrollmentCycle/ClassSession/TuitionLedgerEntry model —
+/// free-text parent/child/teacher names, no FK to any real Enrollment.
+/// Deliberately NOT merged into `TuitionLedgerEntry`: that table requires
+/// a real `enrollmentId` and is only ever written by the app's own cycle
+/// close / legacy-completion logic. This is a separate, isolated table so
+/// it can be deleted wholesale (drop this model + its migration + the one
+/// `getManualAccountsSummary()` call in accountsAnalytics.service.ts) with
+/// zero impact on the real cycle/session/ledger/payout pipeline.
+///
+/// `accountMonth` = first-of-month DATE for the reporting period this row
+/// belongs to (e.g. 2026-09-01 for the "ACC_SEPT" sheet) — set by whoever
+/// runs the import, one value per import batch, NOT parsed from the
+/// sheet's free-text `Month`/`cyclePeriodLabel` column (that column means
+/// something else — which months a package covers, e.g. "JAS" = Jul-Aug-
+/// Sep — and is kept as-is in `cyclePeriodLabel`).
+///
+/// `parentPaymentStatus`/`teacherPaymentStatus` are the sheet's own two
+/// (identically-labeled in the original file) STATUS columns, kept as
+/// free text exactly as entered (e.g. "CLEAR", "DUE") — no enum, since
+/// this data was never validated against one.
+model ManualAccountEntry {
+  id                    String    @id @default(uuid())
+  /// First-of-month date for the reporting period, e.g. 2026-09-01.
+  accountMonth          DateTime  @db.Date
+  /// Which import batch this row came from (e.g. original filename) —
+  /// lets a bad import be deleted without touching other months.
+  sourceBatch           String
+
+  branch                String?
+  enteredDate           DateTime? @db.Date
+  bankDate              DateTime? @db.Date
+  parentName            String?
+  childName             String?
+  parentPaymentStatus   String?
+  numberOfMonths        Decimal?  @db.Decimal(6, 2)
+  cyclePeriodLabel      String?
+  ratePerSession        Decimal?  @db.Decimal(10, 2)
+  monthlyAmount         Decimal?  @db.Decimal(10, 2)
+  totalAmount           Decimal?  @db.Decimal(10, 2)
+  ccc                   Decimal?  @db.Decimal(6, 2)
+  mcc                   Decimal?  @db.Decimal(6, 2)
+  tcc                   Decimal?  @db.Decimal(6, 2)
+  dueDateLabel          String?
+  teacherName           String?
+  subject               String?
+  teacherRatePerSession Decimal?  @db.Decimal(10, 2)
+  teacherAmount         Decimal?  @db.Decimal(10, 2)
+  profit                Decimal?  @db.Decimal(10, 2)
+  teacherPaymentStatus  String?
+  meetingLink           String?
+  remarks               String?
+  board                 String?
+  grade                 String?
+  slot                  String?
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([accountMonth])
+  @@index([sourceBatch])
+}
