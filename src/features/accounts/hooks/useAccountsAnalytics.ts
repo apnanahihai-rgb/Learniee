@@ -10,19 +10,6 @@ export interface PayoutStatusSlice {
   count: number;
 }
 
-/**
- * Totals from the manual/historical accounts import (`ManualAccountEntry`),
- * kept separate from revenue/expense/profit/net — see
- * `manualAccounts.service.ts` on the server. `null` when nothing has ever
- * been imported.
- */
-export interface ManualAccountsSummary {
-  totalRevenue: number;
-  totalTeacherPay: number;
-  totalProfit: number;
-  entryCount: number;
-}
-
 export interface AccountsAnalytics {
   revenue: {
     tuitionRevenue: number;
@@ -43,7 +30,6 @@ export interface AccountsAnalytics {
     loss: number;
   };
   payoutStatusBreakdown: PayoutStatusSlice[];
-  manualAccounts: ManualAccountsSummary | null;
 }
 
 /** "YYYY-MM-DD" strings — matches an `<input type="date">` value directly. */
