@@ -24,9 +24,21 @@
  */
 import "dotenv/config";
 import { readFileSync } from "fs";
+import path from "path";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const caCert = readFileSync(path.join(process.cwd(), "certs/rds-global-bundle.pem")).toString();
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    ca: caCert,
+    rejectUnauthorized: true,
+  },
+});
+
+const prisma = new PrismaClient({ adapter });
 
 interface ManualAccountRow {
   branch?: string | null;
