@@ -14,11 +14,13 @@ import {
   ReceiptText,
   PieChart as PieChartIcon,
   ListChecks,
+  Archive,
 } from "lucide-react";
 
 import {
   useAccountsAnalytics,
   type AccountsAnalytics,
+  type ManualAccountsSummary,
 } from "@/features/accounts/hooks/useAccountsAnalytics";
 import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
 import StatCard from "@/features/accounts/components/StatCard";
@@ -44,6 +46,11 @@ const REVENUE_MAIN = "#059669"; // emerald-600
 const EXPENSE_MAIN = "#e11d48"; // rose-600
 const REVENUE_TINTS = ["#059669", "#6ee7b7"]; // Tuition, Demo
 const EXPENSE_TINTS = ["#e11d48", "#fb7185", "#fecdd3"]; // Teacher Payouts, Referral Rewards, Wallet Credits
+
+// Manual/historical accounts import — deliberately its own hue (neither the
+// revenue-green nor the expense-rose family), since it's not part of either
+// total; it's a separate bucket shown alongside them, never merged in.
+const MANUAL_ACCOUNTS_MAIN = "#4f46e5"; // indigo-600
 
 // Payout status is a workflow stage, not a revenue/expense split, so it gets
 // its own small palette — but each color still means one fixed thing
@@ -74,7 +81,8 @@ type MetricKey =
   | "walletCredits"
   | "netProfit"
   | "netLoss"
-  | "platformProfit";
+  | "platformProfit"
+  | "manualAccountsRevenue";
 
 const METRIC_DEFS: Record<
   MetricKey,
@@ -98,6 +106,11 @@ const METRIC_DEFS: Record<
   netProfit: { label: "Net Profit", color: "#0ea5e9", getValue: (a) => a.net.profit },
   netLoss: { label: "Net Loss", color: "#f97316", getValue: (a) => a.net.loss },
   platformProfit: { label: "Platform Profit", color: "#7e2bf1", getValue: (a) => a.profit.platformProfit },
+  manualAccountsRevenue: {
+    label: "Manual Accounts (Revenue)",
+    color: MANUAL_ACCOUNTS_MAIN,
+    getValue: (a) => a.manualAccounts?.totalRevenue ?? 0,
+  },
 };
 
 const METRIC_ORDER: MetricKey[] = [
@@ -111,6 +124,7 @@ const METRIC_ORDER: MetricKey[] = [
   "netProfit",
   "netLoss",
   "platformProfit",
+  "manualAccountsRevenue",
 ];
 
 // A sensible starting selection — roughly what was asked for: Profit, Loss,
@@ -316,6 +330,7 @@ export default function AccountsAnalyticsPanel() {
       {!loading && analytics && (
         <>
           <KpiRow analytics={analytics} rangeLabel={rangeLabel} />
+          <ManualAccountsCard manualAccounts={analytics.manualAccounts} />
           <CustomBreakdownDonut />
           <div className="grid xl:grid-cols-2 gap-6">
             <RevenueVsExpenseDonut analytics={analytics} rangeLabel={rangeLabel} />
@@ -390,6 +405,56 @@ function KpiRow({
 }
 
 /**
+ * Manual Accounts — totals from the historical/manual bookkeeping sheet
+ * import (`ManualAccountEntry`), shown as its own section so it's visibly
+ * separate from every number above (which come from the app's real
+ * Enrollment/cycle/ledger pipeline). Renders nothing when
+ * `analytics.manualAccounts` is `null` — i.e. nothing has ever been
+ * imported — rather than showing a section full of zeros.
+ */
+function ManualAccountsCard({ manualAccounts }: { manualAccounts: ManualAccountsSummary | null }) {
+  if (!manualAccounts) return null;
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-sm font-semibold text-gray-500 flex items-center gap-1.5">
+          <Archive size={14} className="text-gray-400" />
+          Manual Accounts (Imported)
+        </h2>
+        <span className="text-xs font-medium text-gray-400">
+          {manualAccounts.entryCount} {manualAccounts.entryCount === 1 ? "entry" : "entries"} — not
+          included in the totals above
+        </span>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <StatCard
+          label="Revenue"
+          value={currency.format(manualAccounts.totalRevenue)}
+          icon={IndianRupee}
+          tone="neutral"
+          sublabel="From the imported sheet"
+        />
+        <StatCard
+          label="Teacher Pay"
+          value={currency.format(manualAccounts.totalTeacherPay)}
+          icon={Wallet2}
+          tone="neutral"
+          sublabel="From the imported sheet"
+        />
+        <StatCard
+          label="Profit"
+          value={currency.format(manualAccounts.totalProfit)}
+          icon={PiggyBank}
+          tone="neutral"
+          sublabel="From the imported sheet"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
  * Build Your Own Breakdown — tick any of the figures on the page (revenue
  * lines, expense lines, Net Profit / Net Loss, Platform Profit) and see
  * them side by side as shares of one combined total, in one donut. Ticked
@@ -417,8 +482,15 @@ function CustomBreakdownDonut() {
     });
   }
 
+  // Hide the manual-accounts toggle entirely when nothing has ever been
+  // imported, instead of showing a button that can only ever be ₹0.
+  const visibleMetricKeys = analytics
+    ? METRIC_ORDER.filter((key) => key !== "manualAccountsRevenue" || analytics.manualAccounts !== null)
+    : METRIC_ORDER;
+
   const slices: PieChartSlice[] = analytics
-    ? METRIC_ORDER.filter((key) => selected.has(key))
+    ? visibleMetricKeys
+        .filter((key) => selected.has(key))
         .map((key) => {
           const def = METRIC_DEFS[key];
           return { label: def.label, value: def.getValue(analytics), color: def.color };
@@ -465,7 +537,7 @@ function CustomBreakdownDonut() {
         {!loading && analytics && (
           <>
             <div className="flex flex-wrap gap-2">
-              {METRIC_ORDER.map((key) => {
+              {visibleMetricKeys.map((key) => {
                 const def = METRIC_DEFS[key];
                 const value = def.getValue(analytics);
                 const active = selected.has(key);
