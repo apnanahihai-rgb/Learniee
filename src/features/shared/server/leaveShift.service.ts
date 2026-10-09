@@ -35,9 +35,10 @@ import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
  * teacher's not-yet-started cycle sessions that fall inside it are
  * moved to the next free slots inside each cycle's 45-day window, and
  * the parents are told. A session that has no free slot inside its
- * window is cancelled by the system (no strike — the leave was
- * approved — and no make-up, since none fits); it stays uncounted and
- * is forfeited when the cycle closes.
+ * window is marked EXCUSED (Phase 2 Part 1): no strike (the leave was
+ * approved), no make-up here, not counted and not forfeited. It is
+ * written already settled (`followUpAppliedAt` + `settledAt`), so the
+ * parent's 48-hour window and the cycle payout never wait on it.
  *
  * Idempotent and repairable: a moved session is no longer inside the
  * leave, so running this again finds nothing to do. The sweep re-runs
@@ -57,7 +58,7 @@ import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
 
 interface ShiftOutcome {
   enrollmentId: string;
-  kind: "MOVED" | "CANCELLED";
+  kind: "MOVED" | "EXCUSED";
   from: Date;
   to: Date | null;
 }
@@ -70,11 +71,11 @@ const PENDING_RESCHEDULE: RescheduleRequestStatus[] = [
 export async function applyApprovedLeaveToSessions(
   leaveRequestId: string,
   now: Date = new Date(),
-): Promise<{ moved: number; cancelled: number }> {
+): Promise<{ moved: number; excused: number }> {
   const leave = await prisma.leaveRequest.findUnique({ where: { id: leaveRequestId } });
 
   if (!leave || leave.status !== LeaveRequestStatus.APPROVED) {
-    return { moved: 0, cancelled: 0 };
+    return { moved: 0, excused: 0 };
   }
 
   const leaveStart = dateToCalendarDate(leave.startDate);
@@ -137,13 +138,13 @@ export async function applyApprovedLeaveToSessions(
     const notice = byEnrollment.get(outcome.enrollmentId) ?? {
       enrollmentId: outcome.enrollmentId,
       moved: [],
-      cancelled: [],
+      excused: [],
     };
 
     if (outcome.kind === "MOVED" && outcome.to) {
       notice.moved.push({ from: outcome.from, to: outcome.to });
     } else {
-      notice.cancelled.push(outcome.from);
+      notice.excused.push(outcome.from);
     }
 
     byEnrollment.set(outcome.enrollmentId, notice);
@@ -154,14 +155,14 @@ export async function applyApprovedLeaveToSessions(
   }
 
   const moved = outcomes.filter((o) => o.kind === "MOVED").length;
-  const cancelled = outcomes.length - moved;
+  const excused = outcomes.length - moved;
 
   if (outcomes.length > 0) {
     await logActivity({
       action: "SESSION_MOVED_FOR_LEAVE",
       actorRole: "SYSTEM",
-      description: `Teacher leave approved: ${moved} class(es) moved, ${cancelled} cancelled (no free slot in the 45-day window).`,
-      metadata: { leaveRequestId, teacherId: leave.teacherId, moved, cancelled },
+      description: `Teacher leave approved: ${moved} class(es) moved, ${excused} excused (no free slot in the 45-day window).`,
+      metadata: { leaveRequestId, teacherId: leave.teacherId, moved, excused },
     });
   }
 
@@ -300,24 +301,25 @@ async function shiftOneSessionInTx(
     };
   }
 
-  // No free slot inside the window: cancelled by the system. No
-  // strike and no make-up (nothing fits), so its follow-up is
-  // marked done up front.
+  // No free slot inside the window: EXCUSED. No strike, no make-up
+  // here, not counted, not forfeited. Written already settled so the
+  // 48-hour parent window and the cycle payout don't wait on it.
   await tx.classSession.update({
     where: { id: session.id },
     data: {
-      status: ClassSessionStatus.CANCELLED,
+      status: ClassSessionStatus.EXCUSED,
       cancelledAt: now,
       cancelledByRole: "SYSTEM",
       cancelReason:
         "Teacher on approved leave and no free slot fits inside the cycle's 45-day window.",
       followUpAppliedAt: now,
+      settledAt: now,
     },
   });
 
   return {
     enrollmentId: session.enrollmentId,
-    kind: "CANCELLED" as const,
+    kind: "EXCUSED" as const,
     from: session.startsAt,
     to: null,
   };
@@ -326,8 +328,8 @@ async function shiftOneSessionInTx(
 export interface LeaveImpact {
   /** Classes that will move to a new slot. */
   moving: number;
-  /** Classes with no free slot in their 45-day window: cancelled by the system. */
-  cancelling: number;
+  /** Classes with no free slot in their 45-day window: marked excused. */
+  excused: number;
   /** Classes under the notice window: left alone, normal teacher cancel rules apply. */
   tooSoon: number;
 }
@@ -377,15 +379,15 @@ export async function previewLeaveImpact(
     await prisma.$transaction(
       async (tx) => {
         let moving = 0;
-        let cancelling = 0;
+        let excused = 0;
 
         for (const { id } of affected) {
           const outcome = await shiftOneSessionInTx(tx, id, leaveStart, leaveEnd, now);
           if (outcome?.kind === "MOVED") moving += 1;
-          else if (outcome?.kind === "CANCELLED") cancelling += 1;
+          else if (outcome?.kind === "EXCUSED") excused += 1;
         }
 
-        throw new PreviewRollback({ moving, cancelling, tooSoon });
+        throw new PreviewRollback({ moving, excused, tooSoon });
       },
       { timeout: 30_000 },
     );
@@ -394,7 +396,7 @@ export async function previewLeaveImpact(
     throw err;
   }
 
-  return { moving: 0, cancelling: 0, tooSoon };
+  return { moving: 0, excused: 0, tooSoon };
 }
 
 /**
@@ -420,7 +422,7 @@ export async function reapplyApprovedLeaves(now: Date = new Date()): Promise<num
   for (const { id } of leaves) {
     try {
       const result = await applyApprovedLeaveToSessions(id, now);
-      changed += result.moved + result.cancelled;
+      changed += result.moved + result.excused;
     } catch (err) {
       console.error(`Re-applying leave ${id} failed:`, err);
     }

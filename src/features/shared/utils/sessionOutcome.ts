@@ -21,8 +21,10 @@ import { SESSION_POLICY } from "@/lib/platformConfig";
  *   parent cancels 4h+ ahead         CANCELLED        does not count
  *   parent cancels under 4h          CANCELLED_LATE   counts, paid
  *   teacher cancels                  CANCELLED        does not count
+ *   leave left no free slot          EXCUSED          does not count, not forfeited
  *
- * The last three rows are set by the cancel action, not by resolve.
+ * The cancel rows are set by the cancel action and EXCUSED by the leave
+ * shift (`leaveShift.service.ts`), not by resolve.
  */
 
 const MINUTE_MS = 60_000;
@@ -37,7 +39,8 @@ export type SessionStatusValue =
   | "STUDENT_NO_SHOW"
   | "TEACHER_NO_SHOW"
   | "CANCELLED_LATE"
-  | "NEEDS_REVIEW";
+  | "NEEDS_REVIEW"
+  | "EXCUSED";
 
 /** The statuses `resolveSession()` itself can write. */
 export type ResolvedStatus = Extract<
@@ -168,11 +171,21 @@ export function sessionOutcomeCounts(status: SessionStatusValue): boolean | null
     case "TEACHER_NO_SHOW":
     case "CANCELLED":
     case "MISSED":
+    case "EXCUSED":
       return false;
     case "SCHEDULED":
     case "NEEDS_REVIEW":
       return null;
   }
+}
+
+/**
+ * Excused (Phase 2 Part 1): lost to approved teacher leave with no
+ * free slot. Final and settled the moment it is written; it has no
+ * follow-up, no strike, and the parent has nothing to confirm.
+ */
+export function isExcusedStatus(status: SessionStatusValue): boolean {
+  return status === "EXCUSED";
 }
 
 /** A session that can no longer change through the normal flow. */
@@ -228,6 +241,9 @@ export function planSessionFollowUp(
       if (cancelledByRole === "TEACHER") {
         return { makeup: true, strike: "TEACHER_CANCELLED", alertAdmin: false, noticeParent: false };
       }
+      return null;
+    case "EXCUSED":
+      // Phase 2 Part 1: no make-up here (Part 2 places it later), no strike, no alert.
       return null;
     default:
       return null;
@@ -327,6 +343,7 @@ export const SESSION_STATUS_LABEL: Record<SessionStatusValue, string> = {
   TEACHER_NO_SHOW: "Teacher absent",
   CANCELLED_LATE: "Cancelled (late)",
   NEEDS_REVIEW: "Needs review",
+  EXCUSED: "Excused (teacher leave)",
 };
 
 /** Tailwind classes for a status pill — one place so every list agrees. */
@@ -339,4 +356,5 @@ export const SESSION_STATUS_STYLE: Record<SessionStatusValue, string> = {
   TEACHER_NO_SHOW: "bg-red-100 text-red-600",
   CANCELLED_LATE: "bg-red-100 text-red-600",
   NEEDS_REVIEW: "bg-amber-100 text-amber-700",
+  EXCUSED: "bg-blue-100 text-blue-700",
 };

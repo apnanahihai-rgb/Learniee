@@ -1632,6 +1632,9 @@ enum ClassSessionStatus {
   TEACHER_NO_SHOW
   CANCELLED_LATE
   NEEDS_REVIEW
+  // Reschedule/Leave Phase 2 Part 1: a class lost because approved teacher leave
+  // left no free slot. Not counted, not forfeited, no strike, no parent confirmation.
+  EXCUSED
 }
 
 enum ReferralStatus {

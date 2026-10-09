@@ -14,7 +14,7 @@ export interface AdminLeaveRequest {
   /** Leave starts in under 24 hours from when it was submitted. */
   isEmergency: boolean;
   /** Pending only: what approving would do. Null if it could not be worked out. */
-  impact: { moving: number; cancelling: number; tooSoon: number } | null;
+  impact: { moving: number; excused: number; tooSoon: number } | null;
   teacher: {
     id: string;
     firstName: string;

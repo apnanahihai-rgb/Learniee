@@ -36,6 +36,9 @@ export default function SessionAfterClass({ role, state, busy, act }: Props) {
 
   if (!confirmation) return null;
 
+  // Excused classes are settled on creation: nothing to confirm or report.
+  if (state.status === "EXCUSED") return null;
+
   if (role === "teacher") {
     return <TeacherAfterClass state={state} busy={busy} act={act} />;
   }
