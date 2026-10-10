@@ -35,6 +35,18 @@ export const SESSION_POLICY = {
   maxReschedulesPerSession: 2,
   /** Phase 1.6: leave starting within this many hours of being submitted is flagged to Admin. */
   emergencyLeaveHours: 24,
+  /**
+   * Phase 2.2: an excused class (approved leave, no free slot) may be
+   * made up after day 45, up to this many days after the later of day 45
+   * and the end of the leave. Applies only to make-ups of excused classes.
+   */
+  excusedMakeupExtensionDays: 30,
+  /**
+   * Phase 2.5: legacy (non-cycle) sessions get the same notice rule as
+   * cycle sessions (`cancelNoticeHours`) for reschedule proposals and
+   * approvals. Set to false to leave legacy sessions uncapped (06 #39).
+   */
+  enforceLegacyRescheduleNotice: true,
   /** How long (hours) after a session a dispute can be raised. */
   disputeWindowHours: 48,
   /** Days a cycle has to be completed. */

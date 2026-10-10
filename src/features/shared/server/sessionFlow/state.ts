@@ -2,7 +2,7 @@ import {
     isCohostConfirmed
 } from "@/features/shared/server/sessionMeeting.service";
 import type { SessionFlowState } from "@/features/shared/types/sessionFlow";
-import { cycleDeadlineDate } from "@/features/shared/utils/cyclePlan";
+import { cycleDeadlineDate, excusedMakeupDeadlineDate } from "@/features/shared/utils/cyclePlan";
 import { buildTeacherLaunchUrl } from "@/features/shared/utils/meetLaunch";
 import {
     canAddSummary,
@@ -107,7 +107,16 @@ export function toState(session: FlowSession, role: SessionActorRole, now: Date)
     cancelledByRole: session.cancelledByRole,
     overlapPercent: overlapPercent(times, session.overlapSeconds),
     cycleDeadline: session.cycle
-      ? toDateKey(cycleDeadlineDate(dateToCalendarDate(session.cycle.startDate)))
+      ? toDateKey(
+          session.makeupFor?.status === ClassSessionStatus.EXCUSED
+            ? excusedMakeupDeadlineDate(
+                dateToCalendarDate(session.cycle.startDate),
+                session.cycle.extendedDeadline
+                  ? dateToCalendarDate(session.cycle.extendedDeadline)
+                  : null,
+              )
+            : cycleDeadlineDate(dateToCalendarDate(session.cycle.startDate)),
+        )
       : null,
     otherPartyName,
     courseTitle,

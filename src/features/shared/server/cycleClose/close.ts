@@ -103,13 +103,26 @@ export async function closeCycleIfDue(
 
       const sessions = await tx.classSession.findMany({
         where: { cycleId },
-        select: { status: true, cancelledByRole: true, followUpAppliedAt: true, endsAt: true },
+        select: {
+          status: true,
+          cancelledByRole: true,
+          followUpAppliedAt: true,
+          endsAt: true,
+          makeup: { select: { id: true } },
+        },
       });
 
       const decision = decideCycleClose({
-        sessions: sessions.map((s) => ({ ...s, status: s.status as SessionStatusValue })),
+        sessions: sessions.map(({ makeup, ...s }) => ({
+          ...s,
+          status: s.status as SessionStatusValue,
+          hasMakeup: makeup !== null,
+        })),
         sessionCount: cycle.sessionCount,
         cycleStart: dateToCalendarDate(cycle.startDate),
+        extendedDeadline: cycle.extendedDeadline
+          ? dateToCalendarDate(cycle.extendedDeadline)
+          : null,
         now,
       });
 
@@ -126,6 +139,7 @@ export async function closeCycleIfDue(
               : CycleCloseReason.WINDOW_ENDED,
           countedSessionCount: decision.countedSessions,
           forfeitedSessionCount: decision.forfeitedSessions,
+          excusedSessionCount: decision.excusedSessions,
         },
       });
 
@@ -137,6 +151,7 @@ export async function closeCycleIfDue(
         reason: decision.reason,
         countedSessions: decision.countedSessions,
         forfeitedSessions: decision.forfeitedSessions,
+        excusedSessions: decision.excusedSessions,
       };
     },
     { timeout: 15_000 },
@@ -154,13 +169,18 @@ export async function closeCycleIfDue(
       actorRole: "SYSTEM",
       description: `Cycle ${done.cycleNumber} closed (${
         done.reason === "ALL_SESSIONS_FINAL" ? "all sessions final" : "45-day window ended"
-      }): ${done.countedSessions} counted, ${done.forfeitedSessions} forfeited.`,
+      }): ${done.countedSessions} counted, ${done.forfeitedSessions} forfeited${
+        done.excusedSessions > 0
+          ? `, ${done.excusedSessions} excused with no make-up (not counted, not forfeited)`
+          : ""
+      }.`,
       metadata: {
         cycleId,
         enrollmentId: done.enrollmentId,
         reason: done.reason,
         countedSessions: done.countedSessions,
         forfeitedSessions: done.forfeitedSessions,
+        excusedSessions: done.excusedSessions,
       },
     });
 

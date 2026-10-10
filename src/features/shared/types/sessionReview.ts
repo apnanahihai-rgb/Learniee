@@ -48,6 +48,7 @@ export interface SessionReviewItem {
     status: "OPEN" | "CLOSED";
     countedSessionCount: number | null;
     forfeitedSessionCount: number | null;
+    excusedSessionCount: number | null;
   } | null;
   /** Newest first. */
   history: SessionReviewHistoryEntry[];

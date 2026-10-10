@@ -1,7 +1,7 @@
 import {
     cycleDeadlineDate,
+    excusedMakeupDeadlineDate,
     formatDayMonth,
-    isWithinCycleDeadline,
 } from "@/features/shared/utils/cyclePlan";
 import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
 import { SESSION_POLICY } from "@/lib/platformConfig";
@@ -45,12 +45,17 @@ import "server-only";
  * date). Legacy sessions are unchanged.
  */
 
+/** Machine-readable reasons the UI reacts to (besides the message). */
+export type RescheduleErrorCode = "LATE_TEACHER_RESCHEDULE";
+
 export class RescheduleRequestError extends Error {
   status: number;
+  code?: RescheduleErrorCode;
 
-  constructor(message: string, status = 400) {
+  constructor(message: string, status = 400, code?: RescheduleErrorCode) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 export type ActorRole = "TEACHER" | "PARENT";
@@ -128,7 +133,7 @@ export async function assertCycleSlotAllowed(
 
   const cycle = await prisma.enrollmentCycle.findUnique({
     where: { id: session.cycleId },
-    select: { startDate: true, status: true },
+    select: { startDate: true, status: true, extendedDeadline: true },
   });
 
   // Part 1C: nothing can be scheduled or extended once a cycle has closed.
@@ -142,16 +147,65 @@ export async function assertCycleSlotAllowed(
   if (cycle) {
     const cycleStart = dateToCalendarDate(cycle.startDate);
 
-    if (!isWithinCycleDeadline(proposedDate, cycleStart)) {
+    // Phase 2.2: the make-up of an excused class may sit past day 45,
+    // up to the cycle's extended deadline. Every other class stops at day 45.
+    let deadline = cycleDeadlineDate(cycleStart);
+    let extended = false;
+
+    if (cycle.extendedDeadline) {
+      const excusedMakeup = await prisma.classSession.findFirst({
+        where: { id: session.id, makeupFor: { status: ClassSessionStatus.EXCUSED } },
+        select: { id: true },
+      });
+
+      if (excusedMakeup) {
+        deadline = excusedMakeupDeadlineDate(cycleStart, dateToCalendarDate(cycle.extendedDeadline));
+        extended = true;
+      }
+    }
+
+    if (compareDates(proposedDate, deadline) > 0) {
       throw new RescheduleRequestError(
         `Classes can only be moved to a slot on or before ${formatDayMonth(
-          cycleDeadlineDate(cycleStart),
-        )} — the end of this cycle's ${SESSION_POLICY.completionWindowDays}-day window.`,
+          deadline,
+        )} — the end of this ${
+          extended
+            ? "make-up class's extended window"
+            : `cycle's ${SESSION_POLICY.completionWindowDays}-day window`
+        }.`,
         409,
       );
     }
   }
 }
+/**
+ * Phase 2.5: legacy (non-cycle) sessions get the same notice rule as
+ * cycle sessions: a request can only be made, and approved, up to
+ * `cancelNoticeHours` before the class starts. The class start is
+ * read from the saved date + time in the platform timezone; a legacy
+ * row with no usable time can't be judged and is left alone. Turned
+ * off by `SESSION_POLICY.enforceLegacyRescheduleNotice` (06 #39).
+ */
+export function assertLegacyRescheduleNotice(
+  session: { scheduledDate: Date; scheduledTime: string | null },
+  now: Date,
+) {
+  if (!SESSION_POLICY.enforceLegacyRescheduleNotice) return;
+
+  const time = session.scheduledTime;
+
+  if (!isValidTimeOfDay(time)) return;
+
+  const startsAt = platformWallClockToUtc(dateToCalendarDate(session.scheduledDate), time);
+
+  if (!hasCancelNotice(startsAt, now)) {
+    throw new RescheduleRequestError(
+      `A class can only be rescheduled up to ${SESSION_POLICY.cancelNoticeHours} hours before it starts.`,
+      409,
+    );
+  }
+}
+
 /**
  * Phase 1.1: the slot must not fall inside the teacher's approved
  * leave. Checked when a request is proposed and again when it is

@@ -52,7 +52,9 @@ const flowInclude = {
   enrollment: {
     select: { subject: true, course: { select: { courseTitle: true } } },
   },
-  cycle: { select: { startDate: true } },
+  cycle: { select: { startDate: true, extendedDeadline: true } },
+  // Phase 2.2: the make-up of an excused class may go past day 45.
+  makeupFor: { select: { status: true } },
 } satisfies Prisma.ClassSessionInclude;
 export type FlowSession = Prisma.ClassSessionGetPayload<{ include: typeof flowInclude }>;
 type CycleFlowSession = FlowSession & { startsAt: Date; endsAt: Date };

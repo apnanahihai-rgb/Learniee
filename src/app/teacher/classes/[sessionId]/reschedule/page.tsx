@@ -20,32 +20,42 @@ export default function TeacherProposeReschedulePage({
 }) {
   const { sessionId } = use(params);
   const router = useRouter();
-  const { submit, submitting, error } = useProposeSessionReschedule(sessionId);
+  const { submit, submitting, error, needsLateConfirm } = useProposeSessionReschedule(sessionId);
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<"SENT" | "CANCELLED" | null>(null);
+
+  async function send(confirmLateCancel: boolean) {
+    const result = await submit(
+      {
+        proposedDate: date,
+        proposedTime: time || undefined,
+        reason: reason || undefined,
+      },
+      { confirmLateCancel },
+    );
+
+    if (result) setDone(result.cancelled ? "CANCELLED" : "SENT");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    const result = await submit({
-      proposedDate: date,
-      proposedTime: time || undefined,
-      reason: reason || undefined,
-    });
-
-    if (result) setDone(true);
+    await send(false);
   }
 
   if (done) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
         <CheckCircle2 size={40} className="text-green-600 mb-4" />
-        <p className="text-gray-800 font-semibold">Reschedule request sent.</p>
+        <p className="text-gray-800 font-semibold">
+          {done === "CANCELLED" ? "Class cancelled." : "Reschedule request sent."}
+        </p>
         <p className="text-sm text-gray-500 mt-1 max-w-sm">
-          The parent will need to approve this before the class actually moves.
+          {done === "CANCELLED"
+            ? "Because it was under 4 hours away, it was cancelled instead. A make-up will be arranged for the parent and a strike was recorded."
+            : "The parent will need to approve this before the class actually moves."}
         </p>
         <button
           type="button"
@@ -69,6 +79,23 @@ export default function TeacherProposeReschedulePage({
       </p>
 
       {error && <ErrorBanner size="compact">{error}</ErrorBanner>}
+
+      {needsLateConfirm && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">
+            Under 4 hours away, this can only be a cancellation. A make-up will be arranged for
+            the parent and a strike will be recorded against you.
+          </p>
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => send(true)}
+            className="mt-3 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 px-4 py-2 rounded-full transition-colors"
+          >
+            {submitting ? "Cancelling…" : "Cancel this class instead"}
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

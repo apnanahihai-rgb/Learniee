@@ -29,13 +29,20 @@ export async function closeDueCycles(
     addDays(todayInPlatformTz(now), -SESSION_POLICY.completionWindowDays),
   );
 
+  const todayDate = calendarDateToDate(todayInPlatformTz(now));
+
   const candidates = await prisma.enrollmentCycle.findMany({
     where: {
       status: CycleStatus.OPEN,
       enrollment: { isLegacy: false, status: EnrollmentStatus.ACTIVE },
       sessions: { some: {} },
       OR: [
-        { startDate: { lte: windowStartCutoff } },
+        // Past day 45 AND past any extension an excused class earned
+        // (Phase 2.2); the final call is `decideCycleClose`.
+        {
+          startDate: { lte: windowStartCutoff },
+          OR: [{ extendedDeadline: null }, { extendedDeadline: { lt: todayDate } }],
+        },
         {
           sessions: {
             none: {

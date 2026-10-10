@@ -241,7 +241,11 @@ function ReviewCard({ item, onDecide }: { item: SessionReviewItem; onDecide: () 
       {item.cycle?.status === "CLOSED" && (
         <p className="text-xs text-amber-700 mt-3">
           This cycle has already closed ({item.cycle.countedSessionCount ?? 0} counted,{" "}
-          {item.cycle.forfeitedSessionCount ?? 0} forfeited). A decision here re-counts it.
+          {item.cycle.forfeitedSessionCount ?? 0} forfeited
+          {(item.cycle.excusedSessionCount ?? 0) > 0
+            ? `, ${item.cycle.excusedSessionCount} excused with no make-up`
+            : ""}
+          ). A decision here re-counts it.
         </p>
       )}
 

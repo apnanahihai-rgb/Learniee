@@ -13,7 +13,7 @@ import {
 } from "@prisma/client";
 import "server-only";
 import { expireStaleRescheduleRequests } from './close';
-import { ActorRole, assertCycleSlotAllowed, assertNotOnTeacherLeave, assertSlotStillFree, isCycleModelSession, requestInclude, RescheduleRequestError } from './base';
+import { ActorRole, assertCycleSlotAllowed, assertLegacyRescheduleNotice, assertNotOnTeacherLeave, assertSlotStillFree, isCycleModelSession, requestInclude, RescheduleRequestError } from './base';
 
 function assertCanRespond(
   request: { teacherId: string; parentId: string; status: RescheduleRequestStatus },
@@ -117,6 +117,11 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
       request.proposedTime,
       new Date(),
     );
+  }
+
+  // Phase 2.5: legacy sessions get the same 4-hour notice rule.
+  if (!isCycleModelSession(session)) {
+    assertLegacyRescheduleNotice(session, new Date());
   }
 
   // Phase 1.1 (again at approval): the teacher's leave may have been

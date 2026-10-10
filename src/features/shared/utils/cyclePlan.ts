@@ -117,6 +117,35 @@ export function cycleDeadlineDate(cycleStart: CalendarDate): CalendarDate {
   return addDays(cycleStart, SESSION_POLICY.completionWindowDays - 1);
 }
 
+/**
+ * Phase 2.2: the deadline for the make-up of an EXCUSED class — the
+ * cycle's later `extendedDeadline` when it has one, else day 45.
+ * Nothing else uses this; every other session stops at
+ * `cycleDeadlineDate`.
+ */
+export function excusedMakeupDeadlineDate(
+  cycleStart: CalendarDate,
+  extendedDeadline: CalendarDate | null,
+): CalendarDate {
+  const base = cycleDeadlineDate(cycleStart);
+
+  return extendedDeadline && compareDates(extendedDeadline, base) > 0 ? extendedDeadline : base;
+}
+
+/**
+ * Phase 2.2: the extended deadline a leave gives a cycle — the later
+ * of day 45 and the leave's last day, plus the configured extension.
+ */
+export function extendedDeadlineForLeave(
+  cycleStart: CalendarDate,
+  leaveEnd: CalendarDate,
+): CalendarDate {
+  const base = cycleDeadlineDate(cycleStart);
+  const from = compareDates(leaveEnd, base) > 0 ? leaveEnd : base;
+
+  return addDays(from, SESSION_POLICY.excusedMakeupExtensionDays);
+}
+
 /** True if a calendar date is on or before the cycle's deadline day. */
 export function isWithinCycleDeadline(
   date: CalendarDate,

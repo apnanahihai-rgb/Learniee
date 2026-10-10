@@ -1,10 +1,13 @@
 import {
     notifyReschedulePropose
 } from "@/features/shared/server/notificationTriggers.service";
+import { cancelSession } from "@/features/shared/server/sessionFlow.service";
+import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
 import {
     calendarDateToDate,
     parseDateKey
 } from "@/lib/platformTime";
+import { SESSION_POLICY } from "@/lib/platformConfig";
 import { prisma } from "@/lib/prisma";
 import {
     ClassSessionStatus,
@@ -12,7 +15,7 @@ import {
     RescheduleRequestStatus,
 } from "@prisma/client";
 import "server-only";
-import { ActorRole, assertCycleSlotAllowed, assertNotOnTeacherLeave, assertUnderRescheduleCap, assertValidTime, isCycleModelSession, parseDateOnly, PENDING_STATUSES, requestInclude, RescheduleRequestError, startOfDay } from './base';
+import { ActorRole, assertCycleSlotAllowed, assertLegacyRescheduleNotice, assertNotOnTeacherLeave, assertUnderRescheduleCap, assertValidTime, isCycleModelSession, parseDateOnly, PENDING_STATUSES, requestInclude, RescheduleRequestError, startOfDay } from './base';
 
 /**
  * Loads the target ClassSession and checks it belongs to the actor
@@ -44,6 +47,58 @@ async function loadReschedulableSession(sessionId: string, actorRole: ActorRole,
 
   return session;
 }
+type LateCheckSession = {
+  cycleId: string | null;
+  startsAt: Date | null;
+  teacherStartedAt: Date | null;
+  studentJoinedAt: Date | null;
+};
+/** True when a teacher's reschedule ask is really a late cancel (Phase 2.4). */
+function isLateTeacherReschedule(actorRole: ActorRole, session: LateCheckSession, now: Date) {
+  return (
+    actorRole === "TEACHER" &&
+    session.cycleId !== null &&
+    session.startsAt !== null &&
+    session.teacherStartedAt === null &&
+    session.studentJoinedAt === null &&
+    now < session.startsAt &&
+    !hasCancelNotice(session.startsAt, now)
+  );
+}
+
+/**
+ * Phase 2.4: the teacher confirmed a reschedule under 4 hours is a
+ * cancel. Runs the normal teacher cancel (make-up + strike, pending
+ * requests closed), with the reschedule ask recorded as the reason.
+ * Only valid while the late-reschedule rule still applies, so this
+ * can't be used to cancel a class that has 4+ hours of notice by
+ * accident through a stale page.
+ */
+export async function cancelForLateReschedule(input: {
+  sessionId: string;
+  teacherId: string;
+  reason?: string | null;
+}) {
+  const session = await loadReschedulableSession(input.sessionId, "TEACHER", input.teacherId);
+
+  if (!isLateTeacherReschedule("TEACHER", session, new Date())) {
+    throw new RescheduleRequestError(
+      "This class can be rescheduled normally now. Please send a reschedule request instead.",
+      409,
+    );
+  }
+
+  const note = input.reason?.trim();
+
+  return cancelSession(
+    session.id,
+    { role: "TEACHER", id: input.teacherId },
+    `Late reschedule request (under ${SESSION_POLICY.cancelNoticeHours}h), treated as a cancel${
+      note ? `: ${note}` : "."
+    }`,
+  );
+}
+
 export interface ProposeRescheduleInput {
   sessionId: string;
   actorRole: ActorRole;
@@ -65,6 +120,17 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
     input.actorRole,
     input.actorId,
   );
+
+  // Phase 2.4: a teacher asking to move a class that is under 4 hours
+  // away is really cancelling it, so it is treated as a teacher cancel
+  // (make-up + strike). The teacher must confirm that first.
+  if (isLateTeacherReschedule(input.actorRole, session, new Date())) {
+    throw new RescheduleRequestError(
+      `This class starts in under ${SESSION_POLICY.cancelNoticeHours} hours, so it can't be rescheduled. Continuing will cancel it instead and record a strike against you.`,
+      409,
+      "LATE_TEACHER_RESCHEDULE",
+    );
+  }
 
   const existingPending = await prisma.rescheduleRequest.findFirst({
     where: { classSessionId: session.id, status: { in: PENDING_STATUSES } },
@@ -97,6 +163,9 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
     proposedDate = calendarDateToDate(dateKey);
   } else {
     proposedDate = parseDateOnly(input.proposedDate);
+
+    // Phase 2.5: legacy sessions get the same 4-hour notice rule.
+    assertLegacyRescheduleNotice(session, new Date());
 
     const today = startOfDay(new Date());
     if (proposedDate < today) {

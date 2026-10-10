@@ -29,7 +29,7 @@ export async function applySessionFollowUp(sessionId: string, now: Date): Promis
           sessionLengthMinutes: true,
         },
       },
-      cycle: { select: { id: true, startDate: true, status: true } },
+      cycle: { select: { id: true, startDate: true, status: true, extendedDeadline: true } },
     },
   });
 
@@ -93,7 +93,9 @@ export async function applySessionFollowUp(sessionId: string, now: Date): Promis
       action: "CLASS_SESSION_OUTCOME",
       actorRole: "SYSTEM",
       description:
-        "No make-up slot fits inside the cycle's 45-day window; the class stays uncounted.",
+        session.status === ClassSessionStatus.EXCUSED
+          ? "Excused class: no make-up slot fits after the leave; it is dropped (not counted, not forfeited)."
+          : "No make-up slot fits inside the cycle's 45-day window; the class stays uncounted.",
       metadata: { sessionId: session.id, enrollmentId: session.enrollmentId },
     });
   }
@@ -114,6 +116,7 @@ export async function applySessionFollowUp(sessionId: string, now: Date): Promis
 function notificationOutcome(session: FollowUpSession, plan: SessionFollowUpPlan) {
   if (session.status === ClassSessionStatus.STUDENT_NO_SHOW) return "STUDENT_NO_SHOW" as const;
   if (session.status === ClassSessionStatus.TEACHER_NO_SHOW) return "TEACHER_NO_SHOW" as const;
+  if (session.status === ClassSessionStatus.EXCUSED) return "EXCUSED" as const;
   if (plan.strike === "TEACHER_CANCELLED") return "TEACHER_CANCELLED" as const;
 
   return "NOBODY_JOINED" as const;
@@ -147,7 +150,7 @@ async function applyInTransaction(
 
     const freshCycle = await tx.enrollmentCycle.findUniqueOrThrow({
       where: { id: cycle.id },
-      select: { status: true, startDate: true },
+      select: { status: true, startDate: true, extendedDeadline: true },
     });
 
     const alreadyHasMakeup = await tx.classSession.findUnique({
@@ -159,7 +162,14 @@ async function applyInTransaction(
       makeupSessionId = alreadyHasMakeup.id;
       makeupStartsAt = alreadyHasMakeup.startsAt;
     } else if (freshCycle.status === CycleStatus.OPEN) {
-      const created = await createMakeup(tx, session, freshCycle.startDate, now);
+      const created = await createMakeup(
+        tx,
+        session,
+        freshCycle.startDate,
+        now,
+        // Phase 2.2: only an excused class's make-up may go past day 45.
+        session.status === ClassSessionStatus.EXCUSED ? freshCycle.extendedDeadline : null,
+      );
 
       if (created) {
         makeupSessionId = created.id;

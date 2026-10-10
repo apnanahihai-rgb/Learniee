@@ -53,6 +53,6 @@ export type FollowUpSession = Prisma.ClassSessionGetPayload<{
         sessionLengthMinutes: true;
       };
     };
-    cycle: { select: { id: true; startDate: true; status: true } };
+    cycle: { select: { id: true; startDate: true; status: true; extendedDeadline: true } };
   };
 }>;

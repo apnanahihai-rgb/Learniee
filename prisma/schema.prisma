@@ -991,6 +991,17 @@ model EnrollmentCycle {
   /// window. Set at most once; `cycleClose.service.ts` is the only
   /// writer. Legacy cycles don't exist, so always null there.
   payoutReleasedAt DateTime?
+  /// Reschedule/Leave Phase 2.2: set when approved teacher leave left a
+  /// session of this cycle EXCUSED. The last day an excused class's
+  /// make-up may be placed (after day 45). Applies ONLY to make-ups of
+  /// excused classes; every other session still stops at day 45. Null =
+  /// no extension.
+  extendedDeadline DateTime?       @db.Date
+  /// Reschedule/Leave Phase 2.3: written at close (and on a re-count).
+  /// Excused classes that never got a make-up. They are neither
+  /// counted nor forfeited; the parent paid for them, so Admin/Accounts
+  /// must settle them (the wallet has no spend path yet, 06 #44).
+  excusedSessionCount Int?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   enrollment       Enrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -1032,6 +1043,12 @@ model TeacherStrike {
   enrollmentId   String
   reason         TeacherStrikeReason
   createdAt      DateTime            @default(now())
+  /// Reschedule/Leave Phase 2.6: Admin waiver (for example an emergency).
+  /// A waived strike is kept for the record but no longer counts.
+  waivedAt       DateTime?
+  waivedBySub    String?
+  waivedByName   String?
+  waiveReason    String?
   teacher        Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   classSession   ClassSession        @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
 
@@ -1632,6 +1649,9 @@ enum ClassSessionStatus {
   TEACHER_NO_SHOW
   CANCELLED_LATE
   NEEDS_REVIEW
+  // Reschedule/Leave Phase 2.1: a class lost because approved teacher leave
+  // left no free slot. Not counted, not forfeited, no strike, no parent confirmation.
+  EXCUSED
 }
 
 enum ReferralStatus {
@@ -1907,6 +1927,8 @@ enum ActivityAction {
   /// Part 1C (Sep 21, 2026)
   SESSION_MAKEUP_CREATED
   TEACHER_STRIKE_RECORDED
+  /// Reschedule/Leave Phase 2.6 (Oct 10, 2026)
+  TEACHER_STRIKE_WAIVED
   SESSION_MOVED_FOR_LEAVE
   CYCLE_CLOSED
   /// Part 2A (Sep 21, 2026)

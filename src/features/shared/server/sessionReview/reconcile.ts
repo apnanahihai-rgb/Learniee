@@ -1,9 +1,7 @@
 import { lockCycle } from "@/features/shared/server/cycleSlots.service";
 import { reconcileLedgerEntryForClosedCycle } from "@/features/shared/server/tuitionLedger.service";
-import {
-    sessionOutcomeCounts,
-    type SessionStatusValue
-} from "@/features/shared/utils/sessionOutcome";
+import { cycleTotals } from "@/features/shared/utils/cycleClose";
+import type { SessionStatusValue } from "@/features/shared/utils/sessionOutcome";
 import { prisma } from "@/lib/prisma";
 import {
     CycleStatus
@@ -49,21 +47,30 @@ export async function reconcileClosedCycle(cycleId: string): Promise<string[]> {
 
       const sessions = await tx.classSession.findMany({
         where: { cycleId },
-        select: { status: true },
+        select: { status: true, makeup: { select: { id: true } } },
       });
 
-      const counted = Math.min(
-        sessions.filter((s) => sessionOutcomeCounts(s.status as SessionStatusValue) === true)
-          .length,
+      // Phase 2.3: excused classes without a make-up are neither
+      // counted nor forfeited.
+      const totals = cycleTotals(
+        sessions.map((s) => ({
+          status: s.status as SessionStatusValue,
+          hasMakeup: s.makeup !== null,
+        })),
         cycle.sessionCount,
       );
+      const counted = totals.counted;
 
-      if (counted !== (cycle.countedSessionCount ?? 0)) {
+      if (
+        counted !== (cycle.countedSessionCount ?? 0) ||
+        totals.excused !== (cycle.excusedSessionCount ?? 0)
+      ) {
         await tx.enrollmentCycle.update({
           where: { id: cycleId },
           data: {
             countedSessionCount: counted,
-            forfeitedSessionCount: Math.max(0, cycle.sessionCount - counted),
+            forfeitedSessionCount: totals.forfeited,
+            excusedSessionCount: totals.excused,
           },
         });
       }

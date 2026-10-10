@@ -60,6 +60,8 @@ export async function repairPendingFollowUps(now: Date = new Date()): Promise<nu
           status: ClassSessionStatus.CANCELLED,
           cancelledByRole: { in: ["TEACHER", "SYSTEM"] },
         },
+        // Phase 2.2: an excused class waits here until its make-up is placed or dropped.
+        { status: ClassSessionStatus.EXCUSED },
       ],
     },
     select: { id: true },

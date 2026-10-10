@@ -66,6 +66,7 @@ const reviewInclude = {
       status: true,
       countedSessionCount: true,
       forfeitedSessionCount: true,
+      excusedSessionCount: true,
     },
   },
   outcomeDecisions: { orderBy: { createdAt: "desc" }, take: HISTORY_SIZE },
@@ -116,6 +117,7 @@ function toItem(row: ReviewRow): SessionReviewItem {
           status: row.cycle.status,
           countedSessionCount: row.cycle.countedSessionCount,
           forfeitedSessionCount: row.cycle.forfeitedSessionCount,
+          excusedSessionCount: row.cycle.excusedSessionCount,
         }
       : null,
     history: row.outcomeDecisions.map((d) => ({

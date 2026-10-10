@@ -1,5 +1,5 @@
 import { loadSlotContext } from "@/features/shared/server/cycleSlots.service";
-import { cycleDeadlineDate } from "@/features/shared/utils/cyclePlan";
+import { excusedMakeupDeadlineDate } from "@/features/shared/utils/cyclePlan";
 import { findNextFreeSlot, slotScheduledDate } from "@/features/shared/utils/makeupSlots";
 import { DEFAULT_SESSION_LENGTH_MINUTES } from "@/lib/platformConfig";
 import {
@@ -16,7 +16,7 @@ import { FollowUpRetryLater, FollowUpSession } from './base';
 
 /**
  * Adds one make-up session on the next free slot on or before the
- * cycle's day 45. Returns null if none fits. The make-up is a normal
+ * cycle's day 45 (or, for an excused class, its extended deadline). Returns null if none fits. The make-up is a normal
  * cycle session (next session number, same teacher, student and
  * length) so Start / Join / End, reschedule and counting all work on
  * it unchanged.
@@ -26,6 +26,8 @@ export async function createMakeup(
   session: FollowUpSession,
   cycleStartDate: Date,
   now: Date,
+  /** Phase 2.2: the cycle's extended deadline — passed ONLY for an excused class's make-up. */
+  extendedDeadline: Date | null = null,
 ): Promise<{ id: string; startsAt: Date } | null> {
   const { enrollment } = session;
   const time = enrollment.scheduleTime;
@@ -34,7 +36,10 @@ export async function createMakeup(
     return null;
   }
 
-  const deadline = cycleDeadlineDate(dateToCalendarDate(cycleStartDate));
+  const deadline = excusedMakeupDeadlineDate(
+    dateToCalendarDate(cycleStartDate),
+    extendedDeadline ? dateToCalendarDate(extendedDeadline) : null,
+  );
   const today = todayInPlatformTz(now);
 
   if (compareDates(today, deadline) > 0) return null;
