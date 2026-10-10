@@ -74,9 +74,7 @@ function HistoryRow({
       ? "border-l-green-400"
       : session.status === "NEEDS_REVIEW" || session.status === "STUDENT_NO_SHOW"
         ? "border-l-amber-400"
-        : session.status === "EXCUSED"
-          ? "border-l-blue-300"
-          : "border-l-red-300";
+        : "border-l-red-300";
 
   return (
     <div className={`bg-white border border-violet-100 border-l-4 ${accent} rounded-2xl p-4`}>

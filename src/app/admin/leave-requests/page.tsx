@@ -81,9 +81,9 @@ export default function AdminLeaveRequestsPage() {
                     <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
                       If approved: {r.impact.moving} class{r.impact.moving === 1 ? "" : "es"} will
                       move to a new slot
-                      {r.impact.excused > 0 && (
+                      {r.impact.cancelling > 0 && (
                         <>
-                          , <strong>{r.impact.excused}</strong> will be marked excused (no free slot
+                          , <strong>{r.impact.cancelling}</strong> will be cancelled (no free slot
                           in the 45-day window)
                         </>
                       )}

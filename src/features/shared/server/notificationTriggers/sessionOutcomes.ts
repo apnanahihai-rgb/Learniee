@@ -124,8 +124,8 @@ export function notifySessionFollowUp(notice: SessionFollowUpNotice) {
 export interface LeaveShiftNotice {
   enrollmentId: string;
   moved: { from: Date; to: Date }[];
-  /** Classes that could not be moved inside the 45-day window and were excused. */
-  excused: Date[];
+  /** Classes that could not be moved inside the 45-day window and were cancelled. */
+  cancelled: Date[];
 }
 /** Tells a parent which of their classes moved because the teacher's leave was approved. */
 export function notifySessionsMovedForLeave(notice: LeaveShiftNotice) {
@@ -147,14 +147,14 @@ export function notifySessionsMovedForLeave(notice: LeaveShiftNotice) {
       parts.push(`Moved: ${shown}${more}.`);
     }
 
-    if (notice.excused.length > 0) {
-      const shown = notice.excused
+    if (notice.cancelled.length > 0) {
+      const shown = notice.cancelled
         .slice(0, 3)
         .map((d) => formatPlatformTime(d, true))
         .join("; ");
 
       parts.push(
-        `No free slot fit inside this cycle's 45-day window, so these are excused (you are not charged for them as lost classes): ${shown}.`,
+        `Could not be moved inside this cycle's 45-day window, so they will not be counted: ${shown}.`,
       );
     }
 

@@ -84,15 +84,6 @@ export function describeSession(
         body: "Both of you joined, but for less than half of the class time. An Admin will review it.",
       };
 
-    case "EXCUSED":
-      return {
-        tone: "info",
-        title: "Excused: teacher on leave",
-        body: isTeacher
-          ? "This class fell inside your approved leave and no free slot fit, so it is excused. It isn't counted against you."
-          : "The teacher is on approved leave and no free slot fit, so this class is excused. It won't be counted against you.",
-      };
-
     case "MISSED":
       return { tone: "danger", title: "Session missed", body: "This class was missed." };
 
