@@ -107,7 +107,7 @@ export function useActivityLogs(pageSize = 50) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/activity-logs"] });
 
   function applyFilters(next: ActivityLogFiltersState) {
     setFilters(next);

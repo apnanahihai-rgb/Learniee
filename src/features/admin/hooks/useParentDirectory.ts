@@ -34,7 +34,7 @@ export function useParentDirectory() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/directory/parents"] });
 
   async function load() {
     try {

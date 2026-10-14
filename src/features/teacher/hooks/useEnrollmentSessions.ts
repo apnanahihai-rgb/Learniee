@@ -39,7 +39,7 @@ export function useEnrollmentSessions(enrollmentId: string, enabled: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, enrollmentId]);
 
-  useAutoRefresh(() => load(), { enabled });
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/enrollments", "/api/teacher/class-sessions"], enabled });
 
   async function load() {
     try {

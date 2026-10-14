@@ -81,7 +81,7 @@ export function useTeacherCourses() {
     loadCourses();
   }, [loadCourses]);
 
-  useAutoRefresh(() => loadCourses());
+  useAutoRefresh(() => loadCourses(), { paths: ["/api/teacher/course"] });
 
   async function createCourse(formData: CourseFormData) {
     try {

@@ -34,7 +34,7 @@ export function useParentResources(enrollmentId?: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentId]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/resources"] });
 
   async function load() {
     try {

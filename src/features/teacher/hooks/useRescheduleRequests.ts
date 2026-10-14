@@ -17,7 +17,7 @@ export function useTeacherRescheduleRequests() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/reschedule-requests"] });
 
   async function load() {
     try {

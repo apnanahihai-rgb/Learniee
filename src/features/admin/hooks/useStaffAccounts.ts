@@ -31,7 +31,7 @@ export function useStaffAccounts() {
     loadAccounts();
   }, []);
 
-  useAutoRefresh(() => loadAccounts());
+  useAutoRefresh(() => loadAccounts(), { paths: ["/api/admin/staff-accounts"] });
 
   async function handleDelete(account: StaffAccount) {
     const confirmed = window.confirm(

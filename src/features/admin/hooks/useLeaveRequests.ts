@@ -35,7 +35,7 @@ export function useAdminLeaveRequests() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/leave-requests"] });
 
   async function load() {
     try {

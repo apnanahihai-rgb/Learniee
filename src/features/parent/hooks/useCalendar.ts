@@ -18,7 +18,7 @@ export function useParentCalendar(month: string, studentId?: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, studentId]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/calendar"] });
 
   async function load() {
     try {

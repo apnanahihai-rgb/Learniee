@@ -25,7 +25,7 @@ export function useTeacherLeaveRequests() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/leave-requests"] });
 
   async function load() {
     try {

@@ -59,7 +59,7 @@ export function useParentEnrollments(endpoint = "/api/parent/enrollments") {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: [endpoint] });
 
   async function load() {
     try {

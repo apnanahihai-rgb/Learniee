@@ -44,7 +44,7 @@ export function useBankAccount() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/bank-account"] });
 
   async function load() {
     try {

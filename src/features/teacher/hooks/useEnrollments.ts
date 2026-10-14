@@ -52,7 +52,7 @@ export function useTeacherEnrollments() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/enrollments"] });
 
   async function load() {
     try {

@@ -82,7 +82,7 @@ export function useParentClassRequests() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/class-requests"] });
 
   async function submit(input: ClassRequestFormInput) {
     setError("");
@@ -165,7 +165,7 @@ export function useTeacherVacancies() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/class-requests"] });
 
   async function respond(id: string, decision: "ACCEPT" | "DECLINE", note?: string) {
     setError("");
@@ -229,7 +229,7 @@ export function useAdminClassRequests() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/class-requests"] });
 
   async function act(id: string, action: "APPROVE" | "REJECT" | "CLOSE", adminNote?: string) {
     setError("");

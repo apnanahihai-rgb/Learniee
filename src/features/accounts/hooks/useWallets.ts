@@ -28,7 +28,7 @@ export function useWallets() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/accounts/wallet"] });
 
   async function load() {
     try {

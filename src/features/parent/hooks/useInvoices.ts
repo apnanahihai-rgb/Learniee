@@ -38,7 +38,7 @@ export function useInvoices() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/invoices"] });
 
   async function load() {
     try {

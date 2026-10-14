@@ -48,7 +48,7 @@ export function useSessionReviews() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/session-reviews"] });
 
   async function decide(input: {
     sessionId: string;

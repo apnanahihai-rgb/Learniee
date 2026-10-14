@@ -38,7 +38,7 @@ export function useTeacherDirectory() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/directory/teachers"] });
 
   async function load() {
     try {

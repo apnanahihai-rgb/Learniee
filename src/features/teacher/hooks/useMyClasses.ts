@@ -40,7 +40,7 @@ export function useTeacherClasses() {
     load(false);
   }, [load]);
 
-  useAutoRefresh(() => load(true));
+  useAutoRefresh(() => load(true), { paths: ["/api/teacher/my-classes"] });
 
   return { classes, loading, error, reload: () => load(true) };
 }
@@ -79,7 +79,7 @@ export function useTeacherClassRoster(courseId: string) {
     if (courseId) load(false);
   }, [courseId, load]);
 
-  useAutoRefresh(() => load(true), { enabled: Boolean(courseId) });
+  useAutoRefresh(() => load(true), { paths: ["/api/teacher/my-classes"], enabled: Boolean(courseId) });
 
   return { roster, loading, error, reload: () => load(true) };
 }
@@ -120,7 +120,7 @@ export function useTeacherStudentDetail(courseId: string, enrollmentId: string) 
     if (courseId && enrollmentId) load(false);
   }, [courseId, enrollmentId, load]);
 
-  useAutoRefresh(() => load(true), { enabled: Boolean(courseId && enrollmentId) });
+  useAutoRefresh(() => load(true), { paths: ["/api/teacher/my-classes"], enabled: Boolean(courseId && enrollmentId) });
 
   return { detail, loading, error, reload: () => load(true) };
 }

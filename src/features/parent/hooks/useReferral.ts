@@ -34,7 +34,7 @@ export function useReferral() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/referral"] });
 
   async function load() {
     try {

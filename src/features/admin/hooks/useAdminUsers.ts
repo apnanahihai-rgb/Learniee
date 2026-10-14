@@ -33,7 +33,7 @@ export function useAdminUsers() {
     loadUsers();
   }, []);
 
-  useAutoRefresh(() => loadUsers());
+  useAutoRefresh(() => loadUsers(), { paths: ["/api/admin/users", "/api/admin/delete-user"] });
 
   /** Deletes immediately. The page asks for confirmation first (in-page dialog). */
   async function handleDelete(user: AdminUser) {

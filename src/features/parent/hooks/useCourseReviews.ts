@@ -66,7 +66,7 @@ export function useCourseReviews(courseId: string) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/courses"] });
 
   async function submitReview(rating: number, comment: string) {
     setError("");

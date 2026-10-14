@@ -34,7 +34,7 @@ export function useWallet() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/wallet"] });
 
   async function load() {
     try {

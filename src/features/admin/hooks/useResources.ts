@@ -35,7 +35,7 @@ export function useAdminResources() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/resources"] });
 
   async function load() {
     try {

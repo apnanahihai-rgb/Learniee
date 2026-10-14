@@ -72,7 +72,7 @@ export function useDemoBookings() {
     reload();
   }, [reload]);
 
-  useAutoRefresh(() => reload());
+  useAutoRefresh(() => reload(), { paths: ["/api/parent/demo-bookings"] });
 
   return { bookings, loading, error, reload };
 }

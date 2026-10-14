@@ -14,7 +14,7 @@ export function useApprovedCourses() {
     fetchCourses();
   }, []);
 
-  useAutoRefresh(() => fetchCourses());
+  useAutoRefresh(() => fetchCourses(), { paths: ["/api/parent/courses"] });
 
   async function fetchCourses() {
     try {

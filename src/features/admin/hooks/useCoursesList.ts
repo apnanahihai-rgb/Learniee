@@ -14,7 +14,7 @@ export function useCoursesList() {
     fetchCourses();
   }, []);
 
-  useAutoRefresh(() => fetchCourses());
+  useAutoRefresh(() => fetchCourses(), { paths: ["/api/admin/courses"] });
 
   async function fetchCourses() {
     try {

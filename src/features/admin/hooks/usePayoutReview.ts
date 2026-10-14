@@ -36,7 +36,7 @@ export function useAdminPayoutReview() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/payout-review"] });
 
   async function load() {
     try {

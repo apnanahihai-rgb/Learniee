@@ -55,7 +55,7 @@ export function useParentRefundRequests() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/refund-requests"] });
 
   async function submit(invoiceId: string, reason: string) {
     setError("");
@@ -132,7 +132,7 @@ export function useAdminRefundRequests() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/refund-requests"] });
 
   async function decide(
     id: string,

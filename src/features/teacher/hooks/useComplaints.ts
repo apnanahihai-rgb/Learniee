@@ -25,7 +25,7 @@ export function useTeacherComplaints() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/complaints"] });
 
   async function load() {
     try {

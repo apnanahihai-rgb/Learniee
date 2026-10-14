@@ -66,7 +66,7 @@ export function useDemoCoupons() {
     reload();
   }, [reload]);
 
-  useAutoRefresh(() => reload());
+  useAutoRefresh(() => reload(), { paths: ["/api/parent/demo-coupons"] });
 
   /**
    * Full "buy more coupons" flow: create a Razorpay order for

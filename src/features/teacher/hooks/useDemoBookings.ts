@@ -70,7 +70,7 @@ export function useTeacherDemoBookings() {
     reload();
   }, [reload]);
 
-  useAutoRefresh(() => reload());
+  useAutoRefresh(() => reload(), { paths: ["/api/teacher/demo-bookings"] });
 
   return { bookings, loading, error, reload };
 }

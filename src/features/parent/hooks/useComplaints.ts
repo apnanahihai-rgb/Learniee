@@ -25,7 +25,7 @@ export function useParentComplaints() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/complaints"] });
 
   async function load() {
     try {

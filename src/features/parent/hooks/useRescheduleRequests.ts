@@ -17,7 +17,7 @@ export function useParentRescheduleRequests() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/reschedule-requests"] });
 
   async function load() {
     try {

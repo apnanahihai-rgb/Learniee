@@ -68,7 +68,7 @@ export function useTeacherBlogList() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/blogs"] });
 
   return { posts, loading, error, reload: load, setError };
 }
@@ -97,7 +97,7 @@ export function useTeacherBlogPost(postId: string | undefined) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/blogs"] });
 
   return { post, setPost, loading, error };
 }

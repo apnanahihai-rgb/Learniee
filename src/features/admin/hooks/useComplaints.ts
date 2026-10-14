@@ -32,7 +32,7 @@ export function useAdminComplaints(apiBase = "/api/admin/complaints") {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: [apiBase] });
 
   async function load() {
     try {

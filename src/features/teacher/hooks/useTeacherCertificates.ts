@@ -42,7 +42,7 @@ export function useTeacherCertificates() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/certificates"] });
 
   async function decide(enrollmentId: string, action: "issue" | "decline") {
     try {

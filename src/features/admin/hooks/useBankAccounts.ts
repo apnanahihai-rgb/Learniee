@@ -36,7 +36,7 @@ export function useAdminBankAccounts() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/bank-accounts"] });
 
   async function load() {
     try {

@@ -60,7 +60,7 @@ export function useAdminBlogList(status: BlogPostStatus) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/blogs"] });
 
   return { posts, loading, error, reload: load };
 }

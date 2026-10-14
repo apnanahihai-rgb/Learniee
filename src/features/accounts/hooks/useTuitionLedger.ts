@@ -75,7 +75,7 @@ export function useTuitionLedger() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/accounts/ledger"] });
 
   async function load() {
     try {

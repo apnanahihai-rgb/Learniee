@@ -49,7 +49,7 @@ export function useTeacherStrikes() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/teacher-strikes"] });
 
   async function waive(strikeId: string, reason: string): Promise<{ ok: boolean; error?: string }> {
     try {

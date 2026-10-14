@@ -38,7 +38,7 @@ export function useStudentCertificates(studentId: string) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/students"] });
 
   return { certificates, loading, error };
 }

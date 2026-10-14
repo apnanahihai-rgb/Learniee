@@ -45,7 +45,7 @@ export function useStudents() {
     loadStudents();
   }, [loadStudents]);
 
-  useAutoRefresh(() => loadStudents());
+  useAutoRefresh(() => loadStudents(), { paths: ["/api/parent/students"] });
 
   async function addStudent(input: StudentFormInput) {
     try {

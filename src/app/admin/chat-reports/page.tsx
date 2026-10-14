@@ -79,7 +79,7 @@ export default function AdminChatReportsPage() {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/chat-reports"] });
 
   async function markReviewed(reportId: string) {
     try {

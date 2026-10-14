@@ -26,7 +26,7 @@ export function useTeacherResources(enrollmentId: string) {
     if (enrollmentId) load();
   }, [enrollmentId]);
 
-  useAutoRefresh(() => load(), { enabled: Boolean(enrollmentId) });
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/resources"], enabled: Boolean(enrollmentId) });
 
   async function load() {
     try {

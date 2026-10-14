@@ -45,7 +45,7 @@ export function useTeacherApplication(teacherId: string) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/teachers"] });
 
   async function scheduleInterview(scheduledAtIso: string, details: string) {
     try {

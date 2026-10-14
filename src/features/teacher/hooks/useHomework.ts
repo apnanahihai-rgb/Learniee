@@ -36,7 +36,7 @@ export function useTeacherHomework(enrollmentId: string) {
     if (enrollmentId) load();
   }, [enrollmentId]);
 
-  useAutoRefresh(() => load(), { enabled: Boolean(enrollmentId) });
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/homework"], enabled: Boolean(enrollmentId) });
 
   async function load() {
     try {

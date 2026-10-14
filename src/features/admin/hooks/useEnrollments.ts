@@ -33,7 +33,7 @@ export function useAdminEnrollments() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/admin/enrollments"] });
 
   async function load() {
     try {

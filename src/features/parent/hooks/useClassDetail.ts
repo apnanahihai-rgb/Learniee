@@ -45,7 +45,7 @@ export function useClassDetail(enrollmentId: string) {
     load(false);
   }, [load]);
 
-  useAutoRefresh(() => load(true));
+  useAutoRefresh(() => load(true), { paths: ["/api/parent/my-classes"] });
 
   const reload = useCallback(() => load(true), [load]);
 

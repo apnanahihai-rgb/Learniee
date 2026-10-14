@@ -31,7 +31,7 @@ export function useAdminQueueCounts() {
 
   // Re-check on tab focus, every 30s, and right after any approve/save
   // anywhere in the app, so the badges never go stale.
-  useAutoRefresh(() => refresh());
+  useAutoRefresh(() => refresh(), { paths: ["/api/admin/queue-counts"], intervalMs: 60_000 });
 
   return { counts, refresh };
 }

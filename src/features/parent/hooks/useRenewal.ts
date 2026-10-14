@@ -58,7 +58,7 @@ export function useRenewal(enrollmentId: string) {
     load();
   }, [load]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/parent/enrollments"] });
 
   async function renew(overrides: { scheduleDays?: number[]; scheduleTime?: string }) {
     try {

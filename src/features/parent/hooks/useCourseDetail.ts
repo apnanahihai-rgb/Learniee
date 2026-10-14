@@ -55,7 +55,7 @@ export function useCourseDetail(courseId: string) {
     loadCourse();
   }, [loadCourse]);
 
-  useAutoRefresh(() => loadCourse());
+  useAutoRefresh(() => loadCourse(), { paths: ["/api/parent/courses"] });
 
   return { course, otherCourses, loading, error };
 }

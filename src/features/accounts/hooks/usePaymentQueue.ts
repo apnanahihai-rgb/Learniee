@@ -46,7 +46,7 @@ export function usePaymentQueue() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/accounts/payout-queue"] });
 
   async function load() {
     try {

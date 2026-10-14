@@ -46,7 +46,7 @@ export function useTeachersList(status: TeacherApprovalState) {
     fetchTeachers();
   }, [fetchTeachers]);
 
-  useAutoRefresh(() => fetchTeachers());
+  useAutoRefresh(() => fetchTeachers(), { paths: ["/api/admin/teachers"] });
 
   return { teachers, counts, loading, error, refetch: fetchTeachers };
 }

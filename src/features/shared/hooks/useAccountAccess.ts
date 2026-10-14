@@ -57,7 +57,7 @@ export function useAccountAccess(apiBasePath: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBasePath]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: [apiBasePath] });
 
   function openTarget(account: ManagedAccount) {
     setTarget(account);

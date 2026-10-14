@@ -18,7 +18,7 @@ export function useTeacherCalendar(month: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/calendar"] });
 
   async function load() {
     try {

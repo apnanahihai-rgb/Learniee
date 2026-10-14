@@ -54,7 +54,7 @@ export function useAccountsAnalytics(range?: AccountsAnalyticsRange) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/accounts/analytics"] });
 
   async function load() {
     try {

@@ -61,7 +61,7 @@ export function useTeacherEarnings() {
     load();
   }, []);
 
-  useAutoRefresh(() => load());
+  useAutoRefresh(() => load(), { paths: ["/api/teacher/earnings"] });
 
   async function load() {
     try {
