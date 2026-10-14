@@ -17,11 +17,12 @@ import {
     Prisma,
 } from "@prisma/client";
 import "server-only";
+import type { Orders } from "razorpay/dist/types/orders";
 import { RenewalError, loadRenewableEnrollment } from './plan';
 
-type RazorpayOrder = Awaited<
-  ReturnType<ReturnType<typeof getRazorpayClient>["orders"]["fetch"]>
->;
+// `orders.fetch` has a callback overload, so `ReturnType<…>` resolves to
+// `void`; use the SDK's own order type instead.
+type RazorpayOrder = Orders.RazorpayOrder;
 
 /**
  * The cycle a given Razorpay payment already paid for, if any. This is
