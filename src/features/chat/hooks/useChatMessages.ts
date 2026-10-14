@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ChatMessage } from "@/features/chat/types/chat";
-
-const MESSAGE_POLL_MS = 4000;
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 /**
- * Merges `incoming` into `prev`, de-duping by `id`. Needed because the
- * poll loop and the optimistic append in `sendMessage` can race: a poll
+ * Merges `incoming` into `prev`, de-duping by `id`. Needed because a
+ * live refresh and the optimistic append in `sendMessage` can race: a fetch
  * request in flight when a message is sent may resolve afterwards and
  * still include that same message (it was fetched with a stale `after`
  * cursor), producing a duplicate entry/key otherwise.
@@ -24,21 +23,18 @@ function mergeMessages(prev: ChatMessage[], incoming: ChatMessage[]): ChatMessag
 }
 
 /**
- * Fetches and polls a single room's messages via `messagesEndpoint`
- * (e.g. `/api/parent/chat/<roomId>/messages`), using the `after`
- * query param so each poll only asks for messages newer than the
- * last one already held — see the matching GET routes.
+ * Fetches a single room's messages via `messagesEndpoint` (e.g.
+ * `/api/parent/chat/<roomId>/messages`), using the `after` query param
+ * so each refresh only asks for messages newer than the last one
+ * already held — see the matching GET routes.
  *
- * No WebSocket/SSE here on purpose: the app is Next.js Route
- * Handlers on Vercel (serverless), which doesn't hold a persistent
- * connection open. Plain polling reuses the existing stack instead
- * of introducing a new realtime-infra decision (e.g. Pusher/Ably)
- * that isn't in 02-ARCHITECTURE.md yet — worth revisiting there if
- * chat volume ever makes 4s latency feel too slow.
+ * New messages arrive through the live-update stream
+ * (`src/lib/realtimeClient.ts` → `useAutoRefresh`): a chat-message row
+ * being written triggers one `poll()` — no timer. `staleMs` is short so
+ * coming back to a chat tab always catches up.
  *
- * `canSend: false` (Admin's read-only view) skips polling for new
- * messages beyond the initial load reason to keep this simple, and
- * `sendMessage` is a no-op guarded by `canSend`.
+ * `sendMessage` is a no-op when `canSend` is false (Admin's read-only
+ * view).
  */
 export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -84,11 +80,10 @@ export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
     lastTimestampRef.current = null;
 
     poll();
-
-    const interval = setInterval(poll, MESSAGE_POLL_MS);
-    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messagesEndpoint]);
+
+  useAutoRefresh(() => poll(), { paths: [messagesEndpoint], staleMs: 5_000 });
 
   async function sendMessage(body: string) {
     if (!canSend) return;

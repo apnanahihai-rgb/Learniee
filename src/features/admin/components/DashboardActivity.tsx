@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AdminPanel, AdminSectionTitle } from "@/features/admin/components/ui/primitives";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 interface ActivityItem {
   id: string;
@@ -28,22 +29,27 @@ function timeAgo(iso: string) {
 export default function DashboardActivity() {
   const [items, setItems] = useState<ActivityItem[] | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/activity-logs?pageSize=5", { cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
 
-    fetch("/api/admin/activity-logs?pageSize=5", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled) setItems(Array.isArray(data?.items) ? data.items : []);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      if (data) {
+        setItems(Array.isArray(data.items) ? data.items : []);
+      } else {
+        // Keep what is already on screen if a refresh fails.
+        setItems((prev) => prev ?? []);
+      }
+    } catch {
+      setItems((prev) => prev ?? []);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useAutoRefresh(() => load(), { paths: ["/api/admin/activity-logs"] });
 
   return (
     <section aria-labelledby="h-activity" className="flex min-w-0 flex-col gap-3.5">

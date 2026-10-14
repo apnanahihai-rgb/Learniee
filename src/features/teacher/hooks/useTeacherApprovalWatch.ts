@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 import {
   fetchTeacherAccess,
@@ -13,11 +14,10 @@ import {
 
 export type ApprovalWatchState = "loading" | "PENDING" | "REJECTED" | "error";
 
-const POLL_INTERVAL_MS = 30_000;
-
 /**
  * Drives the "waiting for admin approval" page: checks the approval status
- * on load, every 30 seconds, and whenever the tab becomes visible again.
+ * on load and again the moment it changes on the server (live-update
+ * stream, see `src/lib/realtimeClient.ts`) or the tab is revisited.
  * The moment Admin approves, the teacher is moved on to their dashboard
  * without having to log in again.
  */
@@ -60,22 +60,9 @@ export function useTeacherApprovalWatch() {
 
   useEffect(() => {
     check();
-
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") check();
-    }, POLL_INTERVAL_MS);
-
-    function onVisible() {
-      if (document.visibilityState === "visible") check();
-    }
-
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
   }, [check]);
+
+  useAutoRefresh(() => check(), { paths: ["/api/teacher/onboarding/status"], staleMs: 5_000 });
 
   async function appeal() {
     try {

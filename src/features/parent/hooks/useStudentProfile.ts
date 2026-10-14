@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { StudentProfile } from "@/features/parent/types/student";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useStudentProfile(studentId: string) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
@@ -11,9 +13,15 @@ export function useStudentProfile(studentId: string) {
   const [error, setError] = useState("");
 
   const loadStudent = useCallback(async () => {
+    // Silent when run by the live-update refresh: no spinner, and a
+    // failed refresh (e.g. the profile was just removed) keeps the screen.
+    const background = isBackgroundRefresh();
+
     try {
-      setLoading(true);
-      setError("");
+      if (!background) {
+        setLoading(true);
+        setError("");
+      }
 
       const res = await fetch(`/api/parent/students/${studentId}`, {
         method: "GET",
@@ -30,9 +38,11 @@ export function useStudentProfile(studentId: string) {
     } catch (err) {
       console.error("Load student error:", err);
 
-      setError(
-        err instanceof Error ? err.message : "Failed to load student profile.",
-      );
+      if (!background) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load student profile.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -41,6 +51,8 @@ export function useStudentProfile(studentId: string) {
   useEffect(() => {
     loadStudent();
   }, [loadStudent]);
+
+  useAutoRefresh(() => loadStudent(), { paths: [`/api/parent/students/${studentId}`] });
 
   async function removeStudent() {
     try {

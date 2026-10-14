@@ -46,6 +46,10 @@ interface UseAutoRefreshOptions {
  *  - the tab/window is revisited and the data is older than `staleMs`, or
  *  - `intervalMs` is set and elapses while the tab is visible.
  *
+ * Changes made by OTHER people reach this hook through the live-update
+ * stream (`src/lib/realtimeClient.ts`), which fires the same event a
+ * local write does — so no `intervalMs` is needed for them any more.
+ *
  * `refresh` runs in a "background refresh" scope: loaders that guard
  * `setLoading(true)` with `isBackgroundRefresh()` won't flash a spinner.
  * The latest `refresh` closure is always used, so it sees current

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+
 export interface NotificationItem {
   id: string;
   type: string;
@@ -12,15 +14,12 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-const POLL_INTERVAL_MS = 30_000;
-
 /**
- * Polls `/api/notifications` every 30s — same simple
- * fetch-on-mount-plus-interval pattern as `useWallet.ts` /
- * `DemoCouponButton.tsx` right next to it in the navbar, rather than
- * introducing a websocket/SSE layer for what's still an MVP-minimal
- * feature. One shared hook covers all three roles since the API
- * route resolves the recipient from the caller's own Cognito token.
+ * Loads `/api/notifications` on mount and refetches the moment a new
+ * notification row is created for this user (live-update stream, see
+ * `src/lib/realtimeClient.ts`) — no timer. One shared hook covers all
+ * roles since the API route resolves the recipient from the caller's
+ * own Cognito token.
  */
 export function useNotifications() {
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -57,13 +56,12 @@ export function useNotifications() {
     mountedRef.current = true;
     refresh();
 
-    const interval = setInterval(refresh, POLL_INTERVAL_MS);
-
     return () => {
       mountedRef.current = false;
-      clearInterval(interval);
     };
   }, [refresh]);
+
+  useAutoRefresh(() => refresh(), { paths: ["/api/notifications"], staleMs: 15_000 });
 
   async function markRead(id: string) {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));

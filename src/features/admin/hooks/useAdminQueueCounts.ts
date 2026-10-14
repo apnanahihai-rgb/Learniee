@@ -8,7 +8,8 @@ import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 /**
  * Sidebar badge numbers. Best-effort: a failed request just leaves the
  * badges off, it never blocks the page behind them. Refreshes when the
- * tab regains focus, periodically, and after any change.
+ * tab regains focus and the moment any admin-visible data changes
+ * (own writes and other people's, via the live-update stream).
  */
 export function useAdminQueueCounts() {
   const [counts, setCounts] = useState<AdminQueueCounts | null>(null);
@@ -29,9 +30,9 @@ export function useAdminQueueCounts() {
     void refresh();
   }, [refresh]);
 
-  // Re-check on tab focus, every 30s, and right after any approve/save
-  // anywhere in the app, so the badges never go stale.
-  useAutoRefresh(() => refresh(), { paths: ["/api/admin/queue-counts"], intervalMs: 60_000 });
+  // Re-check on tab focus and right after any approve/save anywhere in
+  // the app (by anyone), so the badges never go stale.
+  useAutoRefresh(() => refresh(), { paths: ["/api/admin/queue-counts"] });
 
   return { counts, refresh };
 }

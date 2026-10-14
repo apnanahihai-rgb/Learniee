@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { Menu, Search } from "lucide-react";
@@ -8,6 +8,7 @@ import { Menu, Search } from "lucide-react";
 import DemoCouponButton from "@/features/parent/components/layout/DemoCouponButton";
 import WalletBadge from "@/features/parent/components/layout/WalletBadge";
 import NotificationBell from "@/features/shared/components/NotificationBell";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import BrandLogo from "@/features/shared/components/BrandLogo";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
@@ -28,25 +29,28 @@ export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
   const [search, setSearch] = useState("");
   const [parent, setParent] = useState<Parent | null>(null);
 
-  useEffect(() => {
-    async function fetchParent() {
-      try {
-        const res = await fetch("/api/parent/profile");
+  const fetchParent = useCallback(async () => {
+    try {
+      const res = await fetch("/api/parent/profile");
 
-        if (!res.ok) {
-          return;
-        }
-
-        const data = await res.json();
-
-        setParent(data.parent);
-      } catch (error) {
-        console.error("Failed to load parent:", error);
+      if (!res.ok) {
+        return;
       }
-    }
 
-    fetchParent();
+      const data = await res.json();
+
+      setParent(data.parent);
+    } catch (error) {
+      console.error("Failed to load parent:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchParent();
+  }, [fetchParent]);
+
+  // Name changes made on the profile page show up here straight away.
+  useAutoRefresh(() => fetchParent(), { paths: ["/api/parent/profile"] });
 
   const handleLogout = async () => {
     // Fire the log before removing the cookie — the endpoint needs

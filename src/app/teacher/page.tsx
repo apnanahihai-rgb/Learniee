@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -20,6 +20,7 @@ import {
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
 import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 interface TeacherProfile {
   firstName: string;
@@ -35,19 +36,22 @@ function currentMonthKey() {
 export default function TeacherDashboard() {
   const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
 
-  useEffect(() => {
-    async function fetchTeacher() {
-      try {
-        const res = await fetch("/api/teacher/profile");
-        if (!res.ok) return;
-        const data = await res.json();
-        setTeacher(data.teacher);
-      } catch (err) {
-        console.error("Failed to load teacher:", err);
-      }
+  const fetchTeacher = useCallback(async () => {
+    try {
+      const res = await fetch("/api/teacher/profile");
+      if (!res.ok) return;
+      const data = await res.json();
+      setTeacher(data.teacher);
+    } catch (err) {
+      console.error("Failed to load teacher:", err);
     }
-    fetchTeacher();
   }, []);
+
+  useEffect(() => {
+    fetchTeacher();
+  }, [fetchTeacher]);
+
+  useAutoRefresh(() => fetchTeacher(), { paths: ["/api/teacher/profile"] });
 
   const teacherName =
     teacher?.visibleName || `${teacher?.firstName ?? ""} ${teacher?.lastName ?? ""}`.trim();

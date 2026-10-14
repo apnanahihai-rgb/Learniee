@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Printer } from "lucide-react";
 
 import type { CertificateView } from "@/features/shared/types/certificate";
 import CertificateDocument from "@/features/shared/components/CertificateDocument";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 /** Teacher's read-only preview of a certificate they issued — same print pattern as the Parent view. */
 export default function TeacherCertificateDetailPage() {
@@ -17,32 +19,35 @@ export default function TeacherCertificateDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
+    // Silent when run by the live-update refresh: no spinner, and a
+    // failed refresh keeps what is already on screen.
+    const background = isBackgroundRefresh();
 
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/teacher/certificates/${certificateId}`);
-        const data = await res.json();
+    try {
+      if (!background) setLoading(true);
+      const res = await fetch(`/api/teacher/certificates/${certificateId}`);
+      const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to fetch this certificate");
-        }
-
-        if (!cancelled) setCertificate(data.certificate);
-      } catch (err) {
-        console.error(err);
-        if (!cancelled) setError("Unable to load this certificate.");
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to fetch this certificate");
       }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
+      setCertificate(data.certificate);
+      setError("");
+    } catch (err) {
+      console.error(err);
+      if (!background) setError("Unable to load this certificate.");
+    } finally {
+      setLoading(false);
+    }
   }, [certificateId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useAutoRefresh(() => load(), { paths: [`/api/teacher/certificates/${certificateId}`] });
 
   return (
     <div className="p-6 max-w-3xl mx-auto print:p-0 print:max-w-none">

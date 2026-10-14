@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import type { SessionFlowState } from "@/features/shared/types/sessionFlow";
 
-const POLL_INTERVAL_MS = 10_000;
 const CLOCK_TICK_MS = 1_000;
 
 export type SessionFlowRole = "teacher" | "parent";
@@ -27,9 +27,11 @@ export type SessionFlowAction =
  * Loads one class session's flow state for the Start / Join / End
  * page and runs its actions (see `SessionFlowAction`).
  *
- * - Polls every 10s while a cycle session is still SCHEDULED, so the
- *   teacher sees the parent join and the parent sees the class end
- *   without refreshing.
+ * - Refetches the moment the session changes on the server (live-update
+ *   stream, see `src/lib/realtimeClient.ts`), so the teacher sees the
+ *   parent join and the parent sees the class end without refreshing.
+ *   Only the 1s clock below is a timer — it moves the buttons, it does
+ *   not fetch anything.
  * - `now()` is the viewer's clock corrected by the server's
  *   `serverNow`, so the buttons open at the right moment even on a
  *   device with a wrong clock. The server re-checks every action
@@ -86,14 +88,14 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
   useEffect(() => {
     if (!shouldPoll) return;
 
-    const poll = setInterval(refresh, POLL_INTERVAL_MS);
     const clock = setInterval(() => setTick(Date.now()), CLOCK_TICK_MS);
 
     return () => {
-      clearInterval(poll);
       clearInterval(clock);
     };
-  }, [shouldPoll, refresh]);
+  }, [shouldPoll]);
+
+  useAutoRefresh(() => refresh(), { paths: [base], staleMs: 10_000 });
 
   const perform = useCallback(
     async (action: SessionFlowAction, body?: Record<string, unknown>) => {

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { Menu, Search } from "lucide-react";
 
 import NotificationBell from "@/features/shared/components/NotificationBell";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import BrandLogo from "@/features/shared/components/BrandLogo";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
@@ -26,25 +27,28 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
   const [search, setSearch] = useState("");
   const [teacher, setTeacher] = useState<Teacher | null>(null);
 
-  useEffect(() => {
-    async function fetchTeacher() {
-      try {
-        const res = await fetch("/api/teacher/profile");
+  const fetchTeacher = useCallback(async () => {
+    try {
+      const res = await fetch("/api/teacher/profile");
 
-        if (!res.ok) {
-          return;
-        }
-
-        const data = await res.json();
-
-        setTeacher(data.teacher);
-      } catch (error) {
-        console.error("Failed to load teacher:", error);
+      if (!res.ok) {
+        return;
       }
-    }
 
-    fetchTeacher();
+      const data = await res.json();
+
+      setTeacher(data.teacher);
+    } catch (error) {
+      console.error("Failed to load teacher:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchTeacher();
+  }, [fetchTeacher]);
+
+  // Name changes made on the profile page show up here straight away.
+  useAutoRefresh(() => fetchTeacher(), { paths: ["/api/teacher/profile"] });
 
   const handleLogout = async () => {
     // Fire the log before removing the cookie — the endpoint needs

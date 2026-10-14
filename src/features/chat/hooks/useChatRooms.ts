@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { ChatRoomSummary } from "@/features/chat/types/chat";
-
-const ROOM_LIST_POLL_MS = 15000;
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 /**
- * Fetches a role's chat room list from `endpoint` and polls it every
- * ROOM_LIST_POLL_MS so unread-message counts / new rooms show up
- * without a manual refresh. `endpoint` already includes any query
- * string (e.g. admin filters) — this hook doesn't build one.
+ * Fetches a role's chat room list from `endpoint` and refetches it as
+ * soon as a message or room changes (live-update stream, see
+ * `src/lib/realtimeClient.ts`) so unread counts / new rooms show up
+ * without a manual refresh or a timer. `endpoint` already includes any
+ * query string (e.g. admin filters) — this hook doesn't build one.
  */
 export function useChatRooms(endpoint: string) {
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([]);
@@ -40,10 +40,9 @@ export function useChatRooms(endpoint: string) {
   useEffect(() => {
     setLoading(true);
     loadRooms();
-
-    const interval = setInterval(loadRooms, ROOM_LIST_POLL_MS);
-    return () => clearInterval(interval);
   }, [loadRooms]);
+
+  useAutoRefresh(() => loadRooms(), { paths: [endpoint], staleMs: 10_000 });
 
   return { rooms, loading, error, refresh: loadRooms };
 }
