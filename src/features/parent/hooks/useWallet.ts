@@ -7,6 +7,8 @@ import {
   WALLET_TOPUP_MIN_AMOUNT,
   WALLET_TOPUP_MAX_AMOUNT,
 } from "@/features/shared/utils/walletTopup";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface WalletTransactionView {
   id: string;
@@ -32,9 +34,11 @@ export function useWallet() {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       const res = await fetch("/api/parent/wallet");
       const data = await res.json();
 

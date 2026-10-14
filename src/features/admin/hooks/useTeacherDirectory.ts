@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface TeacherDirectoryRow {
   id: string;
@@ -36,9 +38,11 @@ export function useTeacherDirectory() {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/admin/directory/teachers");

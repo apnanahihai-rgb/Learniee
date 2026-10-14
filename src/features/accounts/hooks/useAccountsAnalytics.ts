@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import type { LedgerPayoutStatus } from "@prisma/client";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface PayoutStatusSlice {
   status: LedgerPayoutStatus;
@@ -52,9 +54,11 @@ export function useAccountsAnalytics(range?: AccountsAnalyticsRange) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const params = new URLSearchParams();

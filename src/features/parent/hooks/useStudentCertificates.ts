@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { CertificateView } from "@/features/shared/types/certificate";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useStudentCertificates(studentId: string) {
   const [certificates, setCertificates] = useState<CertificateView[]>([]);
@@ -11,7 +13,7 @@ export function useStudentCertificates(studentId: string) {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/parent/students/${studentId}/certificates`, {
@@ -35,6 +37,8 @@ export function useStudentCertificates(studentId: string) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   return { certificates, loading, error };
 }

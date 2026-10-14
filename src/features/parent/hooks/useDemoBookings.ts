@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface DemoBookingListItem {
   id: string;
@@ -41,7 +43,7 @@ export function useDemoBookings() {
 
   const reload = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/parent/demo-bookings", {
@@ -69,6 +71,8 @@ export function useDemoBookings() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useAutoRefresh(() => reload());
 
   return { bookings, loading, error, reload };
 }

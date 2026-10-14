@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { uploadFileToS3 } from "@/lib/uploadFileToS3";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface HomeworkSubmission {
   id: string;
@@ -37,9 +39,11 @@ export function useParentHomework(enrollmentId: string) {
     if (enrollmentId) load();
   }, [enrollmentId]);
 
+  useAutoRefresh(() => load(), { enabled: Boolean(enrollmentId) });
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/parent/homework?enrollmentId=${enrollmentId}`);

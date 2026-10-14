@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Baloo_2, Nunito } from "next/font/google";
 import "./globals.css";
 import "react-phone-number-input/style.css";
+import AutoRefreshProvider from "@/features/shared/components/AutoRefreshProvider";
 
 // Baloo 2 — rounded, playful display face for headings/titles.
 // Kid-friendly without tipping into a "novelty" font.
@@ -36,7 +37,10 @@ export default function RootLayout({
       className={`${baloo.variable} ${nunito.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
     >
-         <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
+         <body className="min-h-full flex flex-col" suppressHydrationWarning>
+          <AutoRefreshProvider />
+          {children}
+        </body>
     </html>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 /**
  * Data hooks for the custom class request feature, one per role. They share a
@@ -66,7 +68,7 @@ export function useParentClassRequests() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       const data = await call<{ requests: ParentClassRequest[] }>("/api/parent/class-requests");
       setRequests(data.requests);
     } catch (err) {
@@ -79,6 +81,8 @@ export function useParentClassRequests() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function submit(input: ClassRequestFormInput) {
     setError("");
@@ -147,7 +151,7 @@ export function useTeacherVacancies() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       const data = await call<{ vacancies: TeacherVacancy[] }>("/api/teacher/class-requests");
       setVacancies(data.vacancies);
     } catch (err) {
@@ -160,6 +164,8 @@ export function useTeacherVacancies() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function respond(id: string, decision: "ACCEPT" | "DECLINE", note?: string) {
     setError("");
@@ -209,7 +215,7 @@ export function useAdminClassRequests() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       const data = await call<{ requests: AdminClassRequest[] }>("/api/admin/class-requests");
       setRequests(data.requests);
     } catch (err) {
@@ -222,6 +228,8 @@ export function useAdminClassRequests() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function act(id: string, action: "APPROVE" | "REJECT" | "CLOSE", adminNote?: string) {
     setError("");

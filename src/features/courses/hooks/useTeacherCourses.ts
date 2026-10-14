@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { CourseFormData } from "@/features/courses/types/course";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface Course {
   id: string;
@@ -45,7 +47,7 @@ export function useTeacherCourses() {
 
   const loadCourses = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/teacher/course", {
@@ -78,6 +80,8 @@ export function useTeacherCourses() {
   useEffect(() => {
     loadCourses();
   }, [loadCourses]);
+
+  useAutoRefresh(() => loadCourses());
 
   async function createCourse(formData: CourseFormData) {
     try {

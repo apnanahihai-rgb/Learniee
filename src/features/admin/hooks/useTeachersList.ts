@@ -6,6 +6,8 @@ import type {
   TeacherApprovalCounts,
   TeacherApprovalState,
 } from "@/features/admin/types/teacher";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 const EMPTY_COUNTS: TeacherApprovalCounts = { PENDING: 0, APPROVED: 0, REJECTED: 0 };
 
@@ -18,7 +20,7 @@ export function useTeachersList(status: TeacherApprovalState) {
 
   const fetchTeachers = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/admin/teachers?status=${status}`, {
@@ -43,6 +45,8 @@ export function useTeachersList(status: TeacherApprovalState) {
   useEffect(() => {
     fetchTeachers();
   }, [fetchTeachers]);
+
+  useAutoRefresh(() => fetchTeachers());
 
   return { teachers, counts, loading, error, refetch: fetchTeachers };
 }

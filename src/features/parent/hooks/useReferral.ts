@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface ReferralEntry {
   id: string;
@@ -32,9 +34,11 @@ export function useReferral() {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch("/api/parent/referral");
       const data = await res.json();

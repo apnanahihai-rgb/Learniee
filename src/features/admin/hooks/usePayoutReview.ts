@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface AdminPayoutReviewEntry {
   id: string;
@@ -34,9 +36,11 @@ export function useAdminPayoutReview() {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       const res = await fetch("/api/admin/payout-review");
       const data = await res.json();
 

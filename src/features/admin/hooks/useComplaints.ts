@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface AdminComplaint {
   id: string;
@@ -30,9 +32,11 @@ export function useAdminComplaints(apiBase = "/api/admin/complaints") {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch(apiBase);
       const data = await res.json();

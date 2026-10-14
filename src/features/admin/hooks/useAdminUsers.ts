@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdminUser } from "@/features/admin/types/user";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useAdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -12,7 +14,7 @@ export function useAdminUsers() {
   const [viewingUser, setViewingUser] = useState<AdminUser | null>(null);
 
   async function loadUsers() {
-    setLoading(true);
+    if (!isBackgroundRefresh()) setLoading(true);
     setError(null);
 
     try {
@@ -30,6 +32,8 @@ export function useAdminUsers() {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useAutoRefresh(() => loadUsers());
 
   /** Deletes immediately. The page asks for confirmation first (in-page dialog). */
   async function handleDelete(user: AdminUser) {

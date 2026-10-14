@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import type { SessionStatusValue } from "@/features/shared/utils/sessionOutcome";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface ClassSessionRow {
   id: string;
@@ -37,9 +39,11 @@ export function useEnrollmentSessions(enrollmentId: string, enabled: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, enrollmentId]);
 
+  useAutoRefresh(() => load(), { enabled });
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/teacher/enrollments/${enrollmentId}/sessions`);

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 /** Data hooks for refund requests: one for the Parent, one for Admin. */
 
@@ -52,6 +54,8 @@ export function useParentRefundRequests() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function submit(invoiceId: string, reason: string) {
     setError("");
@@ -114,7 +118,7 @@ export function useAdminRefundRequests() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       const data = await call<{ requests: AdminRefundRequest[] }>("/api/admin/refund-requests");
       setRequests(data.requests);
     } catch (err) {
@@ -127,6 +131,8 @@ export function useAdminRefundRequests() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function decide(
     id: string,

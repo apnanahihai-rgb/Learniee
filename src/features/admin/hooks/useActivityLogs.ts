@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export type ActivityAction =
   | "AUTH_LOGIN"
@@ -80,7 +82,7 @@ export function useActivityLogs(pageSize = 50) {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/admin/activity-logs?${buildQuery(filters, page, pageSize)}`);
@@ -104,6 +106,8 @@ export function useActivityLogs(pageSize = 50) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   function applyFilters(next: ActivityLogFiltersState) {
     setFilters(next);

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { ParentCourse } from "@/features/parent/types/course";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useApprovedCourses() {
   const [courses, setCourses] = useState<ParentCourse[]>([]);
@@ -12,9 +14,11 @@ export function useApprovedCourses() {
     fetchCourses();
   }, []);
 
+  useAutoRefresh(() => fetchCourses());
+
   async function fetchCourses() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch("/api/parent/courses");
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface CourseReview {
   id: string;
@@ -35,7 +37,7 @@ export function useCourseReviews(courseId: string) {
     if (!courseId) return;
 
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/parent/courses/${courseId}/reviews`, {
@@ -63,6 +65,8 @@ export function useCourseReviews(courseId: string) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function submitReview(rating: number, comment: string) {
     setError("");

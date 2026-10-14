@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { BlogPostFormValues, TeacherBlogPost } from "../types";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -51,7 +53,7 @@ export function useTeacherBlogList() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!isBackgroundRefresh()) setLoading(true);
     setError("");
 
     const result = await call<{ posts: Omit<TeacherBlogPost, "content">[] }>("/api/teacher/blogs");
@@ -66,6 +68,8 @@ export function useTeacherBlogList() {
     load();
   }, [load]);
 
+  useAutoRefresh(() => load());
+
   return { posts, loading, error, reload: load, setError };
 }
 
@@ -78,7 +82,7 @@ export function useTeacherBlogPost(postId: string | undefined) {
   const load = useCallback(async () => {
     if (!postId) return;
 
-    setLoading(true);
+    if (!isBackgroundRefresh()) setLoading(true);
     setError("");
 
     const result = await call<{ post: TeacherBlogPost }>(`/api/teacher/blogs/${postId}`);
@@ -92,6 +96,8 @@ export function useTeacherBlogPost(postId: string | undefined) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   return { post, setPost, loading, error };
 }

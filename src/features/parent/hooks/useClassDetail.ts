@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { ClassDetailView } from "@/features/parent/types/myClasses";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 /**
  * Loads one enrollment's My Classes page (Part 2C). `reload` refreshes
@@ -43,6 +44,8 @@ export function useClassDetail(enrollmentId: string) {
   useEffect(() => {
     load(false);
   }, [load]);
+
+  useAutoRefresh(() => load(true));
 
   const reload = useCallback(() => load(true), [load]);
 

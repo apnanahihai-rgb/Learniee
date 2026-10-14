@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface AdminTeacherStrike {
   id: string;
@@ -24,7 +26,7 @@ export function useTeacherStrikes() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch("/api/admin/teacher-strikes");
       const data = await res.json();
@@ -46,6 +48,8 @@ export function useTeacherStrikes() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function waive(strikeId: string, reason: string): Promise<{ ok: boolean; error?: string }> {
     try {

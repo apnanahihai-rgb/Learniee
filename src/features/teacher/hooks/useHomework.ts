@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface HomeworkSubmission {
   id: string;
@@ -34,9 +36,11 @@ export function useTeacherHomework(enrollmentId: string) {
     if (enrollmentId) load();
   }, [enrollmentId]);
 
+  useAutoRefresh(() => load(), { enabled: Boolean(enrollmentId) });
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/teacher/homework?enrollmentId=${enrollmentId}`);

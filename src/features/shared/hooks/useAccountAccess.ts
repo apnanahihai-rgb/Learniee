@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface ManagedAccount {
   id: string;
@@ -36,7 +38,7 @@ export function useAccountAccess(apiBasePath: string) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   async function load() {
-    setLoading(true);
+    if (!isBackgroundRefresh()) setLoading(true);
     setLoadError(null);
     try {
       const res = await fetch(apiBasePath);
@@ -54,6 +56,8 @@ export function useAccountAccess(apiBasePath: string) {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBasePath]);
+
+  useAutoRefresh(() => load());
 
   function openTarget(account: ManagedAccount) {
     setTarget(account);

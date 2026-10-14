@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AdminTeacher, TeacherApprovalState } from "@/features/admin/types/teacher";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 /** Loads one full teacher application and lets Admin approve / reject it. */
 export function useTeacherApplication(teacherId: string) {
@@ -14,7 +16,7 @@ export function useTeacherApplication(teacherId: string) {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/admin/teachers/${teacherId}`, {
@@ -42,6 +44,8 @@ export function useTeacherApplication(teacherId: string) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function scheduleInterview(scheduledAtIso: string, details: string) {
     try {

@@ -14,6 +14,7 @@ import {
   AdminTabs,
   adminButtonClass,
 } from "@/features/admin/components/ui/primitives";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 interface ChatReportRow {
   id: string;
@@ -77,6 +78,8 @@ export default function AdminChatReportsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function markReviewed(reportId: string) {
     try {

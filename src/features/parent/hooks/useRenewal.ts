@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface RenewalPreview {
   nextCycleNumber: number;
@@ -36,7 +38,7 @@ export function useRenewal(enrollmentId: string) {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch(`/api/parent/enrollments/${enrollmentId}/renew`);
       const data = await res.json();
@@ -55,6 +57,8 @@ export function useRenewal(enrollmentId: string) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function renew(overrides: { scheduleDays?: number[]; scheduleTime?: string }) {
     try {

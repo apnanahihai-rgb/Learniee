@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ParentCourse } from "@/features/parent/types/course";
 import type { ParentCourseDetail } from "@/features/parent/types/courseDetail";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useCourseDetail(courseId: string) {
   const [course, setCourse] = useState<ParentCourseDetail | null>(null);
@@ -17,7 +19,7 @@ export function useCourseDetail(courseId: string) {
     }
 
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch(`/api/parent/courses/${courseId}`, {
@@ -52,6 +54,8 @@ export function useCourseDetail(courseId: string) {
   useEffect(() => {
     loadCourse();
   }, [loadCourse]);
+
+  useAutoRefresh(() => loadCourse());
 
   return { course, otherCourses, loading, error };
 }

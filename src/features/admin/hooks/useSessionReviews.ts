@@ -6,6 +6,8 @@ import type {
   SessionReviewItem,
   SessionReviewListing,
 } from "@/features/shared/types/sessionReview";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 /**
  * Admin's class-review queue (Part 2A): classes a parent reported
@@ -22,7 +24,7 @@ export function useSessionReviews() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch("/api/admin/session-reviews");
       const data: Partial<SessionReviewListing> & { error?: string } = await res.json();
@@ -45,6 +47,8 @@ export function useSessionReviews() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function decide(input: {
     sessionId: string;

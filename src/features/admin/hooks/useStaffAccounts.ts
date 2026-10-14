@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { StaffAccount } from "@/features/admin/types/staffAccount";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useStaffAccounts() {
   const [accounts, setAccounts] = useState<StaffAccount[]>([]);
@@ -11,7 +13,7 @@ export function useStaffAccounts() {
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   async function loadAccounts() {
-    setLoading(true);
+    if (!isBackgroundRefresh()) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/admin/staff-accounts");
@@ -28,6 +30,8 @@ export function useStaffAccounts() {
   useEffect(() => {
     loadAccounts();
   }, []);
+
+  useAutoRefresh(() => loadAccounts());
 
   async function handleDelete(account: StaffAccount) {
     const confirmed = window.confirm(

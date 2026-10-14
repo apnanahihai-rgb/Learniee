@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import type { RescheduleRequestRow } from "@/features/shared/types/rescheduleRequest";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 /** Parent-side reschedule-request inbox: load, approve/reject, or withdraw. */
 export function useParentRescheduleRequests() {
@@ -15,9 +17,11 @@ export function useParentRescheduleRequests() {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/parent/reschedule-requests");

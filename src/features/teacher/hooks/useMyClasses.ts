@@ -7,6 +7,7 @@ import type {
   TeacherClassSummary,
   TeacherStudentDetailView,
 } from "@/features/teacher/types/myClasses";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 /** The Teacher's "My Classes" list — one card per course with students enrolled. */
 export function useTeacherClasses() {
@@ -38,6 +39,8 @@ export function useTeacherClasses() {
   useEffect(() => {
     load(false);
   }, [load]);
+
+  useAutoRefresh(() => load(true));
 
   return { classes, loading, error, reload: () => load(true) };
 }
@@ -75,6 +78,8 @@ export function useTeacherClassRoster(courseId: string) {
   useEffect(() => {
     if (courseId) load(false);
   }, [courseId, load]);
+
+  useAutoRefresh(() => load(true), { enabled: Boolean(courseId) });
 
   return { roster, loading, error, reload: () => load(true) };
 }
@@ -114,6 +119,8 @@ export function useTeacherStudentDetail(courseId: string, enrollmentId: string) 
   useEffect(() => {
     if (courseId && enrollmentId) load(false);
   }, [courseId, enrollmentId, load]);
+
+  useAutoRefresh(() => load(true), { enabled: Boolean(courseId && enrollmentId) });
 
   return { detail, loading, error, reload: () => load(true) };
 }

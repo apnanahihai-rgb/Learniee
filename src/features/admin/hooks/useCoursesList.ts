@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdminCourse } from "@/features/admin/types/course";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useCoursesList() {
   const [courses, setCourses] = useState<AdminCourse[]>([]);
@@ -12,9 +14,11 @@ export function useCoursesList() {
     fetchCourses();
   }, []);
 
+  useAutoRefresh(() => fetchCourses());
+
   async function fetchCourses() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch("/api/admin/courses");
 

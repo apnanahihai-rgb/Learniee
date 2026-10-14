@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { AdminBlogPost, BlogPostStatus } from "../types";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -41,7 +43,7 @@ export function useAdminBlogList(status: BlogPostStatus) {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!isBackgroundRefresh()) setLoading(true);
     setError("");
 
     const result = await call<{ posts: Omit<AdminBlogPost, "content">[] }>(
@@ -57,6 +59,8 @@ export function useAdminBlogList(status: BlogPostStatus) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   return { posts, loading, error, reload: load };
 }

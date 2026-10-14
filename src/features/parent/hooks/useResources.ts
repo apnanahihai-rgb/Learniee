@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface Resource {
   id: string;
@@ -32,9 +34,11 @@ export function useParentResources(enrollmentId?: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentId]);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const url = enrollmentId

@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { AdminQueueCounts } from "@/features/admin/types/queueCounts";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 /**
  * Sidebar badge numbers. Best-effort: a failed request just leaves the
  * badges off, it never blocks the page behind them. Refreshes when the
- * tab regains focus so a decision made elsewhere is reflected.
+ * tab regains focus, periodically, and after any change.
  */
 export function useAdminQueueCounts() {
   const [counts, setCounts] = useState<AdminQueueCounts | null>(null);
@@ -25,16 +26,12 @@ export function useAdminQueueCounts() {
   }, []);
 
   useEffect(() => {
-    // Initial load plus a refresh whenever the tab regains focus.
     void refresh();
-
-    function onFocus() {
-      void refresh();
-    }
-
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
+
+  // Re-check on tab focus, every 30s, and right after any approve/save
+  // anywhere in the app, so the badges never go stale.
+  useAutoRefresh(() => refresh());
 
   return { counts, refresh };
 }

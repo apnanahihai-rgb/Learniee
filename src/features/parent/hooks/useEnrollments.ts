@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import type { ParentClassSummary } from "@/features/parent/types/myClasses";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface ParentEnrollment {
   id: string;
@@ -57,9 +59,11 @@ export function useParentEnrollments(endpoint = "/api/parent/enrollments") {
     load();
   }, []);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch(endpoint);
       const data = await res.json();

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { StudentFormInput } from "@/features/parent/server/student.service";
 import type { StudentProfile } from "@/features/parent/types/student";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useStudents() {
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -13,7 +15,7 @@ export function useStudents() {
 
   const loadStudents = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/parent/students", {
@@ -42,6 +44,8 @@ export function useStudents() {
   useEffect(() => {
     loadStudents();
   }, [loadStudents]);
+
+  useAutoRefresh(() => loadStudents());
 
   async function addStudent(input: StudentFormInput) {
     try {

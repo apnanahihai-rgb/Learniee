@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { CalendarOccurrence } from "@/features/shared/types/calendar";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export type { CalendarOccurrence };
 
@@ -16,9 +18,11 @@ export function useParentCalendar(month: string, studentId?: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, studentId]);
 
+  useAutoRefresh(() => load());
+
   async function load() {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const params = new URLSearchParams({ month });

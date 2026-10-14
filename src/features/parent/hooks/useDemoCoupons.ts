@@ -7,6 +7,8 @@ import {
   DEMO_COUPON_PURCHASE_MIN_QTY,
   DEMO_COUPON_PURCHASE_MAX_QTY,
 } from "@/features/shared/utils/demoCouponPurchase";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface DemoCouponBalance {
   totalIssued: number;
@@ -35,7 +37,7 @@ export function useDemoCoupons() {
 
   const reload = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/parent/demo-coupons", {
@@ -63,6 +65,8 @@ export function useDemoCoupons() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useAutoRefresh(() => reload());
 
   /**
    * Full "buy more coupons" flow: create a Razorpay order for

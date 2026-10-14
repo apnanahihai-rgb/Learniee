@@ -6,6 +6,8 @@ import type {
   CertificateView,
   EligibleEnrollmentView,
 } from "@/features/shared/types/certificate";
+import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export function useTeacherCertificates() {
   const [eligible, setEligible] = useState<EligibleEnrollmentView[]>([]);
@@ -16,7 +18,7 @@ export function useTeacherCertificates() {
 
   const load = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
       const res = await fetch("/api/teacher/certificates", { cache: "no-store" });
@@ -39,6 +41,8 @@ export function useTeacherCertificates() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useAutoRefresh(() => load());
 
   async function decide(enrollmentId: string, action: "issue" | "decline") {
     try {
