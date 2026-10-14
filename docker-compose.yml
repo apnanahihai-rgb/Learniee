@@ -12,6 +12,13 @@ services:
     restart: unless-stopped
     env_file: .env
     depends_on: [db]
+  scheduler:
+    build: ./scheduler
+    restart: unless-stopped
+    environment:
+      APP_URL: http://app:3000
+      CRON_SECRET: ${CRON_SECRET:?Set CRON_SECRET in .env (same value the app uses)}
+    depends_on: [app]
   migrate:
     build: { context: ., target: builder }
     profiles: ["tools"]

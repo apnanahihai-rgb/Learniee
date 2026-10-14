@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 import { getIdTokenFromRequest, unauthorizedResponse } from "@/lib/api-auth";
+import { isTeacherApproved, teacherNotApprovedResponse } from "@/features/teacher/server/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -50,13 +51,17 @@ export async function requireVerifiedTeacherId(
 
   const teacher = await prisma.teacher.findUnique({
     where: { cognitoId: payload.sub },
-    select: { id: true },
+    select: { id: true, approvalStatus: true },
   });
 
   if (!teacher) {
     return {
       error: NextResponse.json({ error: "Teacher not found." }, { status: 404 }),
     };
+  }
+
+  if (!isTeacherApproved(teacher.approvalStatus)) {
+    return { error: teacherNotApprovedResponse() };
   }
 
   return { teacherId: teacher.id };

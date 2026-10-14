@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireTeacherId } from "@/features/teacher/server/auth";
+import { requireVerifiedTeacherId } from "@/features/teacher/server/verifiedAuth";
 import { listLedgerEntriesForTeacher } from "@/features/shared/server/tuitionLedger.service";
 import {
   listPayoutRecordsForTeacher,
@@ -25,7 +25,7 @@ import {
  * Verify / Admin review) and teacherPayout.service.ts's mass-pay.
  */
 export async function GET(req: Request) {
-  const teacher = await requireTeacherId(req);
+  const teacher = await requireVerifiedTeacherId(req);
 
   if ("error" in teacher) {
     return teacher.error;

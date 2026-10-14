@@ -54,7 +54,7 @@ const currency = new Intl.NumberFormat("en-IN", {
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
 export default function AdminRefundRequestsPage() {
-  const { requests, loading, error, busyId, decide } = useAdminRefundRequests();
+  const { requests, loading, error, notice, busyId, decide } = useAdminRefundRequests();
   const [tab, setTab] = useState<Tab>("PENDING");
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -115,6 +115,10 @@ export default function AdminRefundRequestsPage() {
       />
 
       <AdminError>{error}</AdminError>
+
+      {notice ? (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">{notice}</p>
+      ) : null}
 
       {loading ? (
         <AdminLoading />

@@ -10,9 +10,9 @@ import { isRazorpayXEnabled } from "@/lib/razorpayX";
  * timeout before we got an answer): fetches the real status, or re-sends with
  * the same idempotency key. Mass-pay also runs this before every batch.
  *
- * Not in `vercel.json` (Hobby = daily crons only) and nothing schedules it on
- * the Docker host — hit it every ~15 min from a host cron / external
- * scheduler with `Authorization: Bearer ${CRON_SECRET}`.
+ * Not in `vercel.json` (Hobby = daily crons only). On the Docker host the
+ * `scheduler` service (scheduler/scheduler.sh) calls it every 15 min with
+ * `Authorization: Bearer ${CRON_SECRET}`.
  */
 export async function GET(req: Request) {
   try {

@@ -2,6 +2,8 @@ import {
   notifyRefundRequestDecided,
   notifyRefundRequestSubmitted,
 } from "@/features/shared/server/notificationTriggers.service";
+import { closeCycleIfDue } from "@/features/shared/server/cycleClose.service";
+import { applyRefundToEnrollmentInTx } from "@/features/shared/server/refundEnrollment.service";
 import { creditWalletInTx } from "@/features/shared/server/wallet.service";
 import { prisma } from "@/lib/prisma";
 import {
@@ -22,8 +24,9 @@ import "server-only";
  * that marks the request APPROVED, so a request can never be approved without
  * the credit or credited twice.
  *
- * Not done here: approving does not cancel the Enrollment or touch its
- * sessions or payout ledger row.
+ * A FULL refund of an enrollment / renewal payment also stops the classes it
+ * paid for (Oct 14, 2026) — see `refundEnrollment.service.ts` for the exact
+ * rule and what is deliberately left to Admin.
  */
 
 export class RefundRequestError extends Error {
@@ -271,7 +274,7 @@ export async function decideRefundRequest(input: DecideRefundInput) {
 
     await notifyRefundRequestDecided({ parentId: request.parentId, outcome: "REJECTED", adminNote });
 
-    return { status: RefundRequestStatus.REJECTED, amount: 0 };
+    return { status: RefundRequestStatus.REJECTED, amount: 0, notices: [] as string[] };
   }
 
   const amount = round2(Number(input.approvedAmount));
@@ -283,7 +286,7 @@ export async function decideRefundRequest(input: DecideRefundInput) {
   const outcome = await prisma.$transaction(async (tx) => {
     const request = await tx.refundRequest.findUnique({
       where: { id: input.requestId },
-      include: { invoice: { select: { description: true } } },
+      include: { invoice: { select: { description: true, type: true, referenceId: true } } },
     });
 
     if (!request) throw new RefundRequestError("Refund request not found.", 404);
@@ -333,8 +336,29 @@ export async function decideRefundRequest(input: DecideRefundInput) {
       data: { walletTransactionId: transaction.id },
     });
 
-    return { parentId: request.parentId };
-  });
+    const now = new Date();
+    // This request is already APPROVED above, so the total includes it.
+    const fullyRefunded =
+      round2(money(request.amountPaid)) <= round2(await approvedTotal(tx, request.invoiceId));
+
+    const effect = await applyRefundToEnrollmentInTx(tx, {
+      invoiceType: request.invoice.type,
+      invoiceReferenceId: request.invoice.referenceId,
+      fullyRefunded,
+      now,
+    });
+
+    return { parentId: request.parentId, effect };
+  }, { timeout: 15_000 });
+
+  // After commit — closing uses the normal rule and can't undo the refund.
+  if (outcome.effect.closeCycleId) {
+    try {
+      await closeCycleIfDue(outcome.effect.closeCycleId);
+    } catch (err) {
+      console.error("Closing cycle after refund failed (the daily sweep will retry):", err);
+    }
+  }
 
   await notifyRefundRequestDecided({
     parentId: outcome.parentId,
@@ -343,5 +367,5 @@ export async function decideRefundRequest(input: DecideRefundInput) {
     adminNote: adminNote || null,
   });
 
-  return { status: RefundRequestStatus.APPROVED, amount };
+  return { status: RefundRequestStatus.APPROVED, amount, notices: outcome.effect.notices };
 }

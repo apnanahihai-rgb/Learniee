@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireParentId } from "@/features/parent/server/auth";
+import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
 import { getWalletSummaryForParent } from "@/features/shared/server/wallet.service";
 
 /**
@@ -10,15 +10,12 @@ import { getWalletSummaryForParent } from "@/features/shared/server/wallet.servi
  * transaction history. Lazily creates the Wallet row on first call,
  * same as demo-coupons' GET route.
  *
- * Read-only, decode-only Cognito auth (requireParentId) — same
- * level as every other Parent GET route today. Signature
- * verification is reserved for routes that WRITE money
- * (verifiedAuth.ts's requireVerifiedParentId, used only by the four
- * Razorpay order/verify routes) — see 06-OPEN-DECISIONS.md #21.
+ * Signature-verified auth (requireVerifiedParentId) — a wallet balance
+ * is money data, so a forged token must not read it (06 #21).
  */
 export async function GET(req: Request) {
   try {
-    const parent = await requireParentId(req);
+    const parent = await requireVerifiedParentId(req);
 
     if ("error" in parent) {
       return parent.error;

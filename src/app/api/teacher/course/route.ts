@@ -94,6 +94,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (teacher.approvalStatus !== "APPROVED") {
+      return NextResponse.json(
+        { error: "Your teacher account is not approved.", code: "TEACHER_NOT_APPROVED" },
+        { status: 403 },
+      );
+    }
+
     const input: CourseFormInput = await req.json();
 
     // IITian listing requires both: self-declared at onboarding Step 1

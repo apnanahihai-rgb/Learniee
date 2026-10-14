@@ -57,10 +57,15 @@ export async function PATCH(
         action === "APPROVE"
           ? `Refund request approved: ₹${result.amount} credited to the parent's wallet.`
           : "Refund request rejected.",
-      metadata: { refundRequestId: requestId, action, amount: result.amount },
+      metadata: { refundRequestId: requestId, action, amount: result.amount, notices: result.notices },
     });
 
-    return NextResponse.json({ success: true, status: result.status, amount: result.amount });
+    return NextResponse.json({
+      success: true,
+      status: result.status,
+      amount: result.amount,
+      notices: result.notices,
+    });
   } catch (error) {
     if (error instanceof RefundRequestError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

@@ -110,6 +110,7 @@ export function useAdminRefundRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -133,13 +134,15 @@ export function useAdminRefundRequests() {
     extra: { approvedAmount?: number; adminNote?: string },
   ) {
     setError("");
+    setNotice("");
     setBusyId(id);
 
     try {
-      await call(`/api/admin/refund-requests/${id}`, {
+      const result = await call<{ notices?: string[] }>(`/api/admin/refund-requests/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ action, ...extra }),
       });
+      setNotice((result.notices ?? []).join(" "));
       await load();
       return true;
     } catch (err) {
@@ -151,5 +154,5 @@ export function useAdminRefundRequests() {
     }
   }
 
-  return { requests, loading, error, busyId, decide };
+  return { requests, loading, error, notice, busyId, decide };
 }
