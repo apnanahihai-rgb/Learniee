@@ -11,6 +11,7 @@ import {
 } from "@/features/shared/utils/cyclePlan";
 import { toggleWeekday } from "@/features/shared/utils/weekdays";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
+import { useWalletBalance } from "@/features/parent/hooks/useWalletBalance";
 
 interface Args {
   price: string | null;
@@ -46,6 +47,7 @@ export function useEnrollment({
   const [enrollError, setEnrollError] = useState("");
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
   const [enrollChatRoomId, setEnrollChatRoomId] = useState<string | null>(null);
+  const { balance: walletBalance, reload: reloadWallet } = useWalletBalance();
 
   // Client-side preview only — the authoritative calculation always
   // happens server-side in enrollment.service.ts, using this same
@@ -76,24 +78,26 @@ export function useEnrollment({
     setScheduleDays((current) => toggleWeekday(current, day));
   }
 
-  async function handleEnroll() {
-    if (!selectedStudentId) {
-      setEnrollError("Pick which child this enrollment is for.");
-      return;
-    }
+  /** Shared by the card and wallet flows. Returns an error message, or null when OK. */
+  function getEnrollProblem(): string | null {
+    if (!selectedStudentId) return "Pick which child this enrollment is for.";
 
     if (scheduleDays.length === 0 || !scheduleTime) {
-      setEnrollError("Pick which days and what time classes should happen.");
-      return;
+      return "Pick which days and what time classes should happen.";
     }
 
-    if (!startDate || startInPast) {
-      setEnrollError("Pick a start date that isn't in the past.");
-      return;
-    }
+    if (!startDate || startInPast) return "Pick a start date that isn't in the past.";
 
-    if (!cyclePlan || planProblem) {
-      setEnrollError(planProblem ?? "Pick a valid start date.");
+    if (!cyclePlan || planProblem) return planProblem ?? "Pick a valid start date.";
+
+    return null;
+  }
+
+  async function handleEnroll() {
+    const problem = getEnrollProblem();
+
+    if (problem) {
+      setEnrollError(problem);
       return;
     }
 
@@ -167,6 +171,57 @@ export function useEnrollment({
     }
   }
 
+  /**
+   * Pays the whole price from the Wallet balance (06 #44). `requestId` makes a
+   * double click / retry safe on the server.
+   */
+  async function handleEnrollWithWallet() {
+    const problem = getEnrollProblem();
+
+    if (problem) {
+      setEnrollError(problem);
+      return;
+    }
+
+    setEnrolling(true);
+    setEnrollError("");
+    setEnrollSuccess(null);
+
+    try {
+      const res = await fetch("/api/parent/enrollments/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: crypto.randomUUID(),
+          studentId: selectedStudentId,
+          teacherId,
+          courseId,
+          subject,
+          planType,
+          cycleStartDate: startDate,
+          scheduleDays,
+          scheduleTime,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to pay from your wallet.");
+      }
+
+      setEnrollSuccess(
+        "Paid from your wallet! Your enrollment is on its way — you can connect with your teacher over chat any time.",
+      );
+      setEnrollChatRoomId(data.enrollment?.chatRoom?.id ?? null);
+      reloadWallet();
+    } catch (err) {
+      setEnrollError(err instanceof Error ? err.message : "Failed to pay from your wallet.");
+    } finally {
+      setEnrolling(false);
+    }
+  }
+
   return {
     planType,
     setPlanType,
@@ -187,5 +242,7 @@ export function useEnrollment({
     enrollSuccess,
     enrollChatRoomId,
     handleEnroll,
+    handleEnrollWithWallet,
+    walletBalance,
   };
 }

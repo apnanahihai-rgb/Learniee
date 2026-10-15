@@ -19,7 +19,8 @@ interface Props {
  * going with no further action needed.
  */
 export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
-  const { status, loading, paying, error, renew } = useRenewal(enrollmentId);
+  const { status, loading, paying, error, renew, renewWithWallet, walletBalance } =
+    useRenewal(enrollmentId);
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [scheduleTime, setScheduleTime] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -49,7 +50,17 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
     if (result.ok) onRenewed?.();
   }
 
+  async function handleRenewWithWallet() {
+    setMessage(null);
+    const result = await renewWithWallet({ scheduleDays, scheduleTime });
+    setMessage({ ok: result.ok, text: result.message });
+    if (result.ok) onRenewed?.();
+  }
+
   const preview = status.preview;
+  // The wallet pays the base price (no card surcharge), all of it or not at all.
+  const canPayWithWallet =
+    !!preview && walletBalance !== null && walletBalance >= preview.totalAmount;
 
   return (
     <div className="mt-4 bg-violet-50 border border-violet-100 rounded-xl p-3">
@@ -107,6 +118,17 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
       >
         {paying ? "Processing…" : "Renew & Pay"}
       </button>
+
+      {canPayWithWallet && preview && (
+        <button
+          type="button"
+          onClick={handleRenewWithWallet}
+          disabled={paying || scheduleDays.length === 0 || !scheduleTime}
+          className="ml-2 text-xs font-bold text-violet-800 bg-white border border-violet-200 px-3 py-1.5 rounded-full disabled:opacity-50"
+        >
+          {`Pay ₹${preview.totalAmount.toLocaleString("en-IN")} from wallet`}
+        </button>
+      )}
     </div>
   );
 }

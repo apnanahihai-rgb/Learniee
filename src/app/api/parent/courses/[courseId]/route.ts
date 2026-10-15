@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { TeacherFileType } from "@prisma/client";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import {
@@ -34,7 +34,7 @@ export async function GET(
   try {
     const { courseId } = await params;
 
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "parent");
 
     if ("error" in auth) {
       return auth.error;

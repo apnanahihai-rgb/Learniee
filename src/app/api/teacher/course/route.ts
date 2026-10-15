@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 
 import {
   createCourse,
@@ -25,7 +25,7 @@ import {
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
 
     if ("error" in auth) {
       return auth.error;
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
 
     if ("error" in auth) {
       return auth.error;

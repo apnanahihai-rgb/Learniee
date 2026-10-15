@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import {
   assertOwnsTeacher,
   saveStep3FormData,
@@ -10,7 +10,7 @@ import {
 
 export async function POST(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
     if ("error" in auth) {
       return auth.error;
     }

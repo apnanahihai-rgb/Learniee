@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 
 /**
  * Teacher-facing account settings for the new `/teacher/settings`
@@ -9,7 +9,7 @@ import { requireCognitoAuth } from "@/lib/api-auth";
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
 
     if ("error" in auth) {
       return auth.error;
@@ -44,7 +44,7 @@ interface SettingsUpdateBody {
 
 export async function PATCH(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
 
     if ("error" in auth) {
       return auth.error;

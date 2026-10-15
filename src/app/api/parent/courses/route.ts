@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import { getApprovedCourses } from "@/features/parent/server/course.service";
@@ -17,7 +17,7 @@ type ApprovedCourse = Awaited<ReturnType<typeof getApprovedCourses>>[number];
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "parent");
 
     if ("error" in auth) {
       return auth.error;

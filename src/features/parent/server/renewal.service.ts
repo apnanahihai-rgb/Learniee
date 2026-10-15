@@ -3,3 +3,4 @@ export * from './renewal/plan';
 export * from './renewal/order';
 export * from './renewal/verify';
 export * from './renewal/webhook';
+export * from './renewal/wallet';

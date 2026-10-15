@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { UPLOAD_FOLDERS, type UploadFolder } from "@/lib/s3";
 
 type OwnerResolution = { ownerId: string } | { error: NextResponse };
@@ -29,7 +29,7 @@ export async function resolveUploadOwnerId(
   folder: UploadFolder,
   req: NextRequest,
 ): Promise<OwnerResolution> {
-  const auth = requireCognitoAuth(req);
+  const auth = await requireVerifiedCognitoAuth(req);
   if ("error" in auth) {
     return { error: auth.error };
   }

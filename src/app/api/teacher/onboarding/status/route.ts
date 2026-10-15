@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { isAppealOpen } from "@/features/teacher/utils/teacherAppeal";
 
 export async function GET(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
 
     if ("error" in auth) {
       return auth.error;

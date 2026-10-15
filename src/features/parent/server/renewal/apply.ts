@@ -115,7 +115,74 @@ export async function ensureRenewalInvoice(args: {
   }
 }
 
-function isUniqueViolation(err: unknown) {
+/**
+ * The one place the next `EnrollmentCycle` + its sessions are written, shared
+ * by a Razorpay-paid renewal (`applyPaidRenewal`) and a Wallet-paid one
+ * (`renewal/wallet.ts`) so the two can never drift. Runs inside the caller's
+ * transaction; `paymentReference` is the Razorpay payment id or the
+ * `wallet_ren_…` reference.
+ */
+export async function createRenewalCycleInTx(
+  tx: Prisma.TransactionClient,
+  args: {
+    enrollmentId: string;
+    cycleNumber: number;
+    startDate: Date;
+    plan: NonNullable<ReturnType<typeof buildCyclePlan>>;
+    ratePerSession: Prisma.Decimal | number;
+    totalAmount: number;
+    paymentReference: string;
+    scheduleDays: number[];
+    scheduleTime: string;
+  },
+) {
+  const { enrollmentId, cycleNumber, plan, totalAmount, scheduleDays, scheduleTime } = args;
+
+  const created = await tx.enrollmentCycle.create({
+    data: {
+      enrollmentId,
+      cycleNumber,
+      startDate: args.startDate,
+      endDate: calendarDateToDate(plan.endDate),
+      sessionCount: plan.sessionCount,
+      ratePerSession: args.ratePerSession,
+      price: totalAmount,
+      paymentReference: args.paymentReference,
+      status: CycleStatus.OPEN,
+    },
+  });
+
+  const stillActive = await tx.enrollment.updateMany({
+    // Conditional on ACTIVE: if `completeEnrollmentIfNoRenewal` won a race and
+    // already flipped this Enrollment to COMPLETED between the caller's check
+    // and here, this rolls the whole renewal back rather than leaving a
+    // COMPLETED Enrollment with a freshly-paid next cycle sitting under it.
+    where: { id: enrollmentId, status: EnrollmentStatus.ACTIVE },
+    data: {
+      scheduleDays,
+      scheduleTime,
+      sessionsPerMonth: plan.sessionCount,
+      monthlyRate: totalAmount,
+      totalAmount,
+      dueDate: calendarDateToDate(plan.nextCycleStart),
+      // A fresh due-date reminder for the *new* dueDate.
+      dueDateReminderSentAt: null,
+    },
+  });
+
+  if (stillActive.count === 0) {
+    throw new RenewalError(
+      "This enrollment ended before the renewal could finish — contact support with your payment ID.",
+      409,
+    );
+  }
+
+  await createCycleSessions(tx, enrollmentId, cycleNumber);
+
+  return created;
+}
+
+export function isUniqueViolation(err: unknown) {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
 
@@ -221,52 +288,18 @@ export async function applyPaidRenewal(args: {
 
   try {
     cycle = await prisma.$transaction(
-      async (tx) => {
-        const created = await tx.enrollmentCycle.create({
-          data: {
-            enrollmentId,
-            cycleNumber,
-            startDate,
-            endDate: calendarDateToDate(plan.endDate),
-            sessionCount: plan.sessionCount,
-            ratePerSession: enrollment.ratePerSession,
-            price: totalAmount,
-            paymentReference: paymentId,
-            status: CycleStatus.OPEN,
-          },
-        });
-
-        const stillActive = await tx.enrollment.updateMany({
-          // Conditional on ACTIVE: if `completeEnrollmentIfNoRenewal`
-          // won a race and already flipped this Enrollment to
-          // COMPLETED between the check above and here, this rolls the
-          // whole renewal back rather than leaving a COMPLETED
-          // Enrollment with a freshly-paid next cycle sitting under it.
-          where: { id: enrollmentId, status: EnrollmentStatus.ACTIVE },
-          data: {
-            scheduleDays,
-            scheduleTime,
-            sessionsPerMonth: plan.sessionCount,
-            monthlyRate: totalAmount,
-            totalAmount,
-            dueDate: calendarDateToDate(plan.nextCycleStart),
-            // A fresh due-date reminder for the *new* dueDate — see
-            // dueDateReminder.service.ts's own comment anticipating this.
-            dueDateReminderSentAt: null,
-          },
-        });
-
-        if (stillActive.count === 0) {
-          throw new RenewalError(
-            "This enrollment ended before the renewal could finish — contact support with your payment ID.",
-            409,
-          );
-        }
-
-        await createCycleSessions(tx, enrollmentId, cycleNumber);
-
-        return created;
-      },
+      (tx) =>
+        createRenewalCycleInTx(tx, {
+          enrollmentId,
+          cycleNumber,
+          startDate,
+          plan,
+          ratePerSession: enrollment.ratePerSession,
+          totalAmount,
+          paymentReference: paymentId,
+          scheduleDays,
+          scheduleTime,
+        }),
       { timeout: 15_000 },
     );
   } catch (err) {

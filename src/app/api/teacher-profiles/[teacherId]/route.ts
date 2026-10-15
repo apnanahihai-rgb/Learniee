@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { getTeacherPublicProfile } from "@/features/teacher-profile/server/teacherPublicProfile.service";
 
 /**
@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ teacherId: string }> },
 ) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req);
 
     if ("error" in auth) {
       return auth.error;

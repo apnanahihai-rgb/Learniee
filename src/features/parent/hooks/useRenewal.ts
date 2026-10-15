@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
+import { useWalletBalance } from "@/features/parent/hooks/useWalletBalance";
 
 export interface RenewalPreview {
   nextCycleNumber: number;
@@ -35,6 +36,7 @@ export function useRenewal(enrollmentId: string) {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
+  const { balance: walletBalance, reload: reloadWallet } = useWalletBalance();
 
   const load = useCallback(async () => {
     try {
@@ -118,5 +120,34 @@ export function useRenewal(enrollmentId: string) {
     }
   }
 
-  return { status, loading, paying, error, renew, reload: load };
+  /** Renews from the Wallet balance (06 #44). `requestId` makes a retry safe on the server. */
+  async function renewWithWallet(overrides: { scheduleDays?: number[]; scheduleTime?: string }) {
+    try {
+      setPaying(true);
+      setError("");
+
+      const res = await fetch(`/api/parent/enrollments/${enrollmentId}/renew/wallet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...overrides, requestId: crypto.randomUUID() }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to renew from your wallet.");
+      }
+
+      await Promise.all([load(), reloadWallet()]);
+
+      return { ok: true, message: "Renewed from your wallet! Next cycle's classes are on your calendar." };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to renew from your wallet.";
+      setError(message);
+      return { ok: false, message };
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  return { status, loading, paying, error, renew, renewWithWallet, walletBalance, reload: load };
 }

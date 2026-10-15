@@ -6,3 +6,4 @@ export * from './enrollment/order';
 export * from './enrollment/verify';
 export * from './enrollment/webhook';
 export * from './enrollment/queries';
+export * from './enrollment/wallet';

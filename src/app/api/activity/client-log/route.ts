@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 import { ActivityActorRole } from "@prisma/client";
 
@@ -12,7 +12,7 @@ import { ActivityActorRole } from "@prisma/client";
  * request today (Cognito auth happens directly from the browser via
  * `amazon-cognito-identity-js`, see `useLogin.ts`), and "logout" is
  * just a client-side cookie removal. Both call this endpoint with the
- * `idToken` cookie still attached so `requireCognitoAuth` can resolve
+ * `idToken` cookie still attached so `requireVerifiedCognitoAuth` can resolve
  * who's acting — for LOGOUT, callers must send this *before* removing
  * the cookie client-side.
  *
@@ -28,7 +28,7 @@ const ROLE_MAP: Record<string, ActivityActorRole> = {
 };
 
 export async function POST(req: Request) {
-  const auth = requireCognitoAuth(req);
+  const auth = await requireVerifiedCognitoAuth(req);
 
   if ("error" in auth) {
     return auth.error;

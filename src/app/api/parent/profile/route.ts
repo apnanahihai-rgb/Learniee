@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 
 /**
  * GET
@@ -12,7 +12,7 @@ import { requireCognitoAuth } from "@/lib/api-auth";
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "parent");
 
     if ("error" in auth) {
       return auth.error;
@@ -94,7 +94,7 @@ type ProfileUpdateBody = Partial<Record<EditableField, string>>;
 
 export async function PATCH(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "parent");
 
     if ("error" in auth) {
       return auth.error;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCognitoAuth, type CognitoTokenPayload } from "@/lib/api-auth";
+import { type CognitoTokenPayload } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 
 interface PrefillTokenPayload extends CognitoTokenPayload {
   phone_number?: string;
@@ -14,7 +15,7 @@ interface PrefillTokenPayload extends CognitoTokenPayload {
  * in from this.
  */
 export async function GET(req: NextRequest) {
-  const auth = requireCognitoAuth<PrefillTokenPayload>(req);
+  const auth = await requireVerifiedCognitoAuth<PrefillTokenPayload>(req, "parent");
 
   if ("error" in auth) {
     return auth.error;

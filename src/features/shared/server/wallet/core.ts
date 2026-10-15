@@ -25,10 +25,15 @@ import { InvoiceType, Prisma, WalletTransactionType } from "@prisma/client";
  *     the refund direction. Flagging rather than assuming it's fine
  *     to let parents fund a Wallet ahead of any actual refund.
  *
- * `debitWallet()` is included as the natural counterpart to both but
- * still has no caller anywhere — whether a Wallet balance can be
- * spent toward a future Enrollment/demo payment is still an open
- * question, not decided here.
+ * Money leaves a Wallet only through `debitWalletInTx()` / `debitWallet()`.
+ * Oct 15, 2026: a Parent can now spend the balance on an Enrollment's first
+ * cycle and on a renewal (`enrollment/wallet.ts`, `renewal/wallet.ts`), always
+ * as the whole price (no part-wallet / part-card split) and always inside the
+ * same transaction that creates what was paid for (06-OPEN-DECISIONS.md #44).
+ *
+ * Balance writes are atomic in the database (`increment` / `decrement`, and a
+ * debit is conditional on `balance >= amount`), so two concurrent requests can
+ * neither overwrite each other nor push a Wallet below zero.
  */
 
 export class WalletError extends Error {
@@ -63,12 +68,16 @@ export interface WalletAdjustmentInput {
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
 }
+/** Rupees to 2 decimals, so float noise never reaches a Decimal(10,2) column. */
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
 function assertValidAdjustment(input: WalletAdjustmentInput) {
   if (!input.parentId) {
     throw new WalletError("parentId is required.");
   }
 
-  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+  if (!Number.isFinite(input.amount) || roundMoney(input.amount) <= 0) {
     throw new WalletError("Amount must be a positive number.");
   }
 
@@ -88,29 +97,29 @@ export async function creditWalletInTx(
 ) {
   assertValidAdjustment(input);
 
-  let wallet = await tx.wallet.findUnique({ where: { parentId: input.parentId } });
+  const amount = roundMoney(input.amount);
 
-  if (!wallet) {
-    wallet = await tx.wallet.create({
-      data: { parentId: input.parentId, balance: 0 },
-    });
-  }
-
-  // Decimal fields need an explicit Number(...) conversion before
-  // Prisma writes (02-ARCHITECTURE.md's Prisma 7 gotcha — bit
-  // Course.price once already).
-  const balanceAfter = Number(wallet.balance) + input.amount;
+  // Atomic: the row is created if missing, then incremented IN the database,
+  // never read-then-written from JS (that lost updates under concurrent calls).
+  const existing = await tx.wallet.upsert({
+    where: { parentId: input.parentId },
+    create: { parentId: input.parentId, balance: 0 },
+    update: {},
+  });
 
   const updatedWallet = await tx.wallet.update({
-    where: { id: wallet.id },
-    data: { balance: balanceAfter },
+    where: { id: existing.id },
+    data: { balance: { increment: amount } },
   });
+
+  const wallet = updatedWallet;
+  const balanceAfter = Number(updatedWallet.balance);
 
   const transaction = await tx.walletTransaction.create({
     data: {
       walletId: wallet.id,
       type: WalletTransactionType.CREDIT,
-      amount: input.amount,
+      amount,
       balanceAfter,
       reason: input.reason.trim(),
       referenceType: input.referenceType,
@@ -162,44 +171,59 @@ export async function creditWallet(input: WalletAdjustmentInput) {
   return result;
 }
 /**
- * Debits a parent's Wallet. No caller exists yet anywhere in the
- * app (see file header) — kept here so a future "pay with wallet
- * balance" flow doesn't have to build the transactional balance
- * bookkeeping from scratch. Throws if the wallet doesn't exist yet
- * or doesn't have enough balance — a Wallet can never go negative.
+ * The debit write, for a caller that already has a transaction open (e.g.
+ * paying an Enrollment from the Wallet, which must create the Enrollment and
+ * take the money atomically). Throws `WalletError` (402) if the balance is
+ * too low — and because it runs inside the caller's transaction, whatever the
+ * caller already wrote is rolled back with it.
+ *
+ * The balance check and the decrement are ONE conditional UPDATE
+ * (`balance >= amount`), so concurrent debits cannot overdraw the Wallet.
  */
-export async function debitWallet(input: WalletAdjustmentInput) {
+export async function debitWalletInTx(
+  tx: Prisma.TransactionClient,
+  input: WalletAdjustmentInput,
+) {
   assertValidAdjustment(input);
 
-  return prisma.$transaction(async (tx) => {
-    const wallet = await tx.wallet.findUnique({ where: { parentId: input.parentId } });
+  const amount = roundMoney(input.amount);
 
-    if (!wallet || Number(wallet.balance) < input.amount) {
-      throw new WalletError("Insufficient wallet balance for this debit.", 402);
-    }
-
-    const balanceAfter = Number(wallet.balance) - input.amount;
-
-    const updatedWallet = await tx.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: balanceAfter },
-    });
-
-    const transaction = await tx.walletTransaction.create({
-      data: {
-        walletId: wallet.id,
-        type: WalletTransactionType.DEBIT,
-        amount: input.amount,
-        balanceAfter,
-        reason: input.reason.trim(),
-        referenceType: input.referenceType,
-        referenceId: input.referenceId,
-        createdByStaffSub: input.createdByStaffSub,
-      },
-    });
-
-    return { wallet: updatedWallet, transaction };
+  const debited = await tx.wallet.updateMany({
+    where: { parentId: input.parentId, balance: { gte: amount } },
+    data: { balance: { decrement: amount } },
   });
+
+  if (debited.count === 0) {
+    throw new WalletError("Insufficient wallet balance for this payment.", 402);
+  }
+
+  // Our UPDATE holds the row lock until the transaction ends, so this read
+  // returns exactly the balance our debit produced.
+  const wallet = await tx.wallet.findUniqueOrThrow({
+    where: { parentId: input.parentId },
+  });
+
+  const transaction = await tx.walletTransaction.create({
+    data: {
+      walletId: wallet.id,
+      type: WalletTransactionType.DEBIT,
+      amount,
+      balanceAfter: Number(wallet.balance),
+      reason: input.reason.trim(),
+      referenceType: input.referenceType,
+      referenceId: input.referenceId,
+      createdByStaffSub: input.createdByStaffSub,
+    },
+  });
+
+  return { wallet, transaction };
+}
+/**
+ * Standalone debit (own transaction). Prefer `debitWalletInTx` when the debit
+ * belongs to a larger write.
+ */
+export async function debitWallet(input: WalletAdjustmentInput) {
+  return prisma.$transaction((tx) => debitWalletInTx(tx, input));
 }
 /**
  * The shape the Parent-facing Wallet page needs: current balance

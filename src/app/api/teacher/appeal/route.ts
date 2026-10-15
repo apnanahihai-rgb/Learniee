@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { TeacherApprovalStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { isAppealOpen } from "@/features/teacher/utils/teacherAppeal";
 import { notifyAdminsTeacherAppealed } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
@@ -15,7 +15,7 @@ import { logActivity } from "@/features/shared/server/activityLog.service";
  */
 export async function POST(req: Request) {
   try {
-    const auth = requireCognitoAuth(req);
+    const auth = await requireVerifiedCognitoAuth(req, "teacher");
     if ("error" in auth) return auth.error;
 
     const teacher = await prisma.teacher.findUnique({

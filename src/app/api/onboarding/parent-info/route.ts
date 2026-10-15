@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCognitoAuth, type CognitoTokenPayload } from "@/lib/api-auth";
+import { type CognitoTokenPayload } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { linkReferralSignup } from "@/features/shared/server/referral.service";
 
 interface ParentInfoTokenPayload extends CognitoTokenPayload {
@@ -8,7 +9,7 @@ interface ParentInfoTokenPayload extends CognitoTokenPayload {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = requireCognitoAuth<ParentInfoTokenPayload>(req);
+  const auth = await requireVerifiedCognitoAuth<ParentInfoTokenPayload>(req, "parent");
 
   if ("error" in auth) {
     return auth.error;

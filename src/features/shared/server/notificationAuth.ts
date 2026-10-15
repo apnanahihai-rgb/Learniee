@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { NotificationRecipientRole } from "@prisma/client";
 
-import { requireCognitoAuth, unauthorizedResponse } from "@/lib/api-auth";
+import { unauthorizedResponse } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -12,10 +13,7 @@ import { prisma } from "@/lib/prisma";
  * logged-in Cognito user maps to, so those routes don't need three
  * copies of the same auth boilerplate.
  *
- * Same decode-only Cognito auth level as every other Parent/Teacher
- * GET route today (06-OPEN-DECISIONS.md #21) — notifications are
- * read-only and not money-adjacent, so this doesn't need the
- * signature-verified path reserved for payment routes.
+ * Signature-verified since Oct 15, 2026 (06-OPEN-DECISIONS.md #21).
  */
 export async function requireNotificationRecipient(
   req: Request,
@@ -23,7 +21,7 @@ export async function requireNotificationRecipient(
   | { recipientId: string; recipientRole: NotificationRecipientRole }
   | { error: ReturnType<typeof NextResponse.json> }
 > {
-  const auth = requireCognitoAuth(req);
+  const auth = await requireVerifiedCognitoAuth(req);
 
   if ("error" in auth) {
     return auth;

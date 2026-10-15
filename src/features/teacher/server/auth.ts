@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCognitoAuth } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { prisma } from "@/lib/prisma";
 import { TeacherApprovalStatus } from "@prisma/client";
 
@@ -8,7 +8,7 @@ import { TeacherApprovalStatus } from "@prisma/client";
  * Server-side approval gate (Oct 14, 2026). Every route that uses
  * `requireTeacherId` / `requireVerifiedTeacherId` is only for APPROVED
  * teachers; the pre-approval routes (onboarding, profile, settings, appeal)
- * use `requireCognitoAuth` directly and are not affected. Checked against the
+ * use `requireVerifiedCognitoAuth` directly and are not affected. Checked against the
  * database on every request, so an Admin rejecting a teacher locks them out
  * immediately instead of when the client next refreshes.
  */
@@ -27,6 +27,11 @@ export function isTeacherApproved(status: TeacherApprovalStatus): boolean {
  * Resolves the logged-in Teacher's `Teacher.id` from the request's
  * Cognito ID token.
  *
+ * SIGNATURE-VERIFIED (Oct 15, 2026, 06-OPEN-DECISIONS.md #21): the token is
+ * validated against Cognito's public keys and must carry `custom:role =
+ * "teacher"`. `verifiedAuth.ts`'s `requireVerifiedTeacherId` is now the same
+ * function under its old name.
+ *
  * Mirrors `requireParentId` in `src/features/parent/server/auth.ts` —
  * before this, every teacher-scoped route (course create/list, and
  * now chat) re-did the same `requireCognitoAuth` + `prisma.teacher
@@ -44,7 +49,7 @@ export function isTeacherApproved(status: TeacherApprovalStatus): boolean {
 export async function requireTeacherId(
   req: Request,
 ): Promise<{ teacherId: string } | { error: NextResponse }> {
-  const auth = requireCognitoAuth(req);
+  const auth = await requireVerifiedCognitoAuth(req, "teacher");
 
   if ("error" in auth) {
     return { error: auth.error };

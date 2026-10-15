@@ -1,4 +1,5 @@
-import { requireCognitoAuth, type CognitoTokenPayload } from "@/lib/api-auth";
+import { type CognitoTokenPayload } from "@/lib/api-auth";
+import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { prisma } from "@/lib/prisma";
 import { subscribeToChanges, type ChangeEvent } from "@/lib/realtime/changeListener";
 import { RESOURCE_MAP, type ResourceRule } from "@/lib/realtime/resourceMap";
@@ -85,7 +86,7 @@ function isVisibleTo(viewer: Viewer, event: ChangeEvent, rule: ResourceRule): bo
  * normal authenticated API routes.
  */
 export async function GET(req: Request) {
-  const auth = requireCognitoAuth<CognitoTokenPayload & { exp?: number }>(req);
+  const auth = await requireVerifiedCognitoAuth<CognitoTokenPayload & { exp?: number }>(req);
 
   if ("error" in auth) {
     return auth.error;
