@@ -2,6 +2,7 @@ import {
     WALLET_TOPUP_MAX_AMOUNT,
     WALLET_TOPUP_MIN_AMOUNT,
 } from "@/features/shared/utils/walletTopup";
+import { isInternationalParent, priceWithInternationalSurcharge } from "@/lib/internationalPayments";
 import { prisma } from "@/lib/prisma";
 import {
     getRazorpayClient,
@@ -49,19 +50,54 @@ export async function createWalletTopupOrder(parentId: string, amount: number) {
   const roundedAmount = Math.round(amount * 100) / 100;
   const razorpay = getRazorpayClient();
 
+  // International parents pay the same card-fee surcharge as on every other
+  // payment (src/lib/internationalPayments.ts). The Wallet is credited the
+  // amount the parent chose; the surcharge is only ever the gateway fee.
+  const parent = await prisma.parentProfile.findUnique({
+    where: { id: parentId },
+    select: { nriOrIndian: true, country: true },
+  });
+
+  const pricing = priceWithInternationalSurcharge(
+    roundedAmount,
+    parent ? isInternationalParent(parent) : false,
+  );
+
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(roundedAmount),
+    amount: rupeesToPaise(pricing.amountPayable),
     currency: "INR",
     // Razorpay caps receipt at 40 chars — keep it short.
     receipt: `wtop_${Date.now()}`,
     notes: {
       kind: "wallet_topup",
       parentId,
+      // The amount credited to the Wallet (excludes the surcharge).
       amountRupees: String(roundedAmount),
+      surchargeRupees: String(pricing.surchargeAmount),
     },
   });
 
-  return order;
+  return { order, pricing };
+}
+/**
+ * What to credit for a paid top-up order: the base amount stamped in the
+ * order's notes (never the surcharge), after checking Razorpay really
+ * charged at least that much. Orders from before the surcharge existed have
+ * `amountRupees` equal to the charge, so they behave as before.
+ */
+function creditedAmountFor(order: { amount: number | string }, notes: Record<string, unknown>) {
+  const charged = Number(order.amount) / 100;
+  const stamped = Number(notes.amountRupees);
+  const credit = Number.isFinite(stamped) && stamped > 0 ? stamped : charged;
+
+  if (charged + 0.001 < credit) {
+    throw new WalletError(
+      "The paid amount is lower than the top-up amount — contact support with your payment ID.",
+      409,
+    );
+  }
+
+  return { credit, surcharge: Math.round((charged - credit) * 100) / 100 };
 }
 export interface VerifyWalletTopupInput {
   razorpayOrderId: string;
@@ -121,11 +157,13 @@ export async function verifyWalletTopup(
     throw new WalletError("This payment doesn't match your account.", 409);
   }
 
-  const amount = Number(order.amount) / 100;
+  const { credit: amount, surcharge } = creditedAmountFor(order, notes);
 
   const { transaction } = await creditWallet({
     parentId,
     amount,
+    invoiceAmount: amount + surcharge,
+    invoiceDescription: surcharge > 0 ? `Wallet top-up (incl. ₹${surcharge} international fee)` : undefined,
     reason: "Wallet top-up",
     referenceType: "WALLET_TOPUP",
     razorpayOrderId: input.razorpayOrderId,
@@ -172,11 +210,13 @@ export async function reconcileWalletTopupFromWebhook(
     return null;
   }
 
-  const amount = Number(order.amount) / 100;
+  const { credit: amount, surcharge } = creditedAmountFor(order, notes);
 
   const { transaction } = await creditWallet({
     parentId,
     amount,
+    invoiceAmount: amount + surcharge,
+    invoiceDescription: surcharge > 0 ? `Wallet top-up (incl. ₹${surcharge} international fee)` : undefined,
     reason: "Wallet top-up",
     referenceType: "WALLET_TOPUP",
     razorpayOrderId: orderId,

@@ -14,6 +14,8 @@ import { buildEnrollmentCreateData, parseInputFromNotes, priceOptionsFromNotes }
 import { VerifyEnrollmentPaymentInput } from './order';
 import { priceEnrollment } from './pricing';
 import { EnrollmentError } from './types';
+import { WalletError } from "@/features/shared/server/wallet/core";
+import { applyWalletPortion, createPaidEnrollment } from './walletPart';
 
 /**
  * Step 2 of the paid-enrollment flow. Re-verifies the checkout
@@ -84,7 +86,10 @@ export async function verifyEnrollmentPayment(
 
   const priced = await priceEnrollment(parentId, input, options);
 
-  const expectedPaise = rupeesToPaise(priced.amountPayable);
+  // Part payment from the Wallet: the order was for the card remainder only.
+  const { walletAmount, cardCharge, paidPriced } = applyWalletPortion(priced, notes);
+
+  const expectedPaise = rupeesToPaise(cardCharge);
 
   if (Number(order.amount) !== expectedPaise) {
     // The order amount no longer matches what this course/cycle
@@ -99,19 +104,33 @@ export async function verifyEnrollmentPayment(
     );
   }
 
-  const enrollment = await prisma.enrollment.create({
-    data: buildEnrollmentCreateData({
+  // Includes the chat room so the client can immediately offer "chat with
+  // your teacher" right after payment confirmation without a second round trip.
+  let enrollment;
+
+  try {
+    enrollment = await createPaidEnrollment({
+      data: buildEnrollmentCreateData({
+        parentId,
+        input,
+        priced: paidPriced,
+        orderId: input.razorpayOrderId,
+        paymentId: input.razorpayPaymentId,
+      }),
       parentId,
-      input,
-      priced,
-      orderId: input.razorpayOrderId,
-      paymentId: input.razorpayPaymentId,
-    }),
-    // Included so the client can immediately offer "chat with your
-    // teacher" right after payment confirmation without a second
-    // round trip.
-    include: { chatRoom: { select: { id: true } } },
-  });
+      walletAmount,
+      subject: priced.subject,
+    });
+  } catch (err) {
+    if (err instanceof WalletError) {
+      throw new EnrollmentError(
+        "Your wallet balance changed before the payment could be applied — contact support with your payment ID for a refund.",
+        409,
+      );
+    }
+
+    throw err;
+  }
 
   // Refer & Earn: if this Parent was referred and this is their
   // first-ever Enrollment, credit the referrer's Wallet. Never lets
@@ -134,7 +153,7 @@ export async function verifyEnrollmentPayment(
       type: InvoiceType.ENROLLMENT_PAYMENT,
       payerId: parentId,
       amount: Number(enrollment.amountPaid),
-      description: `Enrollment payment${priced.subject ? ` — ${priced.subject}` : ""}`,
+      description: `Enrollment payment${walletAmount > 0 ? ` (₹${walletAmount} from wallet)` : ""}${priced.subject ? ` — ${priced.subject}` : ""}`,
       referenceType: "ENROLLMENT",
       referenceId: enrollment.id,
       razorpayOrderId: enrollment.razorpayOrderId,

@@ -96,7 +96,11 @@ export function useWallet() {
         currency: orderData.currency,
         keyId: orderData.keyId,
         name: "Learnie Wallet",
-        description: `Add ₹${amount.toLocaleString("en-IN")} to wallet`,
+        description:
+          `Add ₹${amount.toLocaleString("en-IN")} to wallet` +
+          (orderData.surchargeAmount > 0
+            ? ` (+₹${Number(orderData.surchargeAmount).toLocaleString("en-IN")} international fee)`
+            : ""),
       });
 
       if (!result) {

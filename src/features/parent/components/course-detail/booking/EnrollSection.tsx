@@ -36,6 +36,7 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
     enrollChatRoomId,
     handleEnroll,
     handleEnrollWithWallet,
+    handleEnrollPartWallet,
     walletBalance,
   } = enroll;
 
@@ -240,6 +241,28 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
             {`Pay ₹${pricePreview.totalAmount.toLocaleString("en-IN")} from wallet (₹${walletBalance.toLocaleString("en-IN")} available)`}
           </button>
         )}
+
+        {pricePreview && walletBalance !== null && walletBalance >= 1 && walletBalance < pricePreview.totalAmount && (
+          <button
+            type="button"
+            onClick={handleEnrollPartWallet}
+            disabled={
+              enrolling ||
+              studentsLoading ||
+              studentCount === 0 ||
+              scheduleDays.length === 0 ||
+              !scheduleTime ||
+              !startDate ||
+              startInPast ||
+              !cyclePlan ||
+              !!planProblem
+            }
+            className="w-full mt-2 text-sm font-bold text-brand-dark bg-violet-50 hover:bg-violet-100 px-4 py-2.5 rounded-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+          >
+            {`Use ₹${walletBalance.toLocaleString("en-IN")} from wallet + pay the rest by card`}
+          </button>
+        )}
+
 
         <p className="flex items-start gap-2 mt-3 text-[11px] text-gray-400 leading-relaxed">
           <Info size={13} className="flex-shrink-0 mt-0.5" />

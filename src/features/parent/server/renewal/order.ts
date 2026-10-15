@@ -9,8 +9,10 @@ import {
     getRazorpayKeyId,
     rupeesToPaise
 } from "@/lib/razorpay";
+import { getOrCreateWallet } from "@/features/shared/server/wallet/core";
+import { splitWalletPayment } from "@/features/shared/utils/walletSplit";
 import "server-only";
-import { RenewalInput, RenewalPlan, buildRenewalPlan, isRenewalWindowOpen, loadRenewableEnrollment, renewalWindowOpensOn } from './plan';
+import { RenewalError, RenewalInput, RenewalPlan, buildRenewalPlan, isRenewalWindowOpen, loadRenewableEnrollment, renewalWindowOpensOn } from './plan';
 
 /** GET-route helper: eligibility + a preview using the enrollment's current schedule. */
 export async function getRenewalStatus(enrollmentId: string, parentId: string) {
@@ -50,13 +52,41 @@ export async function createRenewalOrder(
   enrollmentId: string,
   parentId: string,
   input: RenewalInput,
+  options: { useWallet?: boolean } = {},
 ) {
   const plan = await buildRenewalPlan(enrollmentId, parentId, input);
+
+  // Part payment (06 #44): Wallet first, card for the rest, with the
+  // international surcharge on the card part only.
+  let walletAmount = 0;
+  let cardCharge = plan.amountPayable;
+  let cardSurcharge = plan.internationalSurchargeAmount;
+
+  if (options.useWallet) {
+    const wallet = await getOrCreateWallet(parentId);
+
+    const split = splitWalletPayment({
+      totalAmount: plan.totalAmount,
+      isInternational: plan.isInternationalPayment,
+      requestedWalletAmount: Number(wallet.balance),
+    });
+
+    if (split.cardBase <= 0) {
+      throw new RenewalError(
+        'Your wallet covers the whole price — use "Pay from wallet" instead.',
+        400,
+      );
+    }
+
+    walletAmount = split.walletAmount;
+    cardCharge = split.cardCharge;
+    cardSurcharge = split.surchargeAmount;
+  }
 
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(plan.amountPayable),
+    amount: rupeesToPaise(cardCharge),
     currency: "INR",
     receipt: `ren_${Date.now()}`,
     notes: {
@@ -68,6 +98,8 @@ export async function createRenewalOrder(
       sessionCount: plan.sessionCount,
       scheduleDays: JSON.stringify(plan.scheduleDays),
       scheduleTime: plan.scheduleTime,
+      // Part payment: how much of the total was taken from the Wallet (0 = none).
+      walletAmount,
     },
   });
 
@@ -78,7 +110,7 @@ export async function createRenewalOrder(
       currency: order.currency,
     },
     keyId: getRazorpayKeyId(),
-    pricing: plan,
+    pricing: { ...plan, walletAmount, amountPayable: cardCharge, internationalSurchargeAmount: cardSurcharge },
   };
 }
 export interface VerifyRenewalPaymentInput {

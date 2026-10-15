@@ -2,8 +2,10 @@ import {
     getRazorpayClient,
     rupeesToPaise
 } from "@/lib/razorpay";
+import { getOrCreateWallet } from "@/features/shared/server/wallet/core";
+import { splitWalletPayment } from "@/features/shared/utils/walletSplit";
 import { priceEnrollment } from './pricing';
-import { CYCLE_MODEL_TAG, CreateEnrollmentInput } from './types';
+import { CYCLE_MODEL_TAG, CreateEnrollmentInput, EnrollmentError } from './types';
 
 /**
  * Step 1 of the paid-enrollment flow. Validates + prices the
@@ -22,11 +24,39 @@ import { CYCLE_MODEL_TAG, CreateEnrollmentInput } from './types';
 export async function createEnrollmentOrder(
   parentId: string,
   input: CreateEnrollmentInput,
+  options: { useWallet?: boolean } = {},
 ) {
   const priced = await priceEnrollment(parentId, input, {
     model: "CYCLE_V1",
     enforceStartNotPast: true,
   });
+
+  // Part payment (06 #44): the Wallet pays as much as it can and the card
+  // pays the rest, with the international surcharge on the card part only.
+  let walletAmount = 0;
+  let cardCharge = priced.amountPayable;
+  let cardSurcharge = priced.internationalSurchargeAmount;
+
+  if (options.useWallet) {
+    const wallet = await getOrCreateWallet(parentId);
+
+    const split = splitWalletPayment({
+      totalAmount: priced.totalAmount,
+      isInternational: priced.isInternationalPayment,
+      requestedWalletAmount: Number(wallet.balance),
+    });
+
+    if (split.cardBase <= 0) {
+      throw new EnrollmentError(
+        "Your wallet covers the whole price — use \"Pay from wallet\" instead.",
+        400,
+      );
+    }
+
+    walletAmount = split.walletAmount;
+    cardCharge = split.cardCharge;
+    cardSurcharge = split.surchargeAmount;
+  }
 
   const razorpay = getRazorpayClient();
 
@@ -34,7 +64,7 @@ export async function createEnrollmentOrder(
     // Charges the surcharge-inclusive amount for international
     // parents — see src/lib/internationalPayments.ts. Domestic
     // parents get amountPayable === totalAmount, unchanged.
-    amount: rupeesToPaise(priced.amountPayable),
+    amount: rupeesToPaise(cardCharge),
     currency: "INR",
     // Razorpay caps receipt at 40 chars — keep it short.
     receipt: `enr_${Date.now()}`,
@@ -57,10 +87,15 @@ export async function createEnrollmentOrder(
       sessionLengthMinutes: priced.sessionLengthMinutes ?? 0,
       scheduleDays: JSON.stringify(priced.scheduleDays),
       scheduleTime: priced.scheduleTime,
+      // Part payment: how much of the total was taken from the Wallet (0 = none).
+      walletAmount,
     },
   });
 
-  return { order, pricing: priced };
+  return {
+    order,
+    pricing: { ...priced, walletAmount, amountPayable: cardCharge, internationalSurchargeAmount: cardSurcharge },
+  };
 }
 export interface VerifyEnrollmentPaymentInput extends CreateEnrollmentInput {
   razorpayOrderId: string;

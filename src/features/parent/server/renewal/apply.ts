@@ -16,6 +16,8 @@ import {
     InvoiceType,
     Prisma,
 } from "@prisma/client";
+import { WalletError, debitWalletInTx } from "@/features/shared/server/wallet/core";
+import { splitWalletPayment, walletAmountFromNotes } from "@/features/shared/utils/walletSplit";
 import "server-only";
 import type { Orders } from "razorpay/dist/types/orders";
 import { RenewalError, loadRenewableEnrollment } from './plan';
@@ -85,7 +87,7 @@ export async function ensureRenewalInvoice(args: {
       payerId: enrollment.parentId,
       // What Razorpay actually charged (already checked against the
       // expected price before the cycle was created).
-      amount: Number(order.amount) / 100,
+      amount: Number(order.amount) / 100 + walletAmountFromNotes((order.notes ?? {}) as Record<string, unknown>),
       description: `Cycle ${cycle.cycleNumber} renewal${
         enrollment.subject ? ` — ${enrollment.subject}` : ""
       }`,
@@ -261,12 +263,31 @@ export async function applyPaidRenewal(args: {
   const ratePerSession = Number(enrollment.ratePerSession);
   const totalAmount = priceForSessions(ratePerSession, Number(notes.sessionCount));
 
-  const { amountPayable } = priceWithInternationalSurcharge(
-    totalAmount,
-    enrollment.parent ? isInternationalParent(enrollment.parent) : false,
-  );
+  const isInternational = enrollment.parent ? isInternationalParent(enrollment.parent) : false;
+  const { amountPayable } = priceWithInternationalSurcharge(totalAmount, isInternational);
 
-  if (Number(order.amount) !== rupeesToPaise(amountPayable)) {
+  // Part payment from the Wallet: the order was for the card remainder only.
+  const walletAmount = walletAmountFromNotes(notes);
+  let expectedCharge = amountPayable;
+
+  if (walletAmount > 0) {
+    const split = splitWalletPayment({
+      totalAmount,
+      isInternational,
+      requestedWalletAmount: walletAmount,
+    });
+
+    if (split.walletAmount !== walletAmount || split.cardBase <= 0) {
+      throw new RenewalError(
+        "The wallet portion of this payment doesn't match the current price — contact support with your payment ID.",
+        409,
+      );
+    }
+
+    expectedCharge = split.cardCharge;
+  }
+
+  if (Number(order.amount) !== rupeesToPaise(expectedCharge)) {
     throw new RenewalError(
       "The paid amount no longer matches this enrollment's current rate — contact support with your payment ID for a refund.",
       409,
@@ -288,8 +309,8 @@ export async function applyPaidRenewal(args: {
 
   try {
     cycle = await prisma.$transaction(
-      (tx) =>
-        createRenewalCycleInTx(tx, {
+      async (tx) => {
+        const created = await createRenewalCycleInTx(tx, {
           enrollmentId,
           cycleNumber,
           startDate,
@@ -299,12 +320,32 @@ export async function applyPaidRenewal(args: {
           paymentReference: paymentId,
           scheduleDays,
           scheduleTime,
-        }),
+        });
+
+        if (walletAmount > 0) {
+          await debitWalletInTx(tx, {
+            parentId,
+            amount: walletAmount,
+            reason: `Cycle ${cycleNumber} renewal (part from wallet)`,
+            referenceType: "ENROLLMENT_CYCLE",
+            referenceId: created.id,
+          });
+        }
+
+        return created;
+      },
       { timeout: 15_000 },
     );
   } catch (err) {
     // Lost the race to a concurrent /verify or webhook call for the
     // same payment: its cycle is the one that counts.
+    if (err instanceof WalletError) {
+      throw new RenewalError(
+        "Your wallet balance changed before the payment could be applied — contact support with your payment ID for a refund.",
+        409,
+      );
+    }
+
     if (isUniqueViolation(err)) {
       const winner = await findCycleForPayment(paymentId);
 

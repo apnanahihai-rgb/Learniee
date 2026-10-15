@@ -62,7 +62,10 @@ export function useRenewal(enrollmentId: string) {
 
   useAutoRefresh(() => load(), { paths: ["/api/parent/enrollments"] });
 
-  async function renew(overrides: { scheduleDays?: number[]; scheduleTime?: string }) {
+  async function renew(
+    overrides: { scheduleDays?: number[]; scheduleTime?: string },
+    options: { useWallet?: boolean } = {},
+  ) {
     try {
       setPaying(true);
       setError("");
@@ -70,7 +73,7 @@ export function useRenewal(enrollmentId: string) {
       const orderRes = await fetch(`/api/parent/enrollments/${enrollmentId}/renew/order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(overrides),
+        body: JSON.stringify({ ...overrides, useWallet: options.useWallet === true }),
       });
       const orderData = await orderRes.json();
 
@@ -108,7 +111,7 @@ export function useRenewal(enrollmentId: string) {
         );
       }
 
-      await load();
+      await Promise.all([load(), reloadWallet()]);
 
       return { ok: true, message: "Renewed! Next cycle's classes are on your calendar." };
     } catch (err) {

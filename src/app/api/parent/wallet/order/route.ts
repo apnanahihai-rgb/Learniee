@@ -27,13 +27,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const amount = Number(body?.amount);
 
-    const order = await createWalletTopupOrder(parent.parentId, amount);
+    const { order, pricing } = await createWalletTopupOrder(parent.parentId, amount);
 
     return NextResponse.json({
       success: true,
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
+      // What the Wallet is credited vs what the card is charged — the
+      // difference is the international card-fee surcharge (0 for domestic).
+      creditAmount: amount,
+      surchargeAmount: pricing.surchargeAmount,
       keyId: getRazorpayKeyId(),
     });
   } catch (error) {

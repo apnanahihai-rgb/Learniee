@@ -67,6 +67,9 @@ export interface WalletAdjustmentInput {
   /** Set only for a Razorpay-backed top-up — see createWalletTopupOrder/verifyWalletTopup. */
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
+  /** Top-up only: what the invoice shows when it differs from the credit (credit + international fee). */
+  invoiceAmount?: number;
+  invoiceDescription?: string;
 }
 /** Rupees to 2 decimals, so float noise never reaches a Decimal(10,2) column. */
 function roundMoney(value: number) {
@@ -156,8 +159,8 @@ export async function creditWallet(input: WalletAdjustmentInput) {
       await generateInvoiceForPayment({
         type: InvoiceType.WALLET_TOPUP,
         payerId: input.parentId,
-        amount: input.amount,
-        description: "Wallet top-up",
+        amount: input.invoiceAmount ?? input.amount,
+        description: input.invoiceDescription ?? "Wallet top-up",
         referenceType: "WALLET_TOPUP",
         referenceId: result.transaction.id,
         razorpayOrderId: input.razorpayOrderId,

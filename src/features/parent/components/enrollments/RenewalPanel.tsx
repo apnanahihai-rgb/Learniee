@@ -50,6 +50,13 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
     if (result.ok) onRenewed?.();
   }
 
+  async function handleRenewPartWallet() {
+    setMessage(null);
+    const result = await renew({ scheduleDays, scheduleTime }, { useWallet: true });
+    setMessage({ ok: result.ok, text: result.message });
+    if (result.ok) onRenewed?.();
+  }
+
   async function handleRenewWithWallet() {
     setMessage(null);
     const result = await renewWithWallet({ scheduleDays, scheduleTime });
@@ -59,6 +66,8 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
 
   const preview = status.preview;
   // The wallet pays the base price (no card surcharge), all of it or not at all.
+  const canPayPartWallet =
+    !!preview && walletBalance !== null && walletBalance >= 1 && walletBalance < preview.totalAmount;
   const canPayWithWallet =
     !!preview && walletBalance !== null && walletBalance >= preview.totalAmount;
 
@@ -118,6 +127,17 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
       >
         {paying ? "Processing…" : "Renew & Pay"}
       </button>
+
+      {canPayPartWallet && (
+        <button
+          type="button"
+          onClick={handleRenewPartWallet}
+          disabled={paying || scheduleDays.length === 0 || !scheduleTime}
+          className="ml-2 text-xs font-bold text-violet-800 bg-white border border-violet-200 px-3 py-1.5 rounded-full disabled:opacity-50"
+        >
+          {`Use ₹${walletBalance?.toLocaleString("en-IN")} from wallet + card`}
+        </button>
+      )}
 
       {canPayWithWallet && preview && (
         <button

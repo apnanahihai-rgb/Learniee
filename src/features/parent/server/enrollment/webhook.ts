@@ -11,6 +11,8 @@ import {
 } from "@prisma/client";
 import { buildEnrollmentCreateData, parseInputFromNotes, priceOptionsFromNotes } from './notes';
 import { priceEnrollment } from './pricing';
+import { WalletError } from "@/features/shared/server/wallet/core";
+import { applyWalletPortion, createPaidEnrollment } from './walletPart';
 
 /**
  * Reconciliation path used ONLY by the Razorpay webhook
@@ -64,22 +66,39 @@ export async function reconcileEnrollmentFromWebhook(
     input,
     priceOptionsFromNotes(notes),
   );
-  const expectedPaise = rupeesToPaise(priced.amountPayable);
+  const { walletAmount, cardCharge, paidPriced } = applyWalletPortion(priced, notes);
+  const expectedPaise = rupeesToPaise(cardCharge);
 
   if (Number(order.amount) !== expectedPaise) {
     console.error("Razorpay webhook: enrollment amount mismatch", orderId);
     return null;
   }
 
-  const enrollment = await prisma.enrollment.create({
-    data: buildEnrollmentCreateData({
+  let enrollment;
+
+  try {
+    enrollment = await createPaidEnrollment({
+      data: buildEnrollmentCreateData({
+        parentId,
+        input,
+        priced: paidPriced,
+        orderId,
+        paymentId,
+      }),
       parentId,
-      input,
-      priced,
-      orderId,
-      paymentId,
-    }),
-  });
+      walletAmount,
+      subject: priced.subject,
+    });
+  } catch (err) {
+    if (err instanceof WalletError) {
+      console.error(
+        `[enrollment-reconcile] NEEDS MANUAL REVIEW: card part captured but the wallet portion could not be taken (order ${orderId}, payment ${paymentId}, parent ${parentId})`,
+      );
+      return null;
+    }
+
+    throw err;
+  }
 
   // Same Refer & Earn hook as verifyEnrollmentPayment() — this path
   // exists specifically for the "paid but /verify never got called"
@@ -102,7 +121,7 @@ export async function reconcileEnrollmentFromWebhook(
       type: InvoiceType.ENROLLMENT_PAYMENT,
       payerId: parentId,
       amount: Number(enrollment.amountPaid),
-      description: `Enrollment payment${priced.subject ? ` — ${priced.subject}` : ""}`,
+      description: `Enrollment payment${walletAmount > 0 ? ` (₹${walletAmount} from wallet)` : ""}${priced.subject ? ` — ${priced.subject}` : ""}`,
       referenceType: "ENROLLMENT",
       referenceId: enrollment.id,
       razorpayOrderId: enrollment.razorpayOrderId,

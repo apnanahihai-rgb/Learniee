@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return parent.error;
     }
 
-    const input: CreateEnrollmentInput = await req.json();
+    const input: CreateEnrollmentInput & { useWallet?: boolean } = await req.json();
 
     if (!input.studentId || !input.teacherId || !input.courseId) {
       return NextResponse.json(
@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     const { order, pricing } = await createEnrollmentOrder(
       parent.parentId,
       input,
+      { useWallet: input.useWallet === true },
     );
 
     return NextResponse.json({

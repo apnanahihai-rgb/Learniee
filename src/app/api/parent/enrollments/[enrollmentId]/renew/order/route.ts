@@ -33,7 +33,7 @@ export async function POST(
     const { order, keyId, pricing } = await createRenewalOrder(enrollmentId, parent.parentId, {
       scheduleDays: body.scheduleDays,
       scheduleTime: body.scheduleTime,
-    });
+    }, { useWallet: body.useWallet === true });
 
     return NextResponse.json({
       success: true,

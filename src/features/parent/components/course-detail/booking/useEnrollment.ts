@@ -93,7 +93,8 @@ export function useEnrollment({
     return null;
   }
 
-  async function handleEnroll() {
+  /** Card flow. With `useWallet`, the Wallet pays what it can and the card pays the rest (06 #44). */
+  async function runCardEnrollment(useWallet: boolean) {
     const problem = getEnrollProblem();
 
     if (problem) {
@@ -120,7 +121,7 @@ export function useEnrollment({
       const orderRes = await fetch("/api/parent/enrollments/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, useWallet }),
       });
 
       const orderData = await orderRes.json();
@@ -135,7 +136,11 @@ export function useEnrollment({
         currency: orderData.currency,
         keyId: orderData.keyId,
         name: "Learnie",
-        description: `Enrollment — ₹${orderData.pricing.totalAmount.toLocaleString("en-IN")}`,
+        description:
+          `Enrollment — ₹${orderData.pricing.totalAmount.toLocaleString("en-IN")}` +
+          (orderData.pricing.walletAmount > 0
+            ? ` (₹${Number(orderData.pricing.walletAmount).toLocaleString("en-IN")} from wallet)`
+            : ""),
       });
 
       if (!result) {
@@ -164,12 +169,16 @@ export function useEnrollment({
         "Payment successful! Your enrollment is on its way — you can connect with your teacher over chat any time.",
       );
       setEnrollChatRoomId(verifyData.enrollment?.chatRoom?.id ?? null);
+      reloadWallet();
     } catch (err) {
       setEnrollError(err instanceof Error ? err.message : "Failed to enroll.");
     } finally {
       setEnrolling(false);
     }
   }
+
+  const handleEnroll = () => runCardEnrollment(false);
+  const handleEnrollPartWallet = () => runCardEnrollment(true);
 
   /**
    * Pays the whole price from the Wallet balance (06 #44). `requestId` makes a
@@ -243,6 +252,7 @@ export function useEnrollment({
     enrollChatRoomId,
     handleEnroll,
     handleEnrollWithWallet,
+    handleEnrollPartWallet,
     walletBalance,
   };
 }
