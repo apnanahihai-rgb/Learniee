@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
+import { isGoogleMeetEnabled } from "@/lib/googleMeet";
 import { isAppealOpen } from "@/features/teacher/utils/teacherAppeal";
 
 export async function GET(req: Request) {
@@ -63,6 +64,11 @@ export async function GET(req: Request) {
       // Interview + appeal (Oct 7, 2026)
       interviewScheduledAt: teacher.interviewScheduledAt,
       interviewDetails: teacher.interviewDetails,
+      // The link itself is never sent here - only the join route hands it
+      // out, and only inside the window. `serverNow` lets the page open
+      // the Join button on the server's clock, not the device's.
+      interviewMeetingEnabled: isGoogleMeetEnabled(),
+      serverNow: new Date().toISOString(),
       reapplyAvailableAt: teacher.reapplyAvailableAt,
       canAppeal:
         teacher.approvalStatus === "REJECTED" &&

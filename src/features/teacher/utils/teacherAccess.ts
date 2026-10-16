@@ -13,6 +13,9 @@ export interface TeacherAccess {
   /** ISO strings, or null. */
   interviewScheduledAt: string | null;
   interviewDetails: string | null;
+  interviewMeetingEnabled: boolean;
+  /** Server clock at load time (ISO), or null. */
+  serverNow: string | null;
   reapplyAvailableAt: string | null;
   canAppeal: boolean;
 }
@@ -34,6 +37,8 @@ export async function fetchTeacherAccess(): Promise<TeacherAccess> {
     bankAccountStatus: data.bankAccountStatus ?? "MISSING",
     interviewScheduledAt: data.interviewScheduledAt ?? null,
     interviewDetails: data.interviewDetails ?? null,
+    interviewMeetingEnabled: Boolean(data.interviewMeetingEnabled),
+    serverNow: data.serverNow ?? null,
     reapplyAvailableAt: data.reapplyAvailableAt ?? null,
     canAppeal: Boolean(data.canAppeal),
   };

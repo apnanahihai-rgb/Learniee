@@ -7,10 +7,13 @@ import {
   Clock,
   Loader2,
   RefreshCw,
+  Video,
   XCircle,
 } from "lucide-react";
 
 import BrandLogo from "@/features/shared/components/BrandLogo";
+import { useInterviewJoin } from "@/features/shared/hooks/useInterviewJoin";
+import { useInterviewJoinWindow } from "@/features/shared/hooks/useInterviewJoinWindow";
 import { useTeacherApprovalWatch } from "@/features/teacher/hooks/useTeacherApprovalWatch";
 
 function Step({
@@ -71,6 +74,16 @@ export default function TeacherPendingApproval() {
     appealing,
     appealError,
   } = useTeacherApprovalWatch();
+
+  const joinWindow = useInterviewJoinWindow(
+    access?.interviewScheduledAt ?? null,
+    access?.serverNow ?? null,
+  );
+  const {
+    join: joinInterview,
+    joining: joiningInterview,
+    error: joinInterviewError,
+  } = useInterviewJoin("/api/teacher/interview/join");
 
   const interviewAt = access?.interviewScheduledAt
     ? new Date(access.interviewScheduledAt)
@@ -143,6 +156,32 @@ export default function TeacherPendingApproval() {
                     <p className="mt-1 whitespace-pre-line text-xs text-gray-500">
                       {access.interviewDetails}
                     </p>
+                  )}
+
+                  {access?.interviewMeetingEnabled && (
+                    <div className="mt-3">
+                      <button
+                        onClick={joinInterview}
+                        disabled={joiningInterview || joinWindow.state !== "OPEN"}
+                        className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Video className="size-4" />
+                        {joiningInterview ? "Opening..." : "Join interview"}
+                      </button>
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        {joinWindow.state === "NOT_YET" && joinWindow.opensAt
+                          ? `The Google Meet link unlocks at ${joinWindow.opensAt.toLocaleTimeString(
+                              "en-IN",
+                              { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" },
+                            )} (IST), 10 minutes before your interview.`
+                          : joinWindow.state === "CLOSED"
+                            ? "The interview window has ended. Please contact support if you missed it."
+                            : "The link is open. Join with your Google account if you are signed in."}
+                      </p>
+                      {joinInterviewError && (
+                        <p className="mt-1.5 text-xs text-red-600">{joinInterviewError}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

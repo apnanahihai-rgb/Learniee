@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
+import { isGoogleMeetEnabled } from "@/lib/googleMeet";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 
 /**
@@ -49,7 +50,13 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      teacher: { ...teacher, files },
+      teacher: {
+        ...teacher,
+        files,
+        // For the interview "Join" button; the link itself comes from the join route.
+        interviewMeetingEnabled: isGoogleMeetEnabled(),
+        serverNow: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error("Admin teacher detail error:", error);

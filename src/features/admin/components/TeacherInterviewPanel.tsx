@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Video } from "lucide-react";
+
+import { useInterviewJoin } from "@/features/shared/hooks/useInterviewJoin";
+import { useInterviewJoinWindow } from "@/features/shared/hooks/useInterviewJoinWindow";
 
 interface Props {
+  teacherId: string;
   interviewScheduledAt: string | null;
   interviewDetails: string | null;
+  /** Google Meet is switched on (shows the Join button). */
+  meetingEnabled: boolean;
+  /** Server clock at load time, for the unlock moment. */
+  serverNow: string | null;
   busy: boolean;
   /** Resolves true when the interview was saved. */
   onSchedule: (scheduledAtIso: string, details: string) => Promise<boolean>;
@@ -14,13 +22,17 @@ interface Props {
 
 /**
  * Optional interview step on a pending teacher application. Admin picks a
- * date/time (and a meeting link or instructions); the teacher is notified.
+ * date/time (and optional instructions); the teacher is notified. A Google
+ * Meet room opens for both 10 minutes before the interview.
  * The outcome is the normal decision below: Approve = selected, Reject = not
  * selected (starts the appeal waiting period).
  */
 export default function TeacherInterviewPanel({
+  teacherId,
   interviewScheduledAt,
   interviewDetails,
+  meetingEnabled,
+  serverNow,
   busy,
   onSchedule,
   onCancel,
@@ -31,6 +43,10 @@ export default function TeacherInterviewPanel({
   const [formError, setFormError] = useState("");
 
   const scheduled = interviewScheduledAt ? new Date(interviewScheduledAt) : null;
+  const joinWindow = useInterviewJoinWindow(interviewScheduledAt, serverNow);
+  const { join, joining, error: joinError, hostWarning } = useInterviewJoin(
+    `/api/admin/teachers/${teacherId}/interview/join`,
+  );
   const showForm = editing || !scheduled;
 
   async function submit() {
@@ -73,6 +89,36 @@ export default function TeacherInterviewPanel({
             </p>
             {interviewDetails && (
               <p className="mt-1 whitespace-pre-line text-xs text-gray-500">{interviewDetails}</p>
+            )}
+            {meetingEnabled && (
+              <div className="mt-3">
+                <button
+                  onClick={join}
+                  disabled={busy || joining || joinWindow.state !== "OPEN"}
+                  className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Video className="size-4" />
+                  {joining ? "Opening..." : "Join interview"}
+                </button>
+                <p className="mt-1.5 text-xs text-gray-500">
+                  {joinWindow.state === "NOT_YET" && joinWindow.opensAt
+                    ? `Google Meet link unlocks at ${joinWindow.opensAt.toLocaleString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })} (IST), 10 minutes before.`
+                    : joinWindow.state === "CLOSED"
+                      ? "The interview window has ended."
+                      : "The Google Meet link is open. You join as host."}
+                </p>
+                {joinError && <p className="mt-1.5 text-xs text-red-600">{joinError}</p>}
+                {hostWarning && (
+                  <p className="mt-1.5 text-xs text-amber-700">
+                    Joined, but Google could not confirm you as host. Use the Google account that
+                    matches your Admin email to get host controls.
+                  </p>
+                )}
+              </div>
             )}
             <p className="mt-2 text-xs text-gray-500">
               After the interview use Approve (selected) or Reject (not selected) below.
@@ -121,7 +167,7 @@ export default function TeacherInterviewPanel({
             onChange={(e) => setDetails(e.target.value)}
             maxLength={500}
             rows={3}
-            placeholder="Meeting link or instructions (optional)"
+            placeholder="Instructions for the teacher (optional). The Google Meet link is added automatically."
             className="w-full rounded-lg border bg-white px-3 py-2 text-sm"
           />
 

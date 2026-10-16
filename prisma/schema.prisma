@@ -144,6 +144,7 @@ model Teacher {
   rejectedAt           DateTime?
   reapplyAvailableAt   DateTime?
   appealCount          Int                   @default(0)
+  interviewMeeting     TeacherInterviewMeeting?
   chatRooms          ChatRoom[]
   classSessions      ClassSession[]
   courses            Course[]
@@ -162,6 +163,25 @@ model Teacher {
   resources          Resource[]
   blogPosts          BlogPost[]
   classRequestResponses ClassRequestResponse[]
+}
+
+/// Google Meet room for a Teacher's interview (Oct 16, 2026). Kept in its own
+/// table, NOT on `Teacher`, so the link can never leak through a route that
+/// returns the whole Teacher row before the join window opens. Created
+/// lazily on the first Join inside the window (10 min before the interview)
+/// and deleted whenever Admin reschedules or cancels the interview.
+model TeacherInterviewMeeting {
+  id             String   @id @default(uuid())
+  teacherId      String   @unique
+  /// "spaces/abc123" - used for Members API calls (made as `organizerEmail`).
+  meetSpaceName  String
+  meetingUri     String
+  /// Workspace account that owns the room (lower-cased).
+  organizerEmail String
+  createdAt      DateTime @default(now())
+  teacher        Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([organizerEmail, createdAt])
 }
 
 model TeacherProfessional {

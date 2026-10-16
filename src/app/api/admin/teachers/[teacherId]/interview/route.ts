@@ -3,6 +3,7 @@ import { TeacherApprovalStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { notifyTeacherInterviewScheduled } from "@/features/shared/server/notificationTriggers.service";
+import { clearInterviewMeeting } from "@/features/shared/server/teacherInterviewMeeting.service";
 import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 const MAX_DETAILS_LENGTH = 500;
@@ -13,6 +14,8 @@ const MAX_DETAILS_LENGTH = 500;
  *
  * Schedules (or reschedules) an interview for a Teacher whose application is
  * still PENDING. The Teacher is notified and sees it on their pending page.
+ * The Google Meet link is created automatically when it unlocks (10 minutes
+ * before) via the join routes; rescheduling or cancelling drops the old room.
  * Interview outcome is the normal decision: approve = selected, reject = not
  * selected (starts the appeal cooldown).
  */
@@ -62,6 +65,10 @@ export async function POST(
       select: { interviewScheduledAt: true, interviewDetails: true },
     });
 
+    // A new time gets a fresh Meet room (made when the link unlocks); the
+    // old link is no longer handed out.
+    await clearInterviewMeeting(teacherId);
+
     await notifyTeacherInterviewScheduled(teacherId, scheduledAt, details);
 
     await logActivity({
@@ -98,6 +105,8 @@ export async function DELETE(
     if (result.count === 0) {
       return NextResponse.json({ error: "Pending application not found" }, { status: 404 });
     }
+
+    await clearInterviewMeeting(teacherId);
 
     await logActivity({
       action: "TEACHER_INTERVIEW_SCHEDULED",

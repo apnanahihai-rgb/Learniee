@@ -22,6 +22,18 @@
 export const PLATFORM_TIMEZONE = "Asia/Kolkata";
 export const PLATFORM_UTC_OFFSET_MINUTES = 5 * 60 + 30;
 
+/**
+ * Teacher interview Meet room. The link unlocks `joinOpensMinutesBefore`
+ * before the scheduled time (same lead as a class) and locks again
+ * `joinClosesMinutesAfter` after it. `assumedLengthMinutes` is only used to
+ * spread rooms over the organizer accounts.
+ */
+export const INTERVIEW_POLICY = {
+  joinOpensMinutesBefore: 10,
+  joinClosesMinutesAfter: 120,
+  assumedLengthMinutes: 60,
+} as const;
+
 export const SESSION_POLICY = {
   /** Join opens this many minutes before a session starts. */
   joinOpensMinutesBefore: 10,

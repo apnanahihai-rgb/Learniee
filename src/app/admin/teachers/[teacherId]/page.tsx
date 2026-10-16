@@ -77,6 +77,9 @@ export default function AdminTeacherApplicationPage() {
             {teacher.approvalStatus === "PENDING" && (
               <div className="mt-6">
                 <TeacherInterviewPanel
+                  teacherId={teacher.id}
+                  meetingEnabled={teacher.interviewMeetingEnabled}
+                  serverNow={teacher.serverNow}
                   interviewScheduledAt={teacher.interviewScheduledAt}
                   interviewDetails={teacher.interviewDetails}
                   busy={schedulingInterview}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { isAppealOpen } from "@/features/teacher/utils/teacherAppeal";
 import { notifyAdminsTeacherAppealed } from "@/features/shared/server/notificationTriggers.service";
+import { clearInterviewMeeting } from "@/features/shared/server/teacherInterviewMeeting.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
@@ -63,6 +64,9 @@ export async function POST(req: Request) {
     if (result.count === 0) {
       return NextResponse.json({ error: "There is nothing to appeal." }, { status: 409 });
     }
+
+    // The old interview is gone, so is its Meet room.
+    await clearInterviewMeeting(teacher.id);
 
     const name = `${teacher.firstName} ${teacher.lastName}`;
 

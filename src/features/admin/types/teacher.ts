@@ -53,6 +53,10 @@ export interface AdminTeacher {
   approvalStatus: string;
   interviewScheduledAt: string | null;
   interviewDetails: string | null;
+  /** True when Google Meet is switched on (shows the interview Join button). */
+  interviewMeetingEnabled: boolean;
+  /** Server clock at load time, to correct a wrong device clock. */
+  serverNow: string;
   reapplyAvailableAt: string | null;
   appealCount: number;
   createdAt: string;

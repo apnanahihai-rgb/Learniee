@@ -3,6 +3,8 @@ import {
     createNotifications,
     notifyAllAdmins,
 } from "@/features/shared/server/notification.service";
+import { isGoogleMeetEnabled } from "@/lib/googleMeet";
+import { INTERVIEW_POLICY } from "@/lib/platformConfig";
 import { formatPlatformTime } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
 import "server-only";
@@ -117,8 +119,10 @@ export function notifyTeacherInterviewScheduled(
       type: T.TEACHER_INTERVIEW_SCHEDULED,
       title: "Interview scheduled",
       message: `Your interview is on ${formatPlatformTime(scheduledAt, true)} (IST).${
-        details ? ` ${details}` : ""
-      }`,
+        isGoogleMeetEnabled()
+          ? ` The Google Meet link unlocks on your pending page ${INTERVIEW_POLICY.joinOpensMinutesBefore} minutes before.`
+          : ""
+      }${details ? ` ${details}` : ""}`,
       link: "/teacher/pending-approval",
     });
   });
