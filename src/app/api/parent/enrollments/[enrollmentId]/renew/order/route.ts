@@ -9,7 +9,7 @@ import {
 /**
  * POST
  *
- * body: { scheduleDays?: number[], scheduleTime?: string }
+ * body: { scheduleDays?: number[], scheduleTime?: string, customDates?: string[] }
  *
  * Step 1 of renewal: prices the next cycle server-side (reusing the
  * Enrollment's current schedule unless the parent picked a different
@@ -33,6 +33,7 @@ export async function POST(
     const { order, keyId, pricing } = await createRenewalOrder(enrollmentId, parent.parentId, {
       scheduleDays: body.scheduleDays,
       scheduleTime: body.scheduleTime,
+      customDates: body.customDates,
     }, { useWallet: body.useWallet === true });
 
     return NextResponse.json({

@@ -2,7 +2,11 @@ import { logActivity } from "@/features/shared/server/activityLog.service";
 import { createCycleSessions } from "@/features/shared/server/classSession.service";
 import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 import { notifyCycleRenewed } from "@/features/shared/server/notificationTriggers.service";
-import { buildCyclePlan, priceForSessions } from "@/features/shared/utils/cyclePlan";
+import {
+    buildCyclePlan,
+    customDatesFromOffsets,
+    priceForSessions,
+} from "@/features/shared/utils/cyclePlan";
 import {
     isInternationalParent,
     priceWithInternationalSurcharge,
@@ -151,6 +155,9 @@ export async function createRenewalCycleInTx(
       price: totalAmount,
       paymentReference: args.paymentReference,
       status: CycleStatus.OPEN,
+      // Hand-picked dates (empty = repeating weekdays). The sessions below
+      // are created from these.
+      customDates: plan.isCustom ? plan.sessionDates.map(calendarDateToDate) : [],
     },
   });
 
@@ -295,10 +302,26 @@ export async function applyPaidRenewal(args: {
   }
 
   const startDate = new Date(String(notes.cycleStartDate));
+
+  // "Complete month plan": the hand-picked dates, stored as day offsets.
+  let customDates: string[] = [];
+
+  if (notes.customOffsets) {
+    try {
+      customDates = customDatesFromOffsets(
+        String(notes.cycleStartDate),
+        JSON.parse(String(notes.customOffsets)),
+      );
+    } catch {
+      customDates = [];
+    }
+  }
+
   const plan = buildCyclePlan(
     String(notes.cycleStartDate),
     scheduleDays,
     enrollment.planType,
+    customDates,
   );
 
   if (!plan) {

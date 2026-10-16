@@ -5,7 +5,10 @@ import {
     buildCyclePlan,
     getCyclePlanProblem,
     isStartDateInPast,
+    normalizeCustomDateKeys,
     priceForSessions,
+    shiftCustomDateKeys,
+    weekdaysOfDateKeys,
 } from "@/features/shared/utils/cyclePlan";
 import {
     calendarDateToDate,
@@ -75,9 +78,47 @@ export async function reviseCycleEnrollment(
     startKey = toDateKey(parsed);
   }
 
-  const scheduleDays = input.scheduleDays
-    ? Array.from(new Set(input.scheduleDays)).sort((a, b) => a - b)
-    : enrollment.scheduleDays;
+  // "Complete month plan": cycle 1 carries hand-picked dates. A revision
+  // then changes THOSE dates (or shifts them with the start date) —
+  // the weekday list is just derived from them.
+  const openCycle = await prisma.enrollmentCycle.findUnique({
+    where: {
+      enrollmentId_cycleNumber: { enrollmentId: enrollment.id, cycleNumber: 1 },
+    },
+    select: { customDates: true, status: true },
+  });
+  const wasCustom = (openCycle?.customDates.length ?? 0) > 0;
+  const currentStartKey = toDateKey(dateToCalendarDate(enrollment.cycleStartDate));
+
+  let customDateKeys: string[] = [];
+
+  if (wasCustom) {
+    const proposed = normalizeCustomDateKeys(input.customDates);
+
+    customDateKeys =
+      proposed.length > 0
+        ? proposed
+        : shiftCustomDateKeys(
+            (openCycle?.customDates ?? []).map((date) =>
+              toDateKey(dateToCalendarDate(date)),
+            ),
+            currentStartKey,
+            startKey,
+            enrollment.planType,
+          );
+
+    if (customDateKeys.length === 0) {
+      throw new EnrollmentApprovalError(
+        "Pick the class dates for the new start date.",
+      );
+    }
+  }
+
+  const scheduleDays = wasCustom
+    ? weekdaysOfDateKeys(customDateKeys)
+    : input.scheduleDays
+      ? Array.from(new Set(input.scheduleDays)).sort((a, b) => a - b)
+      : enrollment.scheduleDays;
 
   if (
     scheduleDays.length === 0 ||
@@ -96,7 +137,12 @@ export async function reviseCycleEnrollment(
     );
   }
 
-  const plan = buildCyclePlan(startKey, scheduleDays, enrollment.planType);
+  const plan = buildCyclePlan(
+    startKey,
+    scheduleDays,
+    enrollment.planType,
+    customDateKeys,
+  );
 
   if (!plan) {
     throw new EnrollmentApprovalError("That doesn't look like a valid date.");
@@ -156,6 +202,10 @@ export async function reviseCycleEnrollment(
         endDate: calendarDateToDate(plan.endDate),
         sessionCount: plan.sessionCount,
         price: totalAmount,
+        // Only touched for a custom-dates cycle; a weekday cycle keeps [].
+        ...(wasCustom
+          ? { customDates: plan.sessionDates.map(calendarDateToDate) }
+          : {}),
       },
     }),
   ]);

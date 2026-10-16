@@ -3,6 +3,7 @@ import {
     rupeesToPaise
 } from "@/lib/razorpay";
 import { getOrCreateWallet } from "@/features/shared/server/wallet/core";
+import { customDateOffsets } from "@/features/shared/utils/cyclePlan";
 import { splitWalletPayment } from "@/features/shared/utils/walletSplit";
 import { priceEnrollment } from './pricing';
 import { CYCLE_MODEL_TAG, CreateEnrollmentInput, EnrollmentError } from './types';
@@ -89,6 +90,17 @@ export async function createEnrollmentOrder(
       scheduleTime: priced.scheduleTime,
       // Part payment: how much of the total was taken from the Wallet (0 = none).
       walletAmount,
+      // "Complete month plan": the hand-picked dates as day offsets from
+      // `cycleStartDate` (Razorpay caps a note at 256 chars). Only present
+      // for custom plans; 15 notes is Razorpay's maximum, so nothing else
+      // may be added to this object without dropping a key.
+      ...(priced.customDateKeys.length > 0
+        ? {
+            customOffsets: JSON.stringify(
+              customDateOffsets(priced.cycleStartKey ?? "", priced.customDateKeys),
+            ),
+          }
+        : {}),
     },
   });
 

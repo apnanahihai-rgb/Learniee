@@ -48,6 +48,8 @@ export interface TeacherReviseInput {
   scheduleDays?: number[];
   /** Weekly recurring class time, 24-hour "HH:mm". */
   scheduleTime?: string;
+  /** "Complete month plan" only: the new exact class dates ("YYYY-MM-DD"). */
+  customDates?: string[];
   note: string;
 }
 /**

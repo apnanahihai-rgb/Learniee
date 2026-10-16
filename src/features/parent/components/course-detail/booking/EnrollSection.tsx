@@ -3,6 +3,7 @@
 import { CheckCircle2, Info, Loader2, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import CustomDatePicker from "@/features/shared/components/CustomDatePicker";
 import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
 import { formatCycleSummary } from "@/features/shared/utils/cyclePlan";
 import type { useEnrollment } from "./useEnrollment";
@@ -16,8 +17,12 @@ interface Props {
 export default function EnrollSection({ enroll, studentsLoading, studentCount }: Props) {
   const router = useRouter();
   const {
-    planType,
-    setPlanType,
+    scheduleMode,
+    setScheduleMode,
+    customDates,
+    toggleCustomDate,
+    clearCustomDates,
+    scheduleReady,
     startDate,
     setStartDate,
     minStartDate,
@@ -63,16 +68,16 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
           <div className="grid grid-cols-2 gap-2">
             {(
               [
-                { value: "WEEKLY", title: "Classes weekly", hint: "Pay week by week; classes repeat every week" },
-                { value: "MONTHLY", title: "Complete month plan", hint: "Plan and pay for the whole month ahead" },
+                { value: "WEEKDAYS", title: "Classes weekly", hint: "Pick weekdays — they repeat every week for the whole month (4 weeks)" },
+                { value: "DATES", title: "Complete month plan", hint: "Pick the exact dates you want, anywhere in the month" },
               ] as const
             ).map((option) => {
-              const active = planType === option.value;
+              const active = scheduleMode === option.value;
               return (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setPlanType(option.value)}
+                  onClick={() => setScheduleMode(option.value)}
                   aria-pressed={active}
                   className={`text-left rounded-xl border px-3 py-2 transition-colors ${
                     active
@@ -101,30 +106,44 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
           />
         </div>
 
-        <div className="mb-3">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-            Class days
-          </label>
-          <div className="flex gap-1.5 flex-wrap">
-            {WEEKDAY_LABELS.map((label, day) => {
-              const active = scheduleDays.includes(day);
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => toggleScheduleDay(day)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
-                    active
-                      ? "bg-brand text-white border-brand"
-                      : "bg-white text-gray-500 border-violet-100 hover:border-brand/40"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+        {scheduleMode === "WEEKDAYS" ? (
+          <div className="mb-3">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+              Class days (repeat every week)
+            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              {WEEKDAY_LABELS.map((label, day) => {
+                const active = scheduleDays.includes(day);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => toggleScheduleDay(day)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                      active
+                        ? "bg-brand text-white border-brand"
+                        : "bg-white text-gray-500 border-violet-100 hover:border-brand/40"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mb-3">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+              Class dates
+            </label>
+            <CustomDatePicker
+              startDateKey={startDate}
+              selected={customDates}
+              onToggle={toggleCustomDate}
+              onClear={clearCustomDates}
+            />
+          </div>
+        )}
 
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
@@ -197,7 +216,7 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
             enrolling ||
             studentsLoading ||
             studentCount === 0 ||
-            scheduleDays.length === 0 ||
+            !scheduleReady ||
             !scheduleTime ||
             !startDate ||
             startInPast ||
@@ -205,8 +224,8 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
             !!planProblem
           }
           title={
-            scheduleDays.length === 0 || !scheduleTime
-              ? "Pick class days and time first"
+            !scheduleReady || !scheduleTime
+              ? "Pick class days/dates and time first"
               : startInPast || !startDate
                 ? "Pick a start date that isn't in the past"
                 : planProblem
@@ -229,7 +248,7 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
               enrolling ||
               studentsLoading ||
               studentCount === 0 ||
-              scheduleDays.length === 0 ||
+              !scheduleReady ||
               !scheduleTime ||
               !startDate ||
               startInPast ||
@@ -250,7 +269,7 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
               enrolling ||
               studentsLoading ||
               studentCount === 0 ||
-              scheduleDays.length === 0 ||
+              !scheduleReady ||
               !scheduleTime ||
               !startDate ||
               startInPast ||

@@ -1,4 +1,11 @@
-import { buildCyclePlan, getCyclePlanProblem, priceForSessions } from "@/features/shared/utils/cyclePlan";
+import {
+    buildCyclePlan,
+    getCyclePlanProblem,
+    normalizeCustomDateKeys,
+    priceForSessions,
+    shiftCustomDateKeys,
+    weekdaysOfDateKeys,
+} from "@/features/shared/utils/cyclePlan";
 import {
     isInternationalParent,
     priceWithInternationalSurcharge,
@@ -54,6 +61,12 @@ export class RenewalError extends Error {
 export interface RenewalInput {
   scheduleDays?: number[];
   scheduleTime?: string;
+  /**
+   * Hand-picked class dates ("YYYY-MM-DD") for the next cycle. Only used
+   * when the enrollment is on the "Complete month plan"; left out, the
+   * previous cycle's dates are carried forward (same day-offsets).
+   */
+  customDates?: string[];
 }
 export interface RenewalPlan {
   enrollmentId: string;
@@ -61,6 +74,8 @@ export interface RenewalPlan {
   scheduleDays: number[];
   scheduleTime: string;
   cycleStartKey: string;
+  /** Hand-picked dates for the next cycle ("YYYY-MM-DD"); empty = repeating weekdays. */
+  customDates: string[];
   sessionCount: number;
   ratePerSession: number;
   totalAmount: number;
@@ -148,9 +163,42 @@ export async function buildRenewalPlan(
     throw new RenewalError("This enrollment has already been renewed for its next cycle.", 409);
   }
 
-  const scheduleDays = Array.from(
-    new Set(input.scheduleDays ?? enrollment.scheduleDays),
-  ).sort((a, b) => a - b);
+  // Fixed start — the day after the current cycle ends. Only the
+  // schedule (which weekdays / what time) is the parent's to change;
+  // "only one month can be bought at a time" means the start date
+  // isn't.
+  const nextStartKey = toDateKey(addDays(dateToCalendarDate(latestCycle.endDate), 1));
+
+  // "Complete month plan": the previous cycle used hand-picked dates, so
+  // the next one does too. Dates the parent sent win; otherwise carry the
+  // previous cycle's dates forward by the same day-offsets.
+  const previousWasCustom = latestCycle.customDates.length > 0;
+  let customDates: string[] = [];
+
+  if (previousWasCustom) {
+    const sent = normalizeCustomDateKeys(input.customDates);
+
+    customDates =
+      sent.length > 0
+        ? sent
+        : shiftCustomDateKeys(
+            latestCycle.customDates.map((date) => toDateKey(dateToCalendarDate(date))),
+            toDateKey(dateToCalendarDate(latestCycle.startDate)),
+            nextStartKey,
+            enrollment.planType,
+          );
+
+    if (customDates.length === 0) {
+      throw new RenewalError("Pick the class dates for the next cycle.");
+    }
+  }
+
+  const scheduleDays =
+    customDates.length > 0
+      ? weekdaysOfDateKeys(customDates)
+      : Array.from(new Set(input.scheduleDays ?? enrollment.scheduleDays)).sort(
+          (a, b) => a - b,
+        );
 
   if (
     scheduleDays.length === 0 ||
@@ -165,14 +213,11 @@ export async function buildRenewalPlan(
     throw new RenewalError("Pick a valid class time (HH:mm).");
   }
 
-  // Fixed start — the day after the current cycle ends. Only the
-  // schedule (which weekdays / what time) is the parent's to change;
-  // "only one month can be bought at a time" means the start date
-  // isn't.
   const plan = buildCyclePlan(
-    toDateKey(addDays(dateToCalendarDate(latestCycle.endDate), 1)),
+    nextStartKey,
     scheduleDays,
     enrollment.planType,
+    customDates,
   );
 
   if (!plan) {
@@ -200,6 +245,7 @@ export async function buildRenewalPlan(
     scheduleDays,
     scheduleTime,
     cycleStartKey: toDateKey(plan.startDate),
+    customDates: plan.isCustom ? plan.sessionDates.map(toDateKey) : [],
     sessionCount: plan.sessionCount,
     ratePerSession,
     totalAmount,

@@ -30,6 +30,7 @@ interface Props {
       sessionsPerMonth?: number;
       scheduleDays?: number[];
       scheduleTime?: string;
+      customDates?: string[];
     },
   ) => void;
   onSetSchedule: (
@@ -69,11 +70,17 @@ export default function EnrollmentApprovalCard({
   // Cycle model (non-legacy): one monthly cycle, session count and
   // price follow from the schedule + start date, and a start date
   // that has passed blocks approval until it's revised.
+  // "Complete month plan": the parent picked exact dates (newest cycle).
+  const customDateKeys = (enrollment.cycles?.[0]?.customDates ?? []).map((d) =>
+    d.slice(0, 10),
+  );
+  const isCustomPlan = !enrollment.isLegacy && customDateKeys.length > 0;
   const cyclePlan = !enrollment.isLegacy
     ? buildCyclePlan(
         enrollment.cycleStartDate.slice(0, 10),
         enrollment.scheduleDays ?? [],
         enrollment.planType ?? "MONTHLY",
+        customDateKeys,
       )
     : null;
   const startPassed = cyclePlan
@@ -147,7 +154,9 @@ export default function EnrollmentApprovalCard({
         <p className="col-span-2 flex items-center gap-2 flex-wrap">
           Schedule:{" "}
           <span className="font-semibold">
-            {formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}
+            {isCustomPlan
+              ? `${customDateKeys.length} picked dates · ${formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}`
+              : formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}
           </span>
           {isActive && enrollment.isLegacy && !editingSchedule && (
             <button
@@ -266,6 +275,9 @@ export default function EnrollmentApprovalCard({
       {canRevise && revising && (
         <RevisionForm
           isLegacy={enrollment.isLegacy}
+          isCustomPlan={isCustomPlan}
+          currentStartDate={enrollment.cycleStartDate.slice(0, 10)}
+          currentCustomDates={customDateKeys}
           minStartDate={minStartDate}
           onSubmit={(input) => {
             onRevise(enrollment.id, input);

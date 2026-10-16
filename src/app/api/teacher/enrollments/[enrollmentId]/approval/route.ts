@@ -14,7 +14,7 @@ import { logActivity } from "@/features/shared/server/activityLog.service";
  *
  * body: { action: "APPROVE" }
  *     -> forwards the enrollment to Admin as-is.
- * body: { action: "REVISE", cycleStartDate?, sessionsPerMonth?, scheduleDays?, scheduleTime?, note }
+ * body: { action: "REVISE", cycleStartDate?, sessionsPerMonth?, scheduleDays?, scheduleTime?, customDates?, note }
  *     -> proposes a schedule/cycle change, sends it back to the
  *        Parent for reconfirmation. `note` is required — shown to
  *        the Parent alongside the Confirm/Decline choice. Further
@@ -61,6 +61,7 @@ export async function PATCH(
           sessionsPerMonth: body.sessionsPerMonth,
           scheduleDays: body.scheduleDays,
           scheduleTime: body.scheduleTime,
+          customDates: body.customDates,
           note: body.note,
         },
       );

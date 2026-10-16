@@ -50,11 +50,17 @@ export async function renewWithWallet(
   const plan = await buildRenewalPlan(enrollmentId, parentId, {
     scheduleDays: input.scheduleDays,
     scheduleTime: input.scheduleTime,
+    customDates: input.customDates,
   });
 
   const { enrollment } = await loadRenewableEnrollment(enrollmentId, parentId);
 
-  const cyclePlan = buildCyclePlan(plan.cycleStartKey, plan.scheduleDays, enrollment.planType);
+  const cyclePlan = buildCyclePlan(
+    plan.cycleStartKey,
+    plan.scheduleDays,
+    enrollment.planType,
+    plan.customDates,
+  );
 
   if (!cyclePlan) {
     throw new RenewalError("Couldn't rebuild this renewal's cycle — try again.", 500);

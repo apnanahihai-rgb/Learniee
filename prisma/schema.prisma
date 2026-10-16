@@ -1015,6 +1015,13 @@ model EnrollmentCycle {
   /// counted nor forfeited; the parent paid for them, so Admin/Accounts
   /// must settle them (the wallet has no spend path yet, 06 #44).
   excusedSessionCount Int?
+  /// Hand-picked class dates for this cycle (the "Complete month plan").
+  /// Empty = the cycle follows the enrollment's repeating weekdays
+  /// (`Enrollment.scheduleDays`) as before. When set, these ARE the
+  /// cycle's sessions: one per date, all inside startDate..endDate, and
+  /// `sessionCount` equals their number. Per cycle, because a renewal can
+  /// pick different dates.
+  customDates      DateTime[]     @db.Date @default([])
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   enrollment       Enrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)

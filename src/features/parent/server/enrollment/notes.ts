@@ -1,6 +1,8 @@
 import {
+    customDatesFromOffsets,
     parsePlanType
 } from "@/features/shared/utils/cyclePlan";
+import { parseDateKey, calendarDateToDate } from "@/lib/platformTime";
 import {
     CycleStatus,
     EnrollmentStatus,
@@ -67,6 +69,12 @@ export function buildEnrollmentCreateData(args: {
               price: priced.totalAmount,
               paymentReference: paymentId,
               status: CycleStatus.OPEN,
+              // Hand-picked dates (empty = repeating weekdays).
+              customDates: priced.customDateKeys.flatMap((key) => {
+                const date = parseDateKey(key);
+
+                return date ? [calendarDateToDate(date)] : [];
+              }),
             },
           },
         }
@@ -109,6 +117,20 @@ export function parseInputFromNotes(
     scheduleTime: String(notes.scheduleTime ?? ""),
     // Orders created before weekly plans existed have no planType.
     planType: parsePlanType(notes.planType),
+    // Hand-picked dates travel as day offsets from the start date (see
+    // `customDateOffsets`); older orders have none -> repeating weekdays.
+    customDates: (() => {
+      if (!notes.customOffsets || !notes.cycleStartDate) return undefined;
+
+      try {
+        return customDatesFromOffsets(
+          String(notes.cycleStartDate),
+          JSON.parse(String(notes.customOffsets)),
+        );
+      } catch {
+        return undefined;
+      }
+    })(),
   };
 }
 export function priceOptionsFromNotes(

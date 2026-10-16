@@ -75,6 +75,13 @@ export const enrollmentListInclude = {
   },
   course: { select: { id: true, courseTitle: true, subject: true } },
   chatRoom: { select: { id: true } },
+  // Newest cycle only — the approval screens need its hand-picked dates
+  // ("Complete month plan"), if any, to show the right session count.
+  cycles: {
+    orderBy: { cycleNumber: "desc" },
+    take: 1,
+    select: { customDates: true },
+  },
 } as const;
 export async function loadOwnedByTeacher(enrollmentId: string, teacherId: string) {
   const enrollment = await prisma.enrollment.findFirst({

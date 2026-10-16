@@ -5,6 +5,7 @@ import {
   compareDates,
   daysBetween,
   parseDateKey,
+  toDateKey,
   weekdayOf,
   type CalendarDate,
 } from "@/lib/platformTime";
@@ -49,12 +50,26 @@ export interface CyclePlan {
   sessionCount: number;
   /** Length of the cycle in days (start and end both inclusive). */
   cycleLengthDays: number;
+  /**
+   * True when the parent hand-picked the exact dates (`customDates`)
+   * instead of a repeating weekly pattern.
+   */
+  isCustom: boolean;
+  /** Custom dates that were malformed, duplicated-out-of-range or outside the cycle window. */
+  invalidCustomDateCount: number;
 }
 
 export function buildCyclePlan(
   startDateKey: string,
   scheduleDays: number[],
   planType: PlanType = "MONTHLY",
+  /**
+   * Hand-picked dates ("YYYY-MM-DD", platform timezone). When
+   * non-empty they ARE the sessions (and `scheduleDays` is ignored);
+   * every date must fall inside the cycle window. Empty/omitted =
+   * the repeating weekday pattern, exactly as before.
+   */
+  customDateKeys: readonly string[] = [],
 ): CyclePlan | null {
   const startDate = parseDateKey(startDateKey);
 
@@ -66,15 +81,45 @@ export function buildCyclePlan(
     planType === "WEEKLY" ? addDays(startDate, 7) : addOneMonthClamped(startDate);
   const endDate = addDays(nextCycleStart, -1);
   const cycleLengthDays = daysBetween(startDate, endDate) + 1;
-  const daySet = new Set(scheduleDays);
+  const isCustom = customDateKeys.length > 0;
 
   const sessionDates: CalendarDate[] = [];
+  let invalidCustomDateCount = 0;
 
-  for (let i = 0; i < cycleLengthDays; i += 1) {
-    const date = addDays(startDate, i);
+  if (isCustom) {
+    const seen = new Set<string>();
 
-    if (daySet.has(weekdayOf(date))) {
+    for (const key of customDateKeys) {
+      const date = parseDateKey(key);
+
+      if (
+        !date ||
+        compareDates(date, startDate) < 0 ||
+        compareDates(date, endDate) > 0
+      ) {
+        invalidCustomDateCount += 1;
+        continue;
+      }
+
+      // The same date twice is one class, not two.
+      const normalised = toDateKey(date);
+
+      if (seen.has(normalised)) continue;
+
+      seen.add(normalised);
       sessionDates.push(date);
+    }
+
+    sessionDates.sort(compareDates);
+  } else {
+    const daySet = new Set(scheduleDays);
+
+    for (let i = 0; i < cycleLengthDays; i += 1) {
+      const date = addDays(startDate, i);
+
+      if (daySet.has(weekdayOf(date))) {
+        sessionDates.push(date);
+      }
     }
   }
 
@@ -86,12 +131,128 @@ export function buildCyclePlan(
     sessionDates,
     sessionCount: sessionDates.length,
     cycleLengthDays,
+    isCustom,
+    invalidCustomDateCount,
   };
+}
+
+/** Distinct weekdays (0 = Sunday) of a set of date keys, ascending. Invalid keys are skipped. */
+export function weekdaysOfDateKeys(keys: readonly string[]): number[] {
+  const days = new Set<number>();
+
+  for (const key of keys) {
+    const date = parseDateKey(key);
+
+    if (date) days.add(weekdayOf(date));
+  }
+
+  return Array.from(days).sort((a, b) => a - b);
+}
+
+/**
+ * Cleans a client-supplied list of custom dates: strings only,
+ * trimmed, valid "YYYY-MM-DD", de-duplicated, ascending. Anything
+ * that isn't a list yields []. Range checks happen in
+ * `buildCyclePlan` (it knows the window). Capped so a hostile body
+ * can't send thousands of entries.
+ */
+export function normalizeCustomDateKeys(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const keys = new Set<string>();
+
+  for (const item of value.slice(0, 62)) {
+    if (typeof item !== "string") continue;
+
+    const date = parseDateKey(item.trim());
+
+    if (date) keys.add(toDateKey(date));
+  }
+
+  return Array.from(keys).sort();
+}
+
+/**
+ * Custom dates travel in a Razorpay order's `notes` as day offsets
+ * from the cycle start (notes values are capped at 256 characters —
+ * 31 full date strings wouldn't fit, 31 small numbers do).
+ */
+export function customDateOffsets(
+  startDateKey: string,
+  keys: readonly string[],
+): number[] {
+  const start = parseDateKey(startDateKey);
+
+  if (!start) return [];
+
+  const offsets: number[] = [];
+
+  for (const key of keys) {
+    const date = parseDateKey(key);
+
+    if (date) offsets.push(daysBetween(start, date));
+  }
+
+  return offsets.sort((a, b) => a - b);
+}
+
+/** Inverse of `customDateOffsets`; ignores anything that isn't a whole number from 0 to 61. */
+export function customDatesFromOffsets(
+  startDateKey: string,
+  offsets: unknown,
+): string[] {
+  const start = parseDateKey(startDateKey);
+
+  if (!start || !Array.isArray(offsets)) return [];
+
+  const keys = new Set<string>();
+
+  for (const offset of offsets.slice(0, 62)) {
+    if (Number.isInteger(offset) && offset >= 0 && offset <= 61) {
+      keys.add(toDateKey(addDays(start, offset)));
+    }
+  }
+
+  return Array.from(keys).sort();
+}
+
+/**
+ * Moves a set of custom dates from one cycle start to another by the
+ * same number of days (keeps the shape of the month: "day 1, 3, 8…").
+ * Dates that would land outside the new window are dropped. Used as
+ * the default for a renewal and when a Teacher moves the start date.
+ */
+export function shiftCustomDateKeys(
+  keys: readonly string[],
+  fromStartKey: string,
+  toStartKey: string,
+  planType: PlanType = "MONTHLY",
+): string[] {
+  const offsets = customDateOffsets(fromStartKey, keys);
+  const target = buildCyclePlan(toStartKey, [], planType);
+
+  if (!target) return [];
+
+  return customDatesFromOffsets(toStartKey, offsets).filter((key) => {
+    const date = parseDateKey(key);
+
+    return !!date && compareDates(date, target.endDate) <= 0;
+  });
 }
 
 /** Null if the plan is bookable, otherwise a message explaining why not. */
 export function getCyclePlanProblem(plan: CyclePlan): string | null {
   const min = minSessionsForPlan(plan.planType);
+
+  if (plan.invalidCustomDateCount > 0) {
+    return `Some of the dates you picked are outside ${formatCycleRange(plan)} — pick dates inside that range.`;
+  }
+
+  if (plan.isCustom && plan.sessionCount < min) {
+    return `You picked ${plan.sessionCount} date${
+      plan.sessionCount === 1 ? "" : "s"
+    } — a ${cycleLabel(plan.planType)} needs at least ${min} class dates between ${formatCycleRange(plan)}.`;
+  }
 
   if (plan.sessionCount < min) {
     return `Your schedule only has ${plan.sessionCount} session${

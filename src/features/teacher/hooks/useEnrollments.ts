@@ -22,6 +22,11 @@ export interface TeacherEnrollment {
   /** True for enrollments created before the cycle model (old months x sessions pricing, editable schedule). */
   isLegacy: boolean;
   planType?: "MONTHLY" | "WEEKLY";
+  /**
+   * Newest cycle only. `customDates` (ISO strings) is non-empty on the
+   * "Complete month plan" — the parent picked exact dates instead of weekdays.
+   */
+  cycles?: { customDates: string[] }[];
   sessionsCompletedInCycle: number;
   cyclesCompleted: number;
   cyclePayoutStatus: string;
@@ -86,6 +91,7 @@ export function useTeacherEnrollments() {
           sessionsPerMonth?: number;
           scheduleDays?: number[];
           scheduleTime?: string;
+          customDates?: string[];
         },
   ) {
     try {
@@ -166,6 +172,7 @@ export function useTeacherEnrollments() {
         sessionsPerMonth?: number;
         scheduleDays?: number[];
         scheduleTime?: string;
+        customDates?: string[];
       },
     ) => act(id, { action: "REVISE", ...input }),
     setSchedule,

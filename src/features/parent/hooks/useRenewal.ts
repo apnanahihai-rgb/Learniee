@@ -12,6 +12,8 @@ export interface RenewalPreview {
   scheduleDays: number[];
   scheduleTime: string;
   cycleStartKey: string;
+  /** Hand-picked dates for the next cycle; empty = repeating weekdays. */
+  customDates: string[];
   sessionCount: number;
   ratePerSession: number;
   totalAmount: number;
@@ -28,7 +30,18 @@ export interface RenewalStatus {
   currentCycleEndDate: string;
   currentScheduleDays: number[];
   currentScheduleTime: string | null;
+  /** True on the "Complete month plan": the next cycle's dates are picked one by one. */
+  isCustomPlan: boolean;
+  nextCycleStartKey: string;
+  nextCycleEndKey: string;
   preview: RenewalPreview | null;
+}
+
+/** What the parent can change for the next cycle. `customDates` only on the "Complete month plan". */
+export interface RenewalOverrides {
+  scheduleDays?: number[];
+  scheduleTime?: string;
+  customDates?: string[];
 }
 
 export function useRenewal(enrollmentId: string) {
@@ -63,7 +76,7 @@ export function useRenewal(enrollmentId: string) {
   useAutoRefresh(() => load(), { paths: ["/api/parent/enrollments"] });
 
   async function renew(
-    overrides: { scheduleDays?: number[]; scheduleTime?: string },
+    overrides: RenewalOverrides,
     options: { useWallet?: boolean } = {},
   ) {
     try {
@@ -124,7 +137,7 @@ export function useRenewal(enrollmentId: string) {
   }
 
   /** Renews from the Wallet balance (06 #44). `requestId` makes a retry safe on the server. */
-  async function renewWithWallet(overrides: { scheduleDays?: number[]; scheduleTime?: string }) {
+  async function renewWithWallet(overrides: RenewalOverrides) {
     try {
       setPaying(true);
       setError("");

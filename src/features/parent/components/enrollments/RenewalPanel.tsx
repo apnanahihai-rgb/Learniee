@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { useRenewal } from "@/features/parent/hooks/useRenewal";
+import CustomDatePicker from "@/features/shared/components/CustomDatePicker";
+import { weekdaysOfDateKeys } from "@/features/shared/utils/cyclePlan";
 import { WEEKDAY_LABELS, formatScheduleTime, toggleWeekday } from "@/features/shared/utils/weekdays";
 
 interface Props {
@@ -22,12 +24,14 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
   const { status, loading, paying, error, renew, renewWithWallet, walletBalance } =
     useRenewal(enrollmentId);
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+  const [customDates, setCustomDates] = useState<string[]>([]);
   const [scheduleTime, setScheduleTime] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (status?.preview) {
       setScheduleDays(status.preview.scheduleDays);
+      setCustomDates(status.preview.customDates ?? []);
       setScheduleTime(status.preview.scheduleTime);
     } else if (status) {
       setScheduleDays(status.currentScheduleDays);
@@ -43,23 +47,43 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
     setScheduleDays((current) => toggleWeekday(current, day));
   }
 
+  function toggleDate(dateKey: string) {
+    setCustomDates((current) =>
+      current.includes(dateKey)
+        ? current.filter((key) => key !== dateKey)
+        : [...current, dateKey].sort(),
+    );
+  }
+
+  const isCustom = status.isCustomPlan;
+  // What the renew requests send: exact dates on the "Complete month plan",
+  // otherwise the repeating weekdays.
+  const overrides = isCustom
+    ? {
+        scheduleDays: weekdaysOfDateKeys(customDates),
+        scheduleTime,
+        customDates,
+      }
+    : { scheduleDays, scheduleTime };
+  const scheduleReady = isCustom ? customDates.length > 0 : scheduleDays.length > 0;
+
   async function handleRenew() {
     setMessage(null);
-    const result = await renew({ scheduleDays, scheduleTime });
+    const result = await renew(overrides);
     setMessage({ ok: result.ok, text: result.message });
     if (result.ok) onRenewed?.();
   }
 
   async function handleRenewPartWallet() {
     setMessage(null);
-    const result = await renew({ scheduleDays, scheduleTime }, { useWallet: true });
+    const result = await renew(overrides, { useWallet: true });
     setMessage({ ok: result.ok, text: result.message });
     if (result.ok) onRenewed?.();
   }
 
   async function handleRenewWithWallet() {
     setMessage(null);
-    const result = await renewWithWallet({ scheduleDays, scheduleTime });
+    const result = await renewWithWallet(overrides);
     setMessage({ ok: result.ok, text: result.message });
     if (result.ok) onRenewed?.();
   }
@@ -80,22 +104,32 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
         </p>
       </div>
 
-      <div className="flex gap-1.5 mb-2">
-        {WEEKDAY_LABELS.map((label, day) => (
-          <button
-            key={day}
-            type="button"
-            onClick={() => toggleDay(day)}
-            className={`text-[11px] font-semibold w-8 h-8 rounded-full transition-colors ${
-              scheduleDays.includes(day)
-                ? "bg-brand text-white"
-                : "bg-white text-gray-500 border border-gray-200"
-            }`}
-          >
-            {label[0]}
-          </button>
-        ))}
-      </div>
+      {isCustom ? (
+        <div className="mb-2">
+          <CustomDatePicker
+            startDateKey={status.nextCycleStartKey}
+            selected={customDates}
+            onToggle={toggleDate}
+          />
+        </div>
+      ) : (
+        <div className="flex gap-1.5 mb-2">
+          {WEEKDAY_LABELS.map((label, day) => (
+            <button
+              key={day}
+              type="button"
+              onClick={() => toggleDay(day)}
+              className={`text-[11px] font-semibold w-8 h-8 rounded-full transition-colors ${
+                scheduleDays.includes(day)
+                  ? "bg-brand text-white"
+                  : "bg-white text-gray-500 border border-gray-200"
+              }`}
+            >
+              {label[0]}
+            </button>
+          ))}
+        </div>
+      )}
 
       <input
         type="time"
@@ -106,9 +140,13 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
 
       {preview && (
         <p className="text-[11px] text-violet-700 mb-2">
-          {preview.sessionCount} sessions from {preview.cycleStartKey} · ₹
-          {preview.amountPayable.toLocaleString("en-IN")}
-          {preview.isInternationalPayment ? " (incl. surcharge)" : ""}
+          {isCustom
+            ? `${customDates.length} sessions from ${preview.cycleStartKey} · ₹${(
+                customDates.length * preview.ratePerSession
+              ).toLocaleString("en-IN")}`
+            : `${preview.sessionCount} sessions from ${preview.cycleStartKey} · ₹${preview.amountPayable.toLocaleString("en-IN")}${
+                preview.isInternationalPayment ? " (incl. surcharge)" : ""
+              }`}
           {scheduleTime ? ` · ${formatScheduleTime(scheduleTime)}` : ""}
         </p>
       )}
@@ -122,7 +160,7 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
       <button
         type="button"
         onClick={handleRenew}
-        disabled={paying || scheduleDays.length === 0 || !scheduleTime}
+        disabled={paying || !scheduleReady || !scheduleTime}
         className="text-xs font-bold text-white bg-brand px-3 py-1.5 rounded-full disabled:opacity-50"
       >
         {paying ? "Processing…" : "Renew & Pay"}
@@ -132,7 +170,7 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
         <button
           type="button"
           onClick={handleRenewPartWallet}
-          disabled={paying || scheduleDays.length === 0 || !scheduleTime}
+          disabled={paying || !scheduleReady || !scheduleTime}
           className="ml-2 text-xs font-bold text-violet-800 bg-white border border-violet-200 px-3 py-1.5 rounded-full disabled:opacity-50"
         >
           {`Use ₹${walletBalance?.toLocaleString("en-IN")} from wallet + card`}
@@ -143,7 +181,7 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
         <button
           type="button"
           onClick={handleRenewWithWallet}
-          disabled={paying || scheduleDays.length === 0 || !scheduleTime}
+          disabled={paying || !scheduleReady || !scheduleTime}
           className="ml-2 text-xs font-bold text-violet-800 bg-white border border-violet-200 px-3 py-1.5 rounded-full disabled:opacity-50"
         >
           {`Pay ₹${preview.totalAmount.toLocaleString("en-IN")} from wallet`}

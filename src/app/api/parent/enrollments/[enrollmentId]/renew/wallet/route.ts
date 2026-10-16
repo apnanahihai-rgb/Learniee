@@ -7,7 +7,7 @@ import { WalletError } from "@/features/shared/server/wallet.service";
 /**
  * POST
  *
- * body: { requestId: string, scheduleDays?: number[], scheduleTime?: string }
+ * body: { requestId: string, scheduleDays?: number[], scheduleTime?: string, customDates?: string[] }
  *
  * Renews the next cycle from the Parent's Wallet balance — the wallet
  * alternative to `/renew/order` + `/renew/verify`. `requestId` is a
@@ -32,6 +32,7 @@ export async function POST(
       requestId: body.requestId,
       scheduleDays: body.scheduleDays,
       scheduleTime: body.scheduleTime,
+      customDates: body.customDates,
     });
 
     return NextResponse.json({ success: true, cycle });

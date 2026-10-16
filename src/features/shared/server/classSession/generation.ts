@@ -179,6 +179,9 @@ export async function createCycleSessions(
     toDateKey(dateToCalendarDate(cycle.startDate)),
     enrollment.scheduleDays,
     enrollment.planType,
+    // Hand-picked dates for this cycle ("Complete month plan"); empty =
+    // the repeating weekdays above.
+    cycle.customDates.map((date) => toDateKey(dateToCalendarDate(date))),
   );
 
   if (

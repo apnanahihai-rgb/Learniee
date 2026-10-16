@@ -61,8 +61,17 @@ export interface CreateEnrollmentInput {
   cycleStartDate?: string;
   /** MONTHLY (default) = one month planned and paid up front; WEEKLY = a 7-day cycle the parent renews each week. */
   planType?: PlanType;
-  /** Weekly recurring class days — 0=Sunday..6=Saturday, at least one required. */
+  /**
+   * Weekly recurring class days — 0=Sunday..6=Saturday. Required unless
+   * `customDates` is given (then the server derives it from the dates).
+   */
   scheduleDays: number[];
+  /**
+   * "Complete month plan": the exact class dates ("YYYY-MM-DD", platform
+   * timezone), all inside the cycle window. When non-empty they replace
+   * the weekly pattern.
+   */
+  customDates?: string[];
   /** Weekly recurring class time, 24-hour "HH:mm". */
   scheduleTime: string;
 }
@@ -86,6 +95,8 @@ export interface PricedEnrollment {
   scheduleDays: number[];
   scheduleTime: string;
   planType: PlanType;
+  /** Hand-picked dates ("YYYY-MM-DD"), ascending; empty = repeating weekdays. */
+  customDateKeys: string[];
   model: PricingModel;
   /** Cycle model only: "YYYY-MM-DD" of the cycle start. */
   cycleStartKey: string | null;

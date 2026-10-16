@@ -1,4 +1,5 @@
 import {
+    addDays,
     dateToCalendarDate,
     toDateKey,
     todayInPlatformTz
@@ -10,6 +11,7 @@ import {
     rupeesToPaise
 } from "@/lib/razorpay";
 import { getOrCreateWallet } from "@/features/shared/server/wallet/core";
+import { buildCyclePlan, customDateOffsets } from "@/features/shared/utils/cyclePlan";
 import { splitWalletPayment } from "@/features/shared/utils/walletSplit";
 import "server-only";
 import { RenewalError, RenewalInput, RenewalPlan, buildRenewalPlan, isRenewalWindowOpen, loadRenewableEnrollment, renewalWindowOpensOn } from './plan';
@@ -25,6 +27,10 @@ export async function getRenewalStatus(enrollmentId: string, parentId: string) {
     where: { enrollmentId, cycleNumber: latestCycle.cycleNumber + 1 },
     select: { id: true },
   });
+
+  const isCustomPlan = latestCycle.customDates.length > 0;
+  const nextStartKey = toDateKey(addDays(dateToCalendarDate(latestCycle.endDate), 1));
+  const nextWindow = buildCyclePlan(nextStartKey, [], enrollment.planType);
 
   let preview: RenewalPlan | null = null;
 
@@ -45,6 +51,11 @@ export async function getRenewalStatus(enrollmentId: string, parentId: string) {
     currentCycleEndDate: toDateKey(dateToCalendarDate(latestCycle.endDate)),
     currentScheduleDays: enrollment.scheduleDays,
     currentScheduleTime: enrollment.scheduleTime,
+    /** True on the "Complete month plan": the next cycle's dates are picked one by one. */
+    isCustomPlan,
+    /** The next cycle's window, so the date picker knows what to show. */
+    nextCycleStartKey: nextStartKey,
+    nextCycleEndKey: nextWindow ? toDateKey(nextWindow.endDate) : nextStartKey,
     preview,
   };
 }
@@ -100,6 +111,16 @@ export async function createRenewalOrder(
       scheduleTime: plan.scheduleTime,
       // Part payment: how much of the total was taken from the Wallet (0 = none).
       walletAmount,
+      // "Complete month plan": the hand-picked dates as day offsets from
+      // `cycleStartDate` (notes values are capped at 256 chars). Absent
+      // = repeating weekdays.
+      ...(plan.customDates.length > 0
+        ? {
+            customOffsets: JSON.stringify(
+              customDateOffsets(plan.cycleStartKey, plan.customDates),
+            ),
+          }
+        : {}),
     },
   });
 

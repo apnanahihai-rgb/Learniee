@@ -7,11 +7,23 @@ import {
   buildCyclePlan,
   getCyclePlanProblem,
   priceForSessions,
+  weekdaysOfDateKeys,
   type PlanType,
 } from "@/features/shared/utils/cyclePlan";
 import { toggleWeekday } from "@/features/shared/utils/weekdays";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 import { useWalletBalance } from "@/features/parent/hooks/useWalletBalance";
+
+/**
+ * How the parent picks class days (both are one monthly cycle, paid up front):
+ *   WEEKDAYS = "Classes weekly" — pick weekdays; they repeat every week for the whole month.
+ *   DATES    = "Complete month plan" — pick the exact dates, any mix, across the month.
+ */
+export type ScheduleMode = "WEEKDAYS" | "DATES";
+
+// Both options are a monthly cycle. The old week-by-week plan is no
+// longer offered when booking (existing WEEKLY enrollments keep working).
+const planType: PlanType = "MONTHLY";
 
 interface Args {
   price: string | null;
@@ -38,10 +50,9 @@ export function useEnrollment({
   );
   // Recurring weekly schedule — required before enrolling so the
   // teacher/parent calendar can actually show something real.
-  // MONTHLY = plan the whole month ahead; WEEKLY = one week at a
-  // time, renewed every week.
-  const [planType, setPlanType] = useState<PlanType>("MONTHLY");
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("WEEKDAYS");
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+  const [customDates, setCustomDates] = useState<string[]>([]);
   const [scheduleTime, setScheduleTime] = useState("");
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState("");
@@ -56,13 +67,39 @@ export function useEnrollment({
   const minStartDate = toDateKey(todayInPlatformTz());
   const startInPast = !!startDate && startDate < minStartDate;
 
-  const cyclePlan = useMemo(
-    () =>
-      startDate && scheduleDays.length > 0
-        ? buildCyclePlan(startDate, scheduleDays, planType)
-        : null,
-    [startDate, scheduleDays, planType],
+  const cycleWindow = useMemo(
+    () => (startDate ? buildCyclePlan(startDate, [], planType) : null),
+    [startDate],
   );
+
+  // Picked dates that still fall inside the cycle if the start date moved.
+  const activeCustomDates = useMemo(() => {
+    if (scheduleMode !== "DATES" || !cycleWindow) return [];
+
+    const first = toDateKey(cycleWindow.startDate);
+    const last = toDateKey(cycleWindow.endDate);
+
+    return customDates.filter((key) => key >= first && key <= last).sort();
+  }, [scheduleMode, cycleWindow, customDates]);
+
+  const effectiveScheduleDays =
+    scheduleMode === "DATES" ? weekdaysOfDateKeys(activeCustomDates) : scheduleDays;
+  const scheduleReady =
+    scheduleMode === "DATES" ? activeCustomDates.length > 0 : scheduleDays.length > 0;
+
+  const cyclePlan = useMemo(() => {
+    if (!startDate) return null;
+
+    if (scheduleMode === "DATES") {
+      return activeCustomDates.length > 0
+        ? buildCyclePlan(startDate, [], planType, activeCustomDates)
+        : null;
+    }
+
+    return scheduleDays.length > 0
+      ? buildCyclePlan(startDate, scheduleDays, planType)
+      : null;
+  }, [startDate, scheduleMode, scheduleDays, activeCustomDates]);
   const planProblem = cyclePlan ? getCyclePlanProblem(cyclePlan) : null;
 
   const pricePreview = useMemo(() => {
@@ -78,12 +115,35 @@ export function useEnrollment({
     setScheduleDays((current) => toggleWeekday(current, day));
   }
 
+  function toggleCustomDate(dateKey: string) {
+    setCustomDates((current) =>
+      current.includes(dateKey)
+        ? current.filter((key) => key !== dateKey)
+        : [...current, dateKey].sort(),
+    );
+  }
+
+  /** Fields shared by the order, verify and wallet requests. */
+  function schedulePayload() {
+    return {
+      planType,
+      cycleStartDate: startDate,
+      scheduleDays: effectiveScheduleDays,
+      scheduleTime,
+      // Exact dates only for the "Complete month plan"; the server derives
+      // the weekdays from them and prices/creates exactly these sessions.
+      ...(scheduleMode === "DATES" ? { customDates: activeCustomDates } : {}),
+    };
+  }
+
   /** Shared by the card and wallet flows. Returns an error message, or null when OK. */
   function getEnrollProblem(): string | null {
     if (!selectedStudentId) return "Pick which child this enrollment is for.";
 
-    if (scheduleDays.length === 0 || !scheduleTime) {
-      return "Pick which days and what time classes should happen.";
+    if (!scheduleReady || !scheduleTime) {
+      return scheduleMode === "DATES"
+        ? "Pick the dates and what time classes should happen."
+        : "Pick which days and what time classes should happen.";
     }
 
     if (!startDate || startInPast) return "Pick a start date that isn't in the past.";
@@ -112,10 +172,7 @@ export function useEnrollment({
         teacherId,
         courseId,
         subject,
-        planType,
-        cycleStartDate: startDate,
-        scheduleDays,
-        scheduleTime,
+        ...schedulePayload(),
       };
 
       const orderRes = await fetch("/api/parent/enrollments/order", {
@@ -206,10 +263,7 @@ export function useEnrollment({
           teacherId,
           courseId,
           subject,
-          planType,
-          cycleStartDate: startDate,
-          scheduleDays,
-          scheduleTime,
+          ...schedulePayload(),
         }),
       });
 
@@ -232,8 +286,12 @@ export function useEnrollment({
   }
 
   return {
-    planType,
-    setPlanType,
+    scheduleMode,
+    setScheduleMode,
+    customDates: activeCustomDates,
+    toggleCustomDate,
+    clearCustomDates: () => setCustomDates([]),
+    scheduleReady,
     startDate,
     setStartDate,
     minStartDate,

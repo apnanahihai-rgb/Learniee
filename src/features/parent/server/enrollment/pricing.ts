@@ -2,8 +2,10 @@ import {
     buildCyclePlan,
     getCyclePlanProblem,
     isStartDateInPast,
+    normalizeCustomDateKeys,
     parsePlanType,
-    priceForSessions
+    priceForSessions,
+    weekdaysOfDateKeys
 } from "@/features/shared/utils/cyclePlan";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import {
@@ -167,6 +169,7 @@ async function priceLegacyEnrollment(
     scheduleDays,
     scheduleTime: input.scheduleTime,
     planType: "MONTHLY",
+    customDateKeys: [],
     model: "LEGACY",
     cycleStartKey: null,
     cycleEndDate: null,
@@ -178,8 +181,9 @@ async function priceLegacyEnrollment(
  * as the legacy function: the client's preview is never used for the
  * charge.
  *
- *   plan           = buildCyclePlan(startDate, weekdays)   // cyclePlan.ts
- *   sessionCount   = weekdays matching dates in the cycle  (min 4)
+ *   plan           = buildCyclePlan(startDate, weekdays, planType, customDates)   // cyclePlan.ts
+ *   sessionCount   = weekdays matching dates in the cycle, or the
+ *                    hand-picked dates for the "Complete month plan"  (min 4)
  *   ratePerSession = Course.price
  *   totalAmount    = ratePerSession x sessionCount
  *   dueDate        = day after the cycle ends (next cycle start)
@@ -193,11 +197,18 @@ async function priceCycleEnrollment(
   input: CreateEnrollmentInput,
   options: PriceOptions,
 ): Promise<PricedEnrollment> {
-  const scheduleDays = Array.from(new Set(input.scheduleDays ?? [])).sort(
+  // "Complete month plan": exact dates. When present they replace the
+  // weekday pattern and the weekdays are derived from them below.
+  const customDateKeys = normalizeCustomDateKeys(input.customDates);
+  const isCustom = customDateKeys.length > 0;
+
+  let scheduleDays = Array.from(new Set(input.scheduleDays ?? [])).sort(
     (a, b) => a - b,
   );
 
-  if (
+  if (isCustom) {
+    scheduleDays = weekdaysOfDateKeys(customDateKeys);
+  } else if (
     scheduleDays.length === 0 ||
     scheduleDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
   ) {
@@ -211,7 +222,7 @@ async function priceCycleEnrollment(
   const today = todayInPlatformTz();
   const startKey = input.cycleStartDate?.trim() || toDateKey(today);
   const planType = parsePlanType(input.planType);
-  const plan = buildCyclePlan(startKey, scheduleDays, planType);
+  const plan = buildCyclePlan(startKey, scheduleDays, planType, customDateKeys);
 
   if (!plan) {
     throw new EnrollmentError(
@@ -294,6 +305,7 @@ async function priceCycleEnrollment(
     scheduleDays,
     scheduleTime: input.scheduleTime,
     planType,
+    customDateKeys: plan.isCustom ? plan.sessionDates.map(toDateKey) : [],
     model: "CYCLE_V1",
     cycleStartKey: toDateKey(plan.startDate),
     cycleEndDate: calendarDateToDate(plan.endDate),
