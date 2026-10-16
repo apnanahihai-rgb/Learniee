@@ -42,14 +42,16 @@ export function middleware(req: NextRequest) {
     // check a stale idToken cookie kept granting route access
     // forever instead of forcing a re-login.
     if (typeof decoded.exp !== "number" || decoded.exp * 1000 <= Date.now()) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL("/session-expired", req.url));
     }
 
+    // Logged in, but with a different role than this area needs.
     if (decoded["custom:role"] !== roleRoutes[matchedPrefix]) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL("/access-denied", req.url));
     }
   } catch {
-    return NextResponse.redirect(new URL("/login", req.url));
+    // Unreadable token cookie: treat as an expired/invalid session.
+    return NextResponse.redirect(new URL("/session-expired", req.url));
   }
 
   return NextResponse.next();
