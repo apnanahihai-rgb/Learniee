@@ -7,7 +7,8 @@ import {
   getDemoBookingRows,
   getAccountsSummary,
 } from "@/features/accounts/server/export.service";
-import AccountsDashboardShell from "@/features/accounts/components/AccountsDashboardShell";
+import AccountsOverview from "@/features/accounts/components/AccountsOverview";
+import { AdminPage, AdminPageHeader } from "@/features/admin/components/ui/primitives";
 
 export default async function AccountsDashboardPage() {
   const auth = await requireAdminOrAccounts();
@@ -23,13 +24,13 @@ export default async function AccountsDashboardPage() {
   const summary = await getAccountsSummary(ledgerRows, demoRows);
 
   return (
-    <AccountsDashboardShell
-      heading="Accounts Dashboard"
-      subheading="Tuition ledger and demo revenue, with an Excel export."
-      summary={summary}
-      ongoingCycleRows={ongoingCycleRows}
-      ledgerRows={ledgerRows}
-      demoRows={demoRows}
-    />
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Accounts" }, { label: "Overview" }]}
+        title="Accounts dashboard"
+        description="Tuition ledger and demo revenue, with an Excel export."
+      />
+      <AccountsOverview summary={summary} ongoingCycleRows={ongoingCycleRows} />
+    </AdminPage>
   );
 }

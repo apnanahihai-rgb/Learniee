@@ -1,3 +1,5 @@
+import { currency } from "@/features/accounts/utils/format";
+
 export interface PieChartSlice {
   label: string;
   value: number;
@@ -6,111 +8,77 @@ export interface PieChartSlice {
 
 interface PieChartProps {
   slices: PieChartSlice[];
-  /** Center label, e.g. a formatted total — shown in the donut hole. */
-  centerLabel?: string;
-  centerSubLabel?: string;
+  /** Shown only for the empty state; the Accounts design keeps the donut hole clear. */
+  emptyLabel?: string;
   size?: number;
+  /** Used for the accessible name of the chart. */
+  ariaLabel: string;
 }
 
-const currency = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-});
-
 /**
- * Plain SVG donut chart — no charting library dependency. Draws each
- * slice as an arc path around a viewBox of size 100x100 so it scales
- * responsively via the `size` prop / container width. Zero-value or
- * all-zero data renders an empty gray ring with a "No data yet"
- * center label instead of throwing on a divide-by-zero angle.
+ * Plain SVG donut + legend, no charting library. Each slice is a stroked arc
+ * on one circle. Zero-value slices stay in the legend (so the list is stable)
+ * but draw nothing; an all-zero chart draws a grey ring.
  */
-export default function PieChart({ slices, centerLabel, centerSubLabel, size = 200 }: PieChartProps) {
+export default function PieChart({ slices, emptyLabel = "No data yet", size = 160, ariaLabel }: PieChartProps) {
   const total = slices.reduce((sum, s) => sum + Math.max(0, s.value), 0);
   const radius = 40;
-  const innerRadius = 25;
-  const cx = 50;
-  const cy = 50;
+  const circumference = 2 * Math.PI * radius;
 
-  const positiveSlices = slices.filter((s) => s.value > 0);
-
-  function arcPath(startAngle: number, endAngle: number) {
-    const toXY = (r: number, angleDeg: number) => {
-      const rad = ((angleDeg - 90) * Math.PI) / 180;
-      return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
-    };
-
-    const [x1, y1] = toXY(radius, startAngle);
-    const [x2, y2] = toXY(radius, endAngle);
-    const [x3, y3] = toXY(innerRadius, endAngle);
-    const [x4, y4] = toXY(innerRadius, startAngle);
-    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-
-    return [
-      `M ${x1} ${y1}`,
-      `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
-      `L ${x3} ${y3}`,
-      `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
-      "Z",
-    ].join(" ");
-  }
-
-  let cursor = 0;
-  const paths =
+  let offset = 0;
+  const arcs =
     total > 0
-      ? positiveSlices.map((s) => {
-          const sweep = (s.value / total) * 360;
-          // A sweep of exactly 360° (a single slice holding 100%) makes the
-          // arc's start and end points coincide, which collapses the SVG
-          // arc path to nothing and renders an invisible ring. Capping just
-          // shy of a full circle keeps the arc drawable while leaving a gap
-          // too small to see.
-          const endAngle = cursor + Math.min(sweep, 359.99);
-          const path = arcPath(cursor, endAngle);
-          cursor += sweep;
-          return { ...s, path };
-        })
+      ? slices
+          .filter((s) => s.value > 0)
+          .map((s) => {
+            const length = (s.value / total) * circumference;
+            const arc = { ...s, length, offset };
+            offset += length;
+            return arc;
+          })
       : [];
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-6">
-      <div style={{ width: size, height: size }} className="shrink-0 relative">
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          {total > 0 ? (
-            paths.map((s) => (
-              <path key={s.label} d={s.path} fill={s.color}>
-                <title>{`${s.label}: ${currency.format(s.value)}`}</title>
-              </path>
-            ))
-          ) : (
-            <circle cx={cx} cy={cy} r={(radius + innerRadius) / 2} fill="none" stroke="#e5e7eb" strokeWidth={radius - innerRadius} />
-          )}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-          <span className="text-sm sm:text-base font-bold text-gray-800 leading-tight">
-            {total > 0 ? centerLabel ?? currency.format(total) : "No data yet"}
-          </span>
-          {centerSubLabel && total > 0 && (
-            <span className="text-[11px] text-gray-400 mt-0.5">{centerSubLabel}</span>
-          )}
-        </div>
-      </div>
+    <div className="flex flex-wrap items-center gap-6 p-5">
+      <svg width={size} height={size} viewBox="0 0 120 120" role="img" aria-label={ariaLabel} className="shrink-0">
+        {total > 0 ? (
+          arcs.map((a) => (
+            <circle
+              key={a.label}
+              cx="60"
+              cy="60"
+              r={radius}
+              fill="none"
+              stroke={a.color}
+              strokeWidth="22"
+              strokeDasharray={`${a.length.toFixed(2)} ${(circumference - a.length).toFixed(2)}`}
+              strokeDashoffset={(-a.offset).toFixed(2)}
+              transform="rotate(-90 60 60)"
+            >
+              <title>{`${a.label}: ${currency.format(a.value)}`}</title>
+            </circle>
+          ))
+        ) : (
+          <>
+            <circle cx="60" cy="60" r={radius} fill="none" stroke="#e9e3f6" strokeWidth="22" />
+            <text x="60" y="64" textAnchor="middle" fontSize="9" fill="#5f5675">
+              {emptyLabel}
+            </text>
+          </>
+        )}
+      </svg>
 
-      <ul className="flex flex-col gap-2 text-sm w-full sm:w-auto">
+      <ul className="grid min-w-[200px] flex-1 gap-2.5 text-[14px]">
         {slices.map((s) => {
           const pct = total > 0 ? Math.round((s.value / total) * 1000) / 10 : 0;
+
           return (
-            <li key={s.label} className="flex items-center justify-between gap-4 min-w-[220px]">
-              <span className="flex items-center gap-2 text-gray-600">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: s.color }}
-                />
-                {s.label}
-              </span>
-              <span className="font-medium text-gray-800 text-right">
+            <li key={s.label} className="flex items-center gap-2.5">
+              <span aria-hidden="true" className="size-3 shrink-0 rounded-[3px]" style={{ backgroundColor: s.color }} />
+              <span className="min-w-0 flex-1">{s.label}</span>
+              <span className="whitespace-nowrap font-extrabold tabular-nums">
                 {currency.format(s.value)}
-                <span className="text-gray-400 font-normal ml-1">({pct}%)</span>
+                <span className="ml-1 font-semibold text-admin-muted">({pct}%)</span>
               </span>
             </li>
           );

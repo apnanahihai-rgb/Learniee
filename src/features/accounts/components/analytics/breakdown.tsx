@@ -1,30 +1,24 @@
 "use client";
-import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
-import {
-    useAccountsAnalytics
-} from "@/features/accounts/hooks/useAccountsAnalytics";
-import {
-    ListChecks
-} from "lucide-react";
+
 import { useState } from "react";
-import { DEFAULT_SELECTED_METRICS, METRIC_DEFS, METRIC_ORDER, MetricKey, currency } from './constants';
-import { PeriodPicker, usePeriodRange } from './period';
+
+import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
+import { useAccountsAnalytics } from "@/features/accounts/hooks/useAccountsAnalytics";
+import { AdminError, AdminPanel } from "@/features/admin/components/ui/primitives";
+import { DEFAULT_SELECTED_METRICS, METRIC_DEFS, METRIC_ORDER, type MetricKey } from "./constants";
+import { PeriodSelect, usePeriodRange } from "./period";
 
 /**
- * Build Your Own Breakdown — tick any of the figures on the page (revenue
- * lines, expense lines, Net Profit / Net Loss, Platform Profit) and see
- * them side by side as shares of one combined total, in one donut. Ticked
- * figures with nothing to show for the selected period (e.g. Net Loss
- * during a profitable month) are simply left out of the ring rather than
- * drawn as a zero-width slice.
+ * Build Your Own Breakdown: tick any of the figures on the page and see them
+ * side by side as shares of one combined total, in one donut. Ticked figures
+ * that are ₹0 for the period are left out of the ring.
  *
- * Holds its own `usePeriodRange()` and its own `useAccountsAnalytics` fetch
- * — deliberately not the page's period/data, so this card can be checked
- * against, say, This Month while the rest of the page stays on All Time.
+ * Holds its own period and its own analytics fetch, deliberately not the
+ * page's, so it can be checked against (say) This Month while the rest of the
+ * page stays on All Time.
  */
 export function CustomBreakdownDonut() {
-  const { preset, setPreset, customFrom, setCustomFrom, customTo, setCustomTo, range, rangeLabel } =
-    usePeriodRange();
+  const { preset, setPreset, customFrom, setCustomFrom, customTo, setCustomTo, range } = usePeriodRange();
   const { analytics, loading, error } = useAccountsAnalytics(range);
 
   const [selected, setSelected] = useState<Set<MetricKey>>(() => new Set(DEFAULT_SELECTED_METRICS));
@@ -47,26 +41,19 @@ export function CustomBreakdownDonut() {
         .filter((s) => s.value > 0)
     : [];
 
-  const total = slices.reduce((sum, s) => sum + s.value, 0);
-
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b flex items-baseline justify-between flex-wrap gap-2 bg-gray-50">
-        <div className="flex items-center gap-2">
-          <ListChecks size={16} className="text-gray-400" />
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800">Build Your Own Breakdown</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Tick any figures below to compare them as shares of one total. Has its own period,
-              separate from the filter above.
-            </p>
-          </div>
+    <AdminPanel className="overflow-hidden">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-admin-line px-5 py-4">
+        <div className="min-w-0">
+          <h2 className="font-heading text-[19px] font-bold leading-tight text-admin-ink">
+            Build Your Own Breakdown
+          </h2>
+          <p className="mt-0.5 text-[14px] text-admin-muted">
+            Tick any figures to see them as slices of one combined total.
+          </p>
         </div>
-        <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
-      </div>
-
-      <div className="px-6 pt-4">
-        <PeriodPicker
+        <PeriodSelect
+          id="breakdown-period"
           preset={preset}
           onPresetChange={setPreset}
           customFrom={customFrom}
@@ -76,63 +63,53 @@ export function CustomBreakdownDonut() {
         />
       </div>
 
-      <div className="p-6 flex flex-col gap-6">
-        {loading && <p className="text-sm text-gray-400 text-center py-10">Loading…</p>}
-
-        {!loading && (error || !analytics) && (
-          <p className="text-sm text-red-500 text-center py-10">{error || "Unable to load this breakdown."}</p>
-        )}
-
-        {!loading && analytics && (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {METRIC_ORDER.map((key) => {
-                const def = METRIC_DEFS[key];
-                const value = def.getValue(analytics);
-                const active = selected.has(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggle(key)}
-                    aria-pressed={active}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                      active
-                        ? "border-transparent text-white"
-                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
-                    }`}
-                    style={active ? { backgroundColor: def.color } : undefined}
-                  >
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: active ? "rgba(255,255,255,0.9)" : def.color }}
-                    />
-                    {def.label}
-                    <span className={active ? "text-white/85" : "text-gray-400"}>
-                      {currency.format(value)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {slices.length > 0 ? (
-              <PieChart
-                slices={slices}
-                centerLabel={currency.format(total)}
-                centerSubLabel={`${slices.length} selected`}
-                size={200}
-              />
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-10">
-                {selected.size === 0
-                  ? "Tick at least one figure above to see the breakdown."
-                  : "The figures you've selected are all ₹0 for this period."}
-              </p>
-            )}
-          </>
-        )}
+      <div className="px-5 pt-4">
+        <AdminError>{error}</AdminError>
       </div>
-    </div>
+
+      <div className="flex flex-wrap items-start gap-6 p-5">
+        <fieldset className="grid min-w-[300px] flex-1 gap-x-4 gap-y-0.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+          <legend className="sr-only">Figures to include</legend>
+          {METRIC_ORDER.map((key) => {
+            const def = METRIC_DEFS[key];
+            const id = `breakdown-${key}`;
+
+            return (
+              <div key={key} className="flex min-h-11 items-center gap-2.5">
+                <input
+                  id={id}
+                  type="checkbox"
+                  checked={selected.has(key)}
+                  onChange={() => toggle(key)}
+                  className="size-5 accent-brand"
+                />
+                <span aria-hidden="true" className="size-3 shrink-0 rounded-[3px]" style={{ backgroundColor: def.color }} />
+                <label htmlFor={id} className="cursor-pointer text-[15px] font-semibold text-admin-ink">
+                  {def.label}
+                </label>
+              </div>
+            );
+          })}
+        </fieldset>
+
+        <div className="min-w-[340px] flex-1">
+          {loading ? (
+            <p role="status" className="py-10 text-center text-admin-muted">
+              Loading…
+            </p>
+          ) : !analytics ? (
+            <p className="py-10 text-center text-admin-muted">Unable to load this breakdown.</p>
+          ) : slices.length === 0 ? (
+            <p className="py-10 text-center text-admin-muted">
+              {selected.size === 0
+                ? "Tick at least one figure to see the breakdown."
+                : "The figures you've selected are all ₹0 for this period."}
+            </p>
+          ) : (
+            <PieChart slices={slices} ariaLabel="Custom breakdown donut" />
+          )}
+        </div>
+      </div>
+    </AdminPanel>
   );
 }

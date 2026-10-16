@@ -27,6 +27,7 @@ export interface LedgerEntry {
     | "PENDING_VERIFICATION"
     | "ON_HOLD"
     | "QUEUED_FOR_PAYMENT"
+    | "PROCESSING"
     | "PAID"
     | "REJECTED"
     | "EXPIRED"

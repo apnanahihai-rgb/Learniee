@@ -1,16 +1,10 @@
-import AccountsNavbar from "@/features/accounts/components/layout/AccountsNavbar";
+import AccountsShell from "@/features/accounts/components/layout/AccountsShell";
 
-export default function AccountsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-h-screen bg-violet-50/40">
-      <AccountsNavbar />
-      <main className="min-h-screen pt-16 bg-gradient-to-b from-violet-50 via-white to-white">
-        {children}
-      </main>
-    </div>
-  );
+/**
+ * Shared Accounts chrome (sidebar + mobile drawer). Every page under
+ * `/accounts` renders inside it, so pages supply content only. Route
+ * protection stays in `middleware.ts` and each page's `requireAdminOrAccounts()`.
+ */
+export default function AccountsLayout({ children }: { children: React.ReactNode }) {
+  return <AccountsShell>{children}</AccountsShell>;
 }
