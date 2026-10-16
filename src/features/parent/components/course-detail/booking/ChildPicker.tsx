@@ -22,7 +22,7 @@ export default function ChildPicker({ students, loading, value, onChange }: Prop
         <div className="h-10 rounded-xl bg-violet-50 animate-pulse" />
       ) : students.length === 0 ? (
         <p className="text-xs text-gray-400">
-          Add a child profile from the dashboard before booking a demo.
+          Add a child profile from the dashboard before booking.
         </p>
       ) : (
         <select

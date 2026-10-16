@@ -34,6 +34,10 @@ export default function DemoBookingSection({
 
   return (
     <>
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+        Pick a demo date &amp; time
+      </p>
+
       <BookingCalendar
         selectedDate={selectedDate}
         selectedHour={selectedHour}
@@ -86,10 +90,9 @@ export default function DemoBookingSection({
       <div className="flex items-start gap-2 mt-4 text-[11px] text-gray-400 leading-relaxed">
         <Info size={13} className="flex-shrink-0 mt-0.5" />
         <span>
-          Every account gets 2 free demo sessions in total (not per child) —
-          after that, each demo is a flat ₹100, collected via Razorpay before
-          the booking is confirmed. Pick a date and time above so the session
-          can actually be arranged.
+          Every account gets 2 free demos in total (not per child). After
+          that, each demo is a flat ₹{paidDemoPrice}, paid via Razorpay before
+          the booking is confirmed.
         </span>
       </div>
     </>

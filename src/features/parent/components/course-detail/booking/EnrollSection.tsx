@@ -56,20 +56,16 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
           (resolves 06-OPEN-DECISIONS.md #36); dual approval (Teacher
           + Admin, #2 still open) hasn't been built either, so a paid
           enrollment starts "Pending approval". */}
-      <div className="mt-6 pt-5 border-t border-violet-50">
-        <h3 className="font-heading text-sm font-bold text-gray-800 mb-3">
-          Enroll in this course
-        </h3>
-
+      <div>
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-            Plan
+            How should classes repeat?
           </label>
           <div className="grid grid-cols-2 gap-2">
             {(
               [
-                { value: "WEEKDAYS", title: "Classes weekly", hint: "Pick weekdays — they repeat every week for the whole month (4 weeks)" },
-                { value: "DATES", title: "Complete month plan", hint: "Pick the exact dates you want, anywhere in the month" },
+                { value: "WEEKDAYS", title: "Repeat weekly", hint: "Pick weekdays; they repeat every week for the month" },
+                { value: "DATES", title: "Pick exact dates", hint: "Choose any dates you want within the month" },
               ] as const
             ).map((option) => {
               const active = scheduleMode === option.value;
@@ -288,7 +284,7 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
           Payment is collected via Razorpay before your enrollment is
           created. After that, it&apos;s waiting for teacher approval —
           you&apos;ll be able to track it and chat with your teacher from
-          &quot;My Enrollments&quot;.
+          &quot;My Classes&quot;.
         </p>
       </div>
     </>

@@ -77,33 +77,29 @@ export default function BookingPanel({
     subject,
   });
 
+  const [mode, setMode] = useState<"demo" | "enroll">("demo");
+
+  const tabs = [
+    {
+      value: "demo" as const,
+      title: remainingFree > 0 ? "Free Demo" : "Demo",
+      sub: remainingFree > 0 ? "Try 1 class first" : `₹${paidDemoPrice} per demo`,
+    },
+    {
+      value: "enroll" as const,
+      title: "Enroll",
+      sub: "Regular classes",
+    },
+  ];
+
   return (
     <div className="bg-white border border-violet-100 rounded-3xl shadow-sm p-5 sm:p-6 lg:sticky lg:top-20">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="font-heading text-base font-bold text-gray-800">
-          Book a session
-        </h2>
+      <h2 className="font-heading text-base font-bold text-gray-800 mb-4">
+        Book this course
+      </h2>
 
-        {price && (
-          <span className="text-sm font-bold text-gray-800">
-            ₹{price}
-            <span className="text-[11px] font-medium text-gray-400">
-              /session
-            </span>
-          </span>
-        )}
-      </div>
-
-      {!balanceLoading && (
-        <p className="text-xs text-gray-400 mb-4">
-          {remainingFree > 0
-            ? `${remainingFree} free demo session${remainingFree === 1 ? "" : "s"} left on your account.`
-            : `No free demos left — demos are ₹${paidDemoPrice} each.`}
-        </p>
-      )}
-
-      {/* Shared by both Book Demo and Enroll; for a demo, the
-          (teacher, subject, child) cap is enforced server-side. */}
+      {/* Shared by both modes; for a demo, the (teacher, subject,
+          child) cap is enforced server-side. */}
       <ChildPicker
         students={students}
         loading={studentsLoading}
@@ -111,19 +107,80 @@ export default function BookingPanel({
         onChange={setSelectedStudentId}
       />
 
-      <DemoBookingSection
-        demo={demo}
-        studentsLoading={studentsLoading}
-        studentCount={students.length}
-        remainingFree={remainingFree}
-        paidDemoPrice={paidDemoPrice}
-      />
+      {/* One mode at a time: a demo is a single trial class, enrolling
+          is a paid month of regular classes. */}
+      <div
+        role="tablist"
+        aria-label="Booking type"
+        className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-violet-50 mb-4"
+      >
+        {tabs.map((t) => {
+          const active = mode === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setMode(t.value)}
+              className={`rounded-xl px-3 py-2 text-center transition-colors ${
+                active
+                  ? "bg-white shadow-sm text-brand-dark"
+                  : "text-gray-500 hover:text-brand-dark"
+              }`}
+            >
+              <span className="block text-sm font-bold">{t.title}</span>
+              <span className="block text-[11px] font-medium opacity-80">
+                {t.sub}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      <EnrollSection
-        enroll={enroll}
-        studentsLoading={studentsLoading}
-        studentCount={students.length}
-      />
+      {mode === "demo" ? (
+        <div role="tabpanel">
+          <div className="rounded-xl bg-violet-50 px-3 py-2.5 mb-4 text-xs text-gray-600 leading-relaxed">
+            <p className="font-bold text-gray-800">One trial class with this teacher</p>
+            {!balanceLoading && (
+              <p>
+                {remainingFree > 0
+                  ? `${remainingFree} free demo${remainingFree === 1 ? "" : "s"} left on your account.`
+                  : `No free demos left — ₹${paidDemoPrice} per demo.`}
+              </p>
+            )}
+          </div>
+
+          <DemoBookingSection
+            demo={demo}
+            studentsLoading={studentsLoading}
+            studentCount={students.length}
+            remainingFree={remainingFree}
+            paidDemoPrice={paidDemoPrice}
+          />
+        </div>
+      ) : (
+        <div role="tabpanel">
+          <div className="rounded-xl bg-violet-50 px-3 py-2.5 mb-4 text-xs text-gray-600 leading-relaxed">
+            <p className="font-bold text-gray-800">
+              Regular classes
+              {price && (
+                <span className="font-semibold text-gray-600">
+                  {" "}
+                  · ₹{price}/session
+                </span>
+              )}
+            </p>
+            <p>Pick your days and time. Total is shown before you pay.</p>
+          </div>
+
+          <EnrollSection
+            enroll={enroll}
+            studentsLoading={studentsLoading}
+            studentCount={students.length}
+          />
+        </div>
+      )}
     </div>
   );
 }
