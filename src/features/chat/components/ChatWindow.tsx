@@ -101,12 +101,13 @@ export default function ChatWindow({
     }
   }
 
+  // dvh tracks the visible area, so the composer isn't hidden under the mobile URL bar / keyboard (100vh is the tallest viewport).
   return (
     <div
       className={
         embedded
-          ? "flex flex-col h-[32rem] max-h-[70vh] bg-gray-50 border border-violet-100 rounded-2xl overflow-hidden"
-          : `flex flex-col bg-gray-50 ${pageHeightClass ?? "h-[calc(100vh-3.5rem)]"}`
+          ? "flex flex-col h-[32rem] max-h-[70dvh] bg-gray-50 border border-violet-100 rounded-2xl overflow-hidden"
+          : `flex flex-col bg-gray-50 ${pageHeightClass ?? "h-[calc(100dvh-3.5rem)]"}`
       }
     >
       {!embedded && (
@@ -130,7 +131,8 @@ export default function ChatWindow({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* overscroll-contain keeps a fling at the top/bottom of the thread from scrolling the page behind it. */}
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
         {loading && messages.length === 0 ? (
           <p className="text-gray-400 text-sm text-center mt-8">Loading messages…</p>
         ) : messages.length === 0 ? (
@@ -200,7 +202,8 @@ export default function ChatWindow({
                             onChange={(e) => setReportReason(e.target.value)}
                             maxLength={500}
                             placeholder="What's wrong? (optional)"
-                            className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300"
+                            // Same iOS zoom fix as the composer: 16px on phones, compact on desktop.
+                            className="w-full border rounded-lg px-2 py-1 text-base md:text-xs focus:outline-none focus:ring-2 focus:ring-purple-300"
                           />
                           {reportError && <p className="text-[11px] text-red-600">{reportError}</p>}
                           <div className="flex items-center gap-3">
@@ -259,7 +262,8 @@ export default function ChatWindow({
               }
             }}
             placeholder="Type a message…"
-            className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+            // 16px on phones: iOS Safari zooms the page into any input under 16px and doesn't zoom back out.
+            className="flex-1 border rounded-full px-4 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
           />
           <button
             type="button"

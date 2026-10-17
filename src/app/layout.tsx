@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Baloo_2, Nunito } from "next/font/google";
 import "./globals.css";
 import "react-phone-number-input/style.css";
@@ -25,6 +25,12 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Learniee",
   description: "Personalized one-on-one learning, tailored to every child",
+};
+
+// Site-wide viewport: status-bar colour matches the white app headers, and on Android the keyboard resizes the layout so dvh / bottom-pinned inputs react like iOS. (Zoom stays enabled; the landing page overrides this with its own export.)
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
