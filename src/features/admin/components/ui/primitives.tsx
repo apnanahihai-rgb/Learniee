@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ChevronRight, Search } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Modal } from "@/components/ui/modal";
+
 /**
  * Small presentational pieces shared by every redesigned Admin screen.
  * Server-safe (no hooks), so pages and tables can use them freely.
@@ -338,7 +340,7 @@ export function formatAdminDate(value: string | Date | null | undefined) {
 
 /* ---------------------------------- Dialog --------------------------------- */
 
-/** Centered confirmation dialog. Click on the backdrop calls `onClose`. */
+/** Centered confirmation dialog. Escape or a backdrop click calls `onClose`. */
 export function AdminDialog({
   title,
   subtitle,
@@ -355,26 +357,18 @@ export function AdminDialog({
   wide?: boolean;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-admin-ink/40 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
+    // Shared Modal gives Escape, focus trap, scroll lock and an enter animation to every Admin dialog at once.
+    <Modal
+      label={title}
+      onClose={onClose}
+      backdropClassName="bg-admin-ink/40"
+      panelClassName={cx("rounded-[18px] bg-white p-6 text-admin-ink shadow-xl", wide ? "max-w-lg" : "max-w-md")}
     >
-      <div
-        className={cx(
-          "max-h-[90vh] w-full overflow-y-auto rounded-[18px] bg-white p-6 shadow-xl",
-          wide ? "max-w-lg" : "max-w-md",
-        )}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 className="font-heading text-xl font-bold">{title}</h2>
-        {subtitle && <p className="mt-1 truncate text-[15px] text-admin-muted">{subtitle}</p>}
-        <div className="mt-4">{children}</div>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">{footer}</div>
-      </div>
-    </div>
+      <h2 className="font-heading text-xl font-bold">{title}</h2>
+      {subtitle && <p className="mt-1 truncate text-[15px] text-admin-muted">{subtitle}</p>}
+      <div className="mt-4">{children}</div>
+      <div className="mt-5 flex flex-wrap justify-end gap-2">{footer}</div>
+    </Modal>
   );
 }
 

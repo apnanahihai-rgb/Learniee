@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Receipt } from "lucide-react";
 
+import { Modal } from "@/components/ui/modal";
 import { useInvoices, type InvoiceView, type InvoiceType } from "@/features/parent/hooks/useInvoices";
 import { useParentRefundRequests } from "@/features/refunds/hooks/useRefundRequests";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
@@ -167,51 +168,47 @@ export default function ParentPaymentsPage() {
       </div>
 
       {refundFor && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setRefundFor(null)}
-        >
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-800">Request a refund</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {refundFor.invoiceNumber} · {currency.format(refundFor.amount)}
-            </p>
-            <p className="text-xs text-gray-500 mt-3">
-              Nothing is refunded until an admin approves it. If approved, the admin sets the amount and it is added to
-              your Wallet. See the{" "}
-              <Link href="/refunds" className="text-violet-700 underline">
-                Refund Policy
-              </Link>
-              .
-            </p>
-            <label className="block text-sm text-gray-600 mt-4">
-              Why do you want a refund? (10 to 1000 characters)
-              <textarea
-                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none text-sm text-gray-800 focus:border-violet-400 min-h-[110px]"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                maxLength={1000}
-              />
-            </label>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setRefundFor(null)}
-                className="text-sm font-semibold text-gray-600 border px-4 py-2 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={submitting || reason.trim().length < 10}
-                onClick={sendRefundRequest}
-                className="text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg disabled:opacity-60"
-              >
-                {submitting ? "Sending…" : "Send to admin"}
-              </button>
-            </div>
+        // Shared Modal: Escape closes the refund form, focus stays inside it, and the page behind can't scroll.
+        <Modal label="Request a refund" onClose={() => setRefundFor(null)} panelClassName="max-w-md rounded-xl bg-white p-6 shadow-lg">
+          <h2 className="text-lg font-semibold text-gray-800">Request a refund</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {refundFor.invoiceNumber} · {currency.format(refundFor.amount)}
+          </p>
+          <p className="text-xs text-gray-500 mt-3">
+            Nothing is refunded until an admin approves it. If approved, the admin sets the amount and it is added to
+            your Wallet. See the{" "}
+            <Link href="/refunds" className="text-violet-700 underline">
+              Refund Policy
+            </Link>
+            .
+          </p>
+          <label className="block text-sm text-gray-600 mt-4">
+            Why do you want a refund? (10 to 1000 characters)
+            <textarea
+              className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none text-sm text-gray-800 focus:border-violet-400 min-h-[110px]"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={1000}
+            />
+          </label>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setRefundFor(null)}
+              className="text-sm font-semibold text-gray-600 border px-4 py-2 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={submitting || reason.trim().length < 10}
+              onClick={sendRefundRequest}
+              className="text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg disabled:opacity-60"
+            >
+              {submitting ? "Sending…" : "Send to admin"}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

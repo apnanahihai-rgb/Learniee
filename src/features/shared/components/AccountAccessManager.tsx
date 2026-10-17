@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Modal } from "@/components/ui/modal";
 import {
   AdminAvatar,
   AdminError,
@@ -203,137 +204,136 @@ function AccountAccessModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-admin-ink/40" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Manage access"
-        className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white shadow-xl"
-      >
-        <div className="sticky top-0 flex items-center justify-between border-b border-admin-line bg-white px-6 py-4">
-          <h2 className="font-heading text-xl font-bold">
-            Manage access: {account.firstName} {account.lastName}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex size-11 items-center justify-center rounded-xl text-2xl leading-none text-admin-muted hover:bg-admin-hover"
-          >
-            ×
-          </button>
-        </div>
+    // Shared Modal (side panel): Escape closes it, focus is trapped, and the panel slides in instead of popping.
+    <Modal
+      variant="right"
+      label="Manage access"
+      onClose={onClose}
+      backdropClassName="bg-admin-ink/40"
+      panelClassName="max-w-md bg-white text-admin-ink shadow-xl"
+    >
+      <div className="sticky top-0 flex items-center justify-between border-b border-admin-line bg-white px-6 py-4">
+        <h2 className="font-heading text-xl font-bold">
+          Manage access: {account.firstName} {account.lastName}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="flex size-11 items-center justify-center rounded-xl text-2xl leading-none text-admin-muted hover:bg-admin-hover"
+        >
+          ×
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-6">
-          <AdminError>{formError}</AdminError>
-          {successMessage && (
-            <div
-              role="status"
-              className="rounded-[14px] border border-green-200 bg-green-50 px-4 py-3 text-[15px] font-semibold text-green-800"
-            >
-              {successMessage}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-6">
+        <AdminError>{formError}</AdminError>
+        {successMessage && (
+          <div
+            role="status"
+            className="rounded-[14px] border border-green-200 bg-green-50 px-4 py-3 text-[15px] font-semibold text-green-800"
+          >
+            {successMessage}
+          </div>
+        )}
+
+        <section className="flex flex-col gap-3">
+          <label className="flex min-h-11 items-center gap-2.5 text-[15px] font-extrabold">
+            <input
+              type="checkbox"
+              checked={resetPassword}
+              onChange={(e) => setResetPassword(e.target.checked)}
+              className="size-5 accent-brand"
+            />
+            Reset password
+          </label>
+
+          {resetPassword && (
+            <div className="flex flex-col gap-3 pl-1">
+              <div>
+                <label htmlFor="aa-password" className={adminLabelClass}>
+                  New password
+                </label>
+                <input
+                  id="aa-password"
+                  type="text"
+                  placeholder="At least 8 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={adminInputClass}
+                />
+                {newPassword.length > 0 && newPassword.length < 8 && (
+                  <p className="mt-1 text-sm font-bold text-red-700">Must be at least 8 characters.</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1 text-[15px]">
+                <label className="flex min-h-11 items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="passwordMode"
+                    checked={passwordMode === "temporary"}
+                    onChange={() => setPasswordMode("temporary")}
+                    className="accent-brand"
+                  />
+                  Temporary, must be reset on next login
+                </label>
+                <label className="flex min-h-11 items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="passwordMode"
+                    checked={passwordMode === "permanent"}
+                    onChange={() => setPasswordMode("permanent")}
+                    className="accent-brand"
+                  />
+                  Permanent
+                </label>
+              </div>
             </div>
           )}
+        </section>
 
-          <section className="flex flex-col gap-3">
-            <label className="flex min-h-11 items-center gap-2.5 text-[15px] font-extrabold">
-              <input
-                type="checkbox"
-                checked={resetPassword}
-                onChange={(e) => setResetPassword(e.target.checked)}
-                className="size-5 accent-brand"
-              />
-              Reset password
+        <section className="flex flex-col gap-3">
+          <h3 className="text-base font-extrabold">Contact details</h3>
+          <div>
+            <label htmlFor="aa-email" className={adminLabelClass}>
+              New email{" "}
+              <span className="font-semibold text-admin-muted">
+                (leave blank to keep {account.email})
+              </span>
             </label>
-
-            {resetPassword && (
-              <div className="flex flex-col gap-3 pl-1">
-                <div>
-                  <label htmlFor="aa-password" className={adminLabelClass}>
-                    New password
-                  </label>
-                  <input
-                    id="aa-password"
-                    type="text"
-                    placeholder="At least 8 characters"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className={adminInputClass}
-                  />
-                  {newPassword.length > 0 && newPassword.length < 8 && (
-                    <p className="mt-1 text-sm font-bold text-red-700">Must be at least 8 characters.</p>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-1 text-[15px]">
-                  <label className="flex min-h-11 items-center gap-2.5">
-                    <input
-                      type="radio"
-                      name="passwordMode"
-                      checked={passwordMode === "temporary"}
-                      onChange={() => setPasswordMode("temporary")}
-                      className="accent-brand"
-                    />
-                    Temporary, must be reset on next login
-                  </label>
-                  <label className="flex min-h-11 items-center gap-2.5">
-                    <input
-                      type="radio"
-                      name="passwordMode"
-                      checked={passwordMode === "permanent"}
-                      onChange={() => setPasswordMode("permanent")}
-                      className="accent-brand"
-                    />
-                    Permanent
-                  </label>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <h3 className="text-base font-extrabold">Contact details</h3>
+            <input
+              id="aa-email"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className={adminInputClass}
+            />
+          </div>
+          {account.role !== "admin" && (
             <div>
-              <label htmlFor="aa-email" className={adminLabelClass}>
-                New email{" "}
+              <label htmlFor="aa-phone" className={adminLabelClass}>
+                New phone{" "}
                 <span className="font-semibold text-admin-muted">
-                  (leave blank to keep {account.email})
+                  (leave blank to keep {account.phone || "unset"})
                 </span>
               </label>
               <input
-                id="aa-email"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
+                id="aa-phone"
+                type="tel"
+                placeholder="+91XXXXXXXXXX"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
                 className={adminInputClass}
               />
             </div>
-            {account.role !== "admin" && (
-              <div>
-                <label htmlFor="aa-phone" className={adminLabelClass}>
-                  New phone{" "}
-                  <span className="font-semibold text-admin-muted">
-                    (leave blank to keep {account.phone || "unset"})
-                  </span>
-                </label>
-                <input
-                  id="aa-phone"
-                  type="tel"
-                  placeholder="+91XXXXXXXXXX"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  className={adminInputClass}
-                />
-              </div>
-            )}
-          </section>
+          )}
+        </section>
 
-          <button type="submit" disabled={saving} className={adminButtonClass("primary", "w-full")}>
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </form>
-      </div>
-    </div>
+        <button type="submit" disabled={saving} className={adminButtonClass("primary", "w-full")}>
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+      </form>
+    </Modal>
   );
 }
