@@ -4,10 +4,10 @@ import { COMPANY_INFO } from "@/lib/companyInfo";
 
 /** Shared button styles for error-page actions (works on <a>, <Link> and <button>). */
 export const errorPrimaryBtn =
-  "inline-flex items-center justify-center rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/30";
+  "inline-flex items-center justify-center rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-md transition active:scale-[0.97] hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/30";
 
 export const errorSecondaryBtn =
-  "inline-flex items-center justify-center rounded-full border-2 border-brand/30 bg-white px-6 py-2.5 text-sm font-bold text-brand transition hover:border-brand hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/30";
+  "inline-flex items-center justify-center rounded-full border-2 border-brand/30 bg-white px-6 py-2.5 text-sm font-bold text-brand transition active:scale-[0.97] hover:border-brand hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/30";
 
 interface ErrorScreenProps {
   /** Big label, e.g. "404". */

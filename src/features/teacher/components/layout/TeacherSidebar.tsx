@@ -200,7 +200,7 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
           <button
             type="button"
             onClick={onClose}
-            className="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
+            className="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition active:scale-[0.97]"
             aria-label="Close menu"
           >
             <X size={18} />

@@ -249,7 +249,7 @@ function BuyCouponsCard({
           type="button"
           onClick={handleBuy}
           disabled={purchasing}
-          className="ml-auto h-9 px-5 rounded-full bg-brand text-white text-sm font-bold hover:bg-brand-dark transition disabled:opacity-60 flex items-center gap-2"
+          className="ml-auto h-9 px-5 rounded-full bg-brand text-white text-sm font-bold hover:bg-brand-dark transition active:scale-[0.97] disabled:opacity-60 flex items-center gap-2"
         >
           {purchasing && <Loader2 size={14} className="animate-spin" />}
           Buy for ₹{quantity * paidDemoPrice}

@@ -114,7 +114,7 @@ export default function TeacherDashboard() {
 
           <Link
             href="/teacher/course-management/new"
-            className="inline-flex items-center gap-2 mt-5 bg-brand-yellow text-violet-900 text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:brightness-95 transition"
+            className="inline-flex items-center gap-2 mt-5 bg-brand-yellow text-violet-900 text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:brightness-95 transition active:scale-[0.97]"
           >
             <Plus size={16} />
             Create a new course
@@ -303,7 +303,7 @@ export default function TeacherDashboard() {
             </p>
             <Link
               href="/teacher/course-management/new"
-              className="inline-flex items-center gap-2 bg-brand text-white text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:bg-brand-dark transition"
+              className="inline-flex items-center gap-2 bg-brand text-white text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:bg-brand-dark transition active:scale-[0.97]"
             >
               <Plus size={16} />
               Create your first course

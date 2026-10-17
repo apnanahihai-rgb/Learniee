@@ -77,7 +77,7 @@ export default function DemoCouponButton() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Demo coupons"
-        className="relative flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full bg-violet-50 text-brand hover:bg-violet-100 transition"
+        className="relative flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full bg-violet-50 text-brand hover:bg-violet-100 transition active:scale-[0.97]"
       >
         <Ticket size={17} />
         <span className="text-sm font-bold">
@@ -148,7 +148,7 @@ export default function DemoCouponButton() {
               type="button"
               onClick={handleBuy}
               disabled={purchasing}
-              className="w-full mt-2.5 h-9 rounded-full bg-brand text-white text-sm font-bold hover:bg-brand-dark transition disabled:opacity-60"
+              className="w-full mt-2.5 h-9 rounded-full bg-brand text-white text-sm font-bold hover:bg-brand-dark transition active:scale-[0.97] disabled:opacity-60"
             >
               {purchasing
                 ? "Please wait..."

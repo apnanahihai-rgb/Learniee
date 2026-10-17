@@ -67,7 +67,7 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Notifications"
-        className="relative w-9 h-9 rounded-full bg-violet-50 text-brand hover:bg-violet-100 flex items-center justify-center transition"
+        className="relative w-9 h-9 rounded-full bg-violet-50 text-brand hover:bg-violet-100 flex items-center justify-center transition active:scale-[0.97]"
       >
         <Bell size={17} />
         {unreadCount > 0 && (

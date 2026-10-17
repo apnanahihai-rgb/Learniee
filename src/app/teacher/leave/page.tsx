@@ -136,7 +136,7 @@ export default function TeacherLeavePage() {
         <button
           type="submit"
           disabled={submitting}
-          className="bg-brand text-white text-sm font-bold px-5 py-2.5 rounded-full hover:opacity-90 disabled:opacity-50 transition"
+          className="bg-brand text-white text-sm font-bold px-5 py-2.5 rounded-full hover:opacity-90 disabled:opacity-50 transition active:scale-[0.97]"
         >
           {submitting ? "Submitting..." : "Submit request"}
         </button>

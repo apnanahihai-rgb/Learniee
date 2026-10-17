@@ -78,7 +78,7 @@ export default function ParentWalletPage() {
             type="button"
             onClick={handleAddMoney}
             disabled={addingMoney || !amountInput}
-            className="flex items-center gap-1 h-10 px-4 rounded-full bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition disabled:opacity-60 flex-shrink-0"
+            className="flex items-center gap-1 h-10 px-4 rounded-full bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition active:scale-[0.97] disabled:opacity-60 flex-shrink-0"
           >
             <Plus size={15} />
             {addingMoney ? "Please wait..." : "Add money"}

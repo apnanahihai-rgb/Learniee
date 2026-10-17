@@ -77,7 +77,7 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
           type="button"
           onClick={onMenuClick}
           aria-label="Open menu"
-          className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand-dark shadow-playful transition lg:hidden"
+          className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand-dark shadow-playful transition active:scale-[0.97] lg:hidden"
         >
           <Menu size={18} />
         </button>

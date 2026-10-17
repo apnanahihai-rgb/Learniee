@@ -18,7 +18,7 @@ export default function OnboardingSubmitButton({
     <button
       type="submit"
       disabled={submitting}
-      className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-medium text-sm py-2.5 w-full rounded-lg shadow-sm shadow-violet-600/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-medium text-sm py-2.5 w-full rounded-lg shadow-sm shadow-violet-600/20 transition-[color,background-color,scale] active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {submitting && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
       {submitting ? submittingLabel : label}

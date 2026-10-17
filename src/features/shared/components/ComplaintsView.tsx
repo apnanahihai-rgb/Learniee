@@ -213,7 +213,7 @@ export default function ComplaintsView({
             <button
               type="submit"
               disabled={submitting}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white text-sm font-bold px-6 py-2.5 rounded-full hover:opacity-90 disabled:opacity-50 transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand text-white text-sm font-bold px-6 py-2.5 rounded-full hover:opacity-90 disabled:opacity-50 transition active:scale-[0.97]"
             >
               <Send size={14} />
               {submitting ? "Submitting..." : "Submit complaint"}
