@@ -48,7 +48,7 @@ export default function OtpVerification({
             e.target.value.replace(/\D/g, "")
           )
         }
-        className="border rounded-full p-3 w-full outline-none"
+        className="border rounded-full p-3 w-full outline-none focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/30"
       />
 
       {error && (

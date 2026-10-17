@@ -177,6 +177,8 @@
 .lh .thumb{z-index:0}
 .lh .course{transition:transform .2s cubic-bezier(.23,1,.32,1),box-shadow .2s cubic-bezier(.23,1,.32,1)}
 .lh .tab{font-weight:700}
+.lh .menu,.lh .tab{transition:transform .15s cubic-bezier(.23,1,.32,1),background-color .15s}
+.lh .menu:active,.lh .tab:active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.lh .tab:hover{background:var(--lav-100)}}
 @media(hover:hover) and (pointer:fine){.lh .tab[aria-selected=true]:hover{background:var(--ink)}}
 .lh .mentor{border:2px solid var(--ink);box-shadow:6px 6px 0 rgba(36,24,72,.9)}
@@ -328,7 +330,7 @@
 .lh .nav{gap:24px}.lh .links{white-space:nowrap}
 @media(max-width:1180px){
   .lh .links,.lh .nav>.btn{display:none}.lh .menu{display:block}
-  .lh .links.open{display:flex;flex-direction:column;position:absolute;top:72px;left:0;right:0;background:var(--lav-50);padding:16px 24px 24px;border-bottom:1px solid var(--lav-200);gap:4px;max-height:calc(100vh - 72px);overflow-y:auto}
+  .lh .links.open{display:flex;flex-direction:column;position:absolute;top:72px;left:0;right:0;background:var(--lav-50);padding:16px 24px 24px;border-bottom:1px solid var(--lav-200);gap:4px;max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow-y:auto}
   .lh .links.open a{width:100%}
   .lh .links.open .mob{display:inline-flex;justify-content:center;margin-top:8px}
 }
@@ -373,7 +375,7 @@
 .lh footer.site{border-top:0}
 @media(max-width:1180px){
   .lh .links,.lh .nav>.btn{display:none}.lh .menu{display:block;margin-left:auto}
-  .lh .links.open{display:flex;flex-direction:column;position:absolute;top:84px;left:16px;right:16px;margin:0;padding:14px;gap:2px;background:#fff;border:2px solid var(--ink);border-radius:22px;box-shadow:var(--pop);max-height:calc(100vh - 100px);overflow-y:auto}
+  .lh .links.open{display:flex;flex-direction:column;position:absolute;top:84px;left:16px;right:16px;margin:0;padding:14px;gap:2px;background:#fff;border:2px solid var(--ink);border-radius:22px;box-shadow:var(--pop);max-height:calc(100vh - 100px);max-height:calc(100dvh - 100px);overflow-y:auto}
   .lh .links.open a{width:100%;padding:0 16px}
   .lh .links.open .mob{display:inline-flex;justify-content:center;margin-top:8px}
   .lh .links.open .mob.btn:not(.ghost){background:var(--sun)}

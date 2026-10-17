@@ -57,7 +57,7 @@ export default function NewPasswordForm({
           onChange={(e) =>
             onNewPasswordChange(e.target.value)
           }
-          className="border rounded-full p-3 w-full outline-none"
+          className="border rounded-full p-3 w-full outline-none focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/30"
         />
 
         <button
@@ -81,7 +81,7 @@ export default function NewPasswordForm({
           onChange={(e) =>
             onConfirmPasswordChange(e.target.value)
           }
-          className="border rounded-full p-3 w-full outline-none"
+          className="border rounded-full p-3 w-full outline-none focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/30"
         />
 
         <button

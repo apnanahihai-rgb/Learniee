@@ -20,7 +20,7 @@ export default function BlogCard({
   return (
     <Link
       href={href}
-      className={`group flex overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg ${
+      className={`group flex overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-[box-shadow,border-color] hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:border-violet-300 hover:shadow-lg active:scale-[0.99] ${
         featured ? "flex-col md:col-span-2 lg:col-span-3 md:flex-row" : "flex-col"
       }`}
     >
