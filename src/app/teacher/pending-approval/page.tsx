@@ -93,7 +93,7 @@ export default function TeacherPendingApproval() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-dvh bg-gray-50">
       <header className="flex items-center justify-center gap-2.5 pt-12 pb-8 px-4">
         <BrandLogo className="h-12 w-auto" priority />
       </header>

@@ -159,7 +159,7 @@ export default function AccountAccessManager({
 
   if (embedded) return content;
 
-  return <div className="mx-auto min-h-screen max-w-5xl bg-admin-surface p-8 text-admin-ink">{content}</div>;
+  return <div className="mx-auto min-h-dvh max-w-5xl bg-admin-surface p-8 text-admin-ink">{content}</div>;
 }
 
 function AccountAccessModal({

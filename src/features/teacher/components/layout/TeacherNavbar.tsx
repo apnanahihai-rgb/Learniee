@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { Menu, Search } from "lucide-react";
+import { LogOut, Menu, Search } from "lucide-react";
 
 import NotificationBell from "@/features/shared/components/NotificationBell";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import BrandLogo from "@/features/shared/components/BrandLogo";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
+import { getInitial } from "@/lib/initials";
 
 interface Teacher {
   firstName: string;
@@ -65,7 +66,7 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
     teacher?.visibleName ||
     `${teacher?.firstName ?? ""} ${teacher?.lastName ?? ""}`.trim();
 
-  const teacherInitial = (teacherName || "T").trim().charAt(0).toUpperCase();
+  const teacherInitial = getInitial(teacherName, "T");
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-sm border-b border-violet-100 shadow-sm flex items-center px-3 sm:px-5 gap-4 z-50">
@@ -85,7 +86,7 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
         <button
           type="button"
           onClick={() => router.push("/teacher")}
-          className="flex items-center gap-2"
+          className="flex shrink-0 items-center gap-2"
           aria-label="Go to dashboard"
         >
           <BrandLogo className="h-9 w-auto" priority />
@@ -145,9 +146,12 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
         <button
           type="button"
           onClick={handleLogout}
-          className="text-sm font-semibold text-gray-500 hover:text-brand transition"
+          // Icon-only 36px tap target on phones frees header width; full "Logout" label from sm up.
+          aria-label="Log out"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-gray-500 hover:text-brand transition sm:size-auto"
         >
-          Logout
+          <LogOut size={18} className="sm:hidden" />
+          <span className="hidden sm:inline">Logout</span>
         </button>
       </div>
     </header>

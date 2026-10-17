@@ -1,5 +1,6 @@
 import { Star, BookOpen } from "lucide-react";
 import type { ParentCourse } from "@/features/parent/types/course";
+import { getInitial } from "@/lib/initials";
 
 interface Props {
   course: ParentCourse;
@@ -29,7 +30,7 @@ export default function CourseCard({ course }: Props) {
     course.teacher.visibleName ||
     `${course.teacher.firstName} ${course.teacher.lastName}`.trim();
 
-  const teacherInitial = (teacherName || "T").trim().charAt(0).toUpperCase();
+  const teacherInitial = getInitial(teacherName, "T");
 
   return (
     <div className="group bg-white border border-violet-100 rounded-3xl shadow-sm overflow-hidden flex flex-col shadow-playful-hover">

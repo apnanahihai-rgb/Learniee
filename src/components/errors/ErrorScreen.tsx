@@ -42,7 +42,7 @@ export default function ErrorScreen({
     <main
       role="alert"
       className={`flex w-full flex-col items-center justify-center bg-gradient-to-br from-violet-50 via-white to-amber-50 px-6 py-12 text-center ${
-        fullScreen ? "min-h-screen" : "min-h-[70vh] rounded-3xl"
+        fullScreen ? "min-h-dvh" : "min-h-[70vh] rounded-3xl"
       }`}
     >
       <p

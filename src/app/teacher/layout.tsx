@@ -33,7 +33,7 @@ export default function TeacherLayout({
 
   if (guard.status !== "allowed") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-gray-50 px-4 text-center">
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-3 bg-gray-50 px-4 text-center">
         {guard.status === "error" ? (
           <>
             <p className="text-sm text-red-600">
@@ -57,7 +57,7 @@ export default function TeacherLayout({
   }
 
   return (
-    <div className="min-h-screen bg-violet-50/40">
+    <div className="min-h-dvh bg-violet-50/40">
       {/* Fixed Navbar */}
       <TeacherNavbar
         onMenuClick={() =>
@@ -72,7 +72,7 @@ export default function TeacherLayout({
       />
 
       {/* Page Content */}
-      <main className="min-h-screen pt-16 lg:pl-64 bg-gradient-to-b from-violet-50 via-white to-white">
+      <main className="min-h-dvh pt-16 lg:pl-64 bg-gradient-to-b from-violet-50 via-white to-white">
         {children}
       </main>
     </div>

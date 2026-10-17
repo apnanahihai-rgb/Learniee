@@ -3,7 +3,7 @@
 .lh main>section.pagehead.cathead{padding:48px 0 44px}
 .lh .crumbs{font-size:14px;color:var(--ink-2);margin-bottom:18px}
 .lh .crumbs a{text-decoration:underline;text-underline-offset:3px}
-.lh .crumbs a:hover{color:var(--lav-600)}
+@media(hover:hover) and (pointer:fine){.lh .crumbs a:hover{color:var(--lav-600)}}
 .lh .cathead .lede{max-width:60ch}
 .lh .cat-points{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:6px;color:var(--ink-2);font-size:15px}
 .lh .cat-points li::before{content:"✓";color:var(--lav-600);font-weight:800;margin-right:8px}
@@ -41,7 +41,7 @@
 
 .lh .cat-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:32px;font-weight:600}
 .lh .cat-pager a{text-decoration:underline;text-underline-offset:3px}
-.lh .cat-pager a:hover{color:var(--lav-600)}
+@media(hover:hover) and (pointer:fine){.lh .cat-pager a:hover{color:var(--lav-600)}}
 
 .lh section.catask{padding:56px 0;background:var(--lav-100)}
 .lh .catask .wrap{display:grid;gap:14px;justify-items:start}
@@ -50,7 +50,7 @@
 .lh .catexplore h2{font-size:clamp(22px,3vw,30px);max-width:none}
 .lh .chips{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .lh .chips a{display:inline-block;font:600 15px var(--body);padding:8px 16px;border-radius:999px;background:#fff;border:1px solid var(--lav-200)}
-.lh .chips a:hover{border-color:var(--lav-600);color:var(--lav-600)}
+@media(hover:hover) and (pointer:fine){.lh .chips a:hover{border-color:var(--lav-600);color:var(--lav-600)}}
 
 @media(max-width:600px){
   .lh main>section.pagehead.cathead{padding:32px 0 32px}

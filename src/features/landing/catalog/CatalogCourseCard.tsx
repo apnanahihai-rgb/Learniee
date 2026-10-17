@@ -1,5 +1,6 @@
 import CourseLink from "./CourseLink";
 import type { CatalogCourseCard } from "./catalog.service";
+import { getInitial } from "@/lib/initials";
 
 const PALETTE = ["#DCD1FF", "#FFD25E", "#B7A3F5", "#ECE6FF"];
 
@@ -27,7 +28,7 @@ export default function CatalogCourseCardView({ course }: { course: CatalogCours
             // eslint-disable-next-line @next/next/no-img-element
             <img src={course.thumbnailUrl} alt="" loading="lazy" />
           ) : (
-            <span aria-hidden="true">{course.title.charAt(0).toUpperCase()}</span>
+            <span aria-hidden="true">{getInitial(course.title, "L")}</span>
           )}
         </div>
         <div className="cbody">

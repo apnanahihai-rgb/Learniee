@@ -1,3 +1,5 @@
+import { getInitial } from "@/lib/initials";
+
 interface Props {
   src?: string | null;
   name: string;
@@ -26,7 +28,7 @@ const RING_CLASSES: Record<NonNullable<Props["size"]>, string> = {
  * "no photo" treatments.
  */
 export default function ChildAvatar({ src, name, size = "md", className = "" }: Props) {
-  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  const initial = getInitial(name);
 
   return (
     <div

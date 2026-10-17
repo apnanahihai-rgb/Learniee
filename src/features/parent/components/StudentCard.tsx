@@ -4,6 +4,7 @@ import Link from "next/link";
 import { GraduationCap, ChevronRight } from "lucide-react";
 
 import type { StudentProfile } from "@/features/parent/types/student";
+import { getInitial } from "@/lib/initials";
 
 interface Props {
   student: StudentProfile;
@@ -61,7 +62,7 @@ export default function StudentCard({ student }: Props) {
           />
         ) : (
           <span className="text-4xl font-heading font-bold text-white/90">
-            {student.firstName.charAt(0).toUpperCase()}
+            {getInitial(student.firstName)}
           </span>
         )}
 

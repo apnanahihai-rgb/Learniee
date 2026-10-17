@@ -3,6 +3,7 @@ import { ChevronRight, Search } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Modal } from "@/components/ui/modal";
+import { getInitials } from "@/lib/initials";
 
 /**
  * Small presentational pieces shared by every redesigned Admin screen.
@@ -293,12 +294,7 @@ export function AdminPill({
 }
 
 export function AdminAvatar({ name, size = 40 }: { name: string; size?: number }) {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
+  const initials = getInitials(name, "");
 
   return (
     <span

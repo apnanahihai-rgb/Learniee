@@ -11,6 +11,7 @@ import BlogContent from "../BlogContent";
 import BlogCard from "./BlogCard";
 import { blogTheme } from "./blogTheme";
 import { iso } from "@/features/blog/utils/isoDate";
+import { getInitial } from "@/lib/initials";
 
 
 /**
@@ -32,7 +33,7 @@ export default function DashboardBlogArticle({
 }) {
   const parsed = parseMarkdown(post.content);
   const { gradient } = blogTheme(post.category);
-  const initial = post.author.name.trim().charAt(0).toUpperCase() || "L";
+  const initial = getInitial(post.author.name, "L");
 
   return (
     <div className="p-4 sm:p-8 max-w-4xl mx-auto">

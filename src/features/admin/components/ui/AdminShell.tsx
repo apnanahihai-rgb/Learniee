@@ -120,9 +120,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <AdminCountsContext.Provider value={queue}>
-      <div className="flex min-h-screen bg-admin-surface font-sans text-admin-ink">
+      <div className="flex min-h-dvh bg-admin-surface font-sans text-admin-ink">
         {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-screen w-[272px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-admin-line bg-white px-4 pb-8 pt-6 lg:flex">
+        <aside className="sticky top-0 hidden h-dvh w-[272px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-admin-line bg-white px-4 pb-8 pt-6 lg:flex">
           <Brand />
           <SidebarNav />
         </aside>

@@ -151,9 +151,9 @@ export default function AccountsShell({ children }: { children: React.ReactNode 
 
   return (
     <AccountsLedgerContext.Provider value={ledger}>
-      <div className="flex min-h-screen bg-admin-surface font-sans text-admin-ink">
+      <div className="flex min-h-dvh bg-admin-surface font-sans text-admin-ink">
         {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-admin-line bg-white px-3.5 pb-6 pt-6 lg:flex">
+        <aside className="sticky top-0 hidden h-dvh w-[240px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-admin-line bg-white px-3.5 pb-6 pt-6 lg:flex">
           <Brand />
           <SidebarNav />
         </aside>

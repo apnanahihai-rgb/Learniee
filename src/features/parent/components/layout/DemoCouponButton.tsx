@@ -86,7 +86,8 @@ export default function DemoCouponButton() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl border border-violet-100 shadow-playful p-4 z-50">
+        // On phones the popover spans the screen under the header (a 320px panel anchored to a mid-row button clips off the left edge); from sm up it anchors to its button. Pops in from the top-right.
+        <div className="fixed inset-x-3 top-[4.25rem] max-h-[calc(100dvh-5rem)] overflow-y-auto origin-top-right animate-pop-in sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 bg-white rounded-2xl border border-violet-100 shadow-playful p-4 z-50">
           {/* BALANCE */}
           <div className="flex items-center gap-3 mb-4">
             <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">

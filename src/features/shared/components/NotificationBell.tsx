@@ -78,7 +78,8 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 max-w-[90vw] bg-white rounded-2xl border border-violet-100 shadow-playful z-50 flex flex-col max-h-[28rem]">
+        // On phones the popover spans the screen under the header (a 320px panel anchored to a mid-row button clips off the left edge); from sm up it anchors to its button. Pops in from the top-right.
+        <div className="fixed inset-x-3 top-[4.25rem] origin-top-right animate-pop-in sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 bg-white rounded-2xl border border-violet-100 shadow-playful z-50 flex flex-col max-h-[min(28rem,calc(100dvh-5rem))]">
           <div className="flex items-center justify-between px-4 py-3 border-b border-violet-100 flex-shrink-0">
             <p className="text-sm font-bold text-gray-800">Notifications</p>
             {unreadCount > 0 && (

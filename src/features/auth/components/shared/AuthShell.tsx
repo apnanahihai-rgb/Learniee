@@ -33,8 +33,8 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthStageContext.Provider value={api}>
-      <main className="grid min-h-screen place-items-start bg-[#f6f3fc] md:place-items-center md:p-5">
-        <div className="grid w-full min-h-screen grid-cols-1 overflow-hidden bg-white md:min-h-[560px] md:h-[min(680px,calc(100vh-40px))] md:max-w-[1040px] md:grid-cols-[1.05fr_1fr] md:rounded-[28px] md:shadow-[0_24px_60px_-24px_rgba(91,31,176,0.35)]">
+      <main className="grid min-h-dvh place-items-start bg-[#f6f3fc] md:place-items-center md:p-5">
+        <div className="grid w-full min-h-dvh grid-cols-1 overflow-hidden bg-white md:min-h-[560px] md:h-[min(680px,calc(100dvh-40px))] md:max-w-[1040px] md:grid-cols-[1.05fr_1fr] md:rounded-[28px] md:shadow-[0_24px_60px_-24px_rgba(91,31,176,0.35)]">
           <section
             className="relative flex h-[230px] flex-col justify-end overflow-hidden bg-[#efe9fb] md:h-auto"
             aria-hidden="true"

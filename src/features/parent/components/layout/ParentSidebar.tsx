@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -104,6 +105,16 @@ interface ParentSidebarProps {
 }
 
 export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
+  // Escape closes the mobile drawer (keyboards, tablets, screen readers).
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -154,20 +165,22 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
   return (
     <>
       {/* Mobile / Tablet overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-violet-950/40 backdrop-blur-[2px] z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
+      {/* Always mounted so it can fade in step with the drawer; pointer-events-none when closed so it never eats taps. Blur dropped: a full-screen backdrop blur is costly on phones. */}
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 z-40 bg-violet-950/45 transition-opacity duration-200 ease-out motion-reduce:transition-none lg:hidden ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={onClose}
+      />
 
       <aside
         className={`
           fixed top-16 bottom-0 left-0 z-40 w-64
           bg-gradient-to-b from-brand-light to-brand-dark
           rounded-r-[2rem] px-4 py-6 text-white overflow-y-auto
-          transform transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none
-          ${isOpen ? "translate-x-0 duration-[250ms]" : "-translate-x-full lg:translate-x-0 duration-200"}
+          transform transition-[transform,visibility] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none
+          ${isOpen ? "translate-x-0 duration-[250ms]" : "invisible -translate-x-full lg:visible lg:translate-x-0 duration-200"}
         `}
       >
         {/* Header */}

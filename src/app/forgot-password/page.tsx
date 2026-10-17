@@ -2,7 +2,7 @@ import ForgotPasswordForm from "@/features/auth/components/forgot-password/Forgo
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <main className="min-h-dvh flex items-center justify-center bg-gray-50 px-4">
       <ForgotPasswordForm />
     </main>
   );

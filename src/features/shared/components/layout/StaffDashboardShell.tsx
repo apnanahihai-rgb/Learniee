@@ -29,7 +29,7 @@ export default function StaffDashboardShell({
   cards,
 }: StaffDashboardShellProps) {
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-dvh bg-gray-50 p-8">
       <h1 className="text-2xl font-bold text-purple-600">{heading}</h1>
       <p className="text-sm text-gray-500 mt-1 mb-8">
         Welcome, {welcomeName}. {subheading}
