@@ -18,8 +18,8 @@
 .lh .cat-others{margin-top:48px}
 
 .lh .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
-.lh .ccard{background:#fff;border:1px solid var(--lav-200);border-radius:20px;overflow:hidden;transition:transform .15s,box-shadow .15s}
-.lh .ccard:hover{transform:translateY(-3px);box-shadow:0 10px 0 var(--lav-100)}
+.lh .ccard{background:#fff;border:1px solid var(--lav-200);border-radius:20px;overflow:hidden;transition:transform .15s cubic-bezier(.23,1,.32,1),box-shadow .15s cubic-bezier(.23,1,.32,1)}
+@media(hover:hover) and (pointer:fine){.lh .ccard:hover{transform:translateY(-3px);box-shadow:0 10px 0 var(--lav-100)}}
 .lh .ccard-link{display:flex;flex-direction:column;height:100%}
 .lh .cthumb{height:150px;display:grid;place-items:center;font:800 48px var(--head);color:var(--ink);overflow:hidden}
 .lh .cthumb img{width:100%;height:100%;object-fit:cover}

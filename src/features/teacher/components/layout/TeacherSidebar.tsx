@@ -128,7 +128,7 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
         type="button"
         onClick={() => handleNavigation(item.path)}
         className={`
-          group w-full flex items-center gap-3 text-left text-sm py-2 px-3 rounded-xl transition-all
+          group w-full flex items-center gap-3 text-left text-sm py-2 px-3 rounded-xl transition-colors duration-150 ease-out motion-reduce:transition-none
           ${
             isActive
               ? "bg-white text-brand-dark font-bold shadow-playful"
@@ -168,8 +168,8 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
           fixed top-16 bottom-0 left-0 z-40 w-64
           bg-gradient-to-b from-brand-light to-brand-dark
           rounded-r-[2rem] px-4 py-6 text-white overflow-y-auto
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          transform transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none
+          ${isOpen ? "translate-x-0 duration-[250ms]" : "-translate-x-full lg:translate-x-0 duration-200"}
         `}
       >
         {/* Header */}

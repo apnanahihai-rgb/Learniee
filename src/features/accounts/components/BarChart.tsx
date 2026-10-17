@@ -50,8 +50,8 @@ export default function BarChart({ data, valueFormatter, maxValue }: BarChartPro
             </div>
             <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
               <div
-                className="h-full rounded-full transition-[width] duration-300"
-                style={{ width: `${pct}%`, backgroundColor: d.color }}
+                className="h-full w-full origin-left transition-transform duration-300 ease-out motion-reduce:transition-none"
+                style={{ transform: `scaleX(${pct / 100})`, backgroundColor: d.color }}
               />
             </div>
           </div>

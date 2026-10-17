@@ -44,7 +44,7 @@ export default function CourseMediaPreview({
         <img
           src={thumbnailUrl}
           alt={courseTitle || "Course thumbnail"}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
             hovered && videoUrl ? "opacity-0" : "opacity-100"
           }`}
         />
@@ -64,7 +64,7 @@ export default function CourseMediaPreview({
           playsInline
           loop
           preload="metadata"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
             hovered ? "opacity-100" : "opacity-0"
           }`}
         />

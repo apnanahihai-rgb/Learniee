@@ -18,8 +18,9 @@
 .lh h1,.lh h2,.lh h3{font-family:var(--head);line-height:1.1;letter-spacing:-.02em}
 .lh h2{font-size:clamp(30px,4vw,44px);font-weight:800;max-width:18ch}
 .lh .lede{color:var(--ink-2);max-width:56ch;margin-top:14px}
-.lh .btn{display:inline-flex;align-items:center;gap:8px;font:700 16px var(--body);padding:14px 26px;border-radius:999px;border:2px solid var(--ink);background:var(--sun);color:var(--ink);cursor:pointer;transition:transform .15s}
-.lh .btn:hover{transform:translateY(-2px)}
+.lh .btn{display:inline-flex;align-items:center;gap:8px;font:700 16px var(--body);padding:14px 26px;border-radius:999px;border:2px solid var(--ink);background:var(--sun);color:var(--ink);cursor:pointer;transition:transform .15s cubic-bezier(.23,1,.32,1)}
+@media(hover:hover) and (pointer:fine){.lh .btn:hover{transform:translateY(-2px)}}
+.lh .btn:active{transform:scale(.97)}
 .lh .btn.ghost{background:transparent}
 .lh .btn.solid{background:var(--ink);color:#fff}
 
@@ -131,7 +132,7 @@
 .lh .faq{max-width:820px}
 .lh details{border-bottom:1px solid var(--lav-200);padding:20px 0}
 .lh summary{font:600 19px var(--head);cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px}
-.lh summary::after{content:"+";font-size:26px;line-height:1;transition:transform .2s}
+.lh summary::after{content:"+";font-size:26px;line-height:1;transition:transform .2s cubic-bezier(.23,1,.32,1)}
 .lh details[open] summary::after{transform:rotate(45deg)}
 .lh details p{color:var(--ink-2);margin-top:12px;max-width:62ch}
 
@@ -174,8 +175,7 @@
 .lh .thumb::before,.lh .post .img::after{content:"";position:absolute;inset:0;background:radial-gradient(rgba(255,255,255,.55) 2px,transparent 2.5px) 0 0/20px 20px;opacity:.7}
 .lh .thumb{height:140px;font-size:52px}
 .lh .thumb{z-index:0}
-.lh .course{transition:transform .2s,box-shadow .2s}
-.lh .course:hover{transform:translateY(-6px);box-shadow:0 14px 30px -12px rgba(123,91,224,.45)}
+.lh .course{transition:transform .2s cubic-bezier(.23,1,.32,1),box-shadow .2s cubic-bezier(.23,1,.32,1)}
 .lh .tab{font-weight:700}
 .lh .tab:hover{background:var(--lav-100)}
 .lh .tab[aria-selected=true]:hover{background:var(--ink)}
@@ -191,7 +191,7 @@
 .lh .dir{background:#fff}
 .lh .dgrid>div{background:var(--lav-50);border-radius:20px;padding:22px}
 .lh .dgrid h3{font-size:20px}
-.lh .post{transition:transform .2s}.lh .post:hover{transform:translateY(-6px)}
+.lh .post{transition:transform .2s cubic-bezier(.23,1,.32,1),box-shadow .2s cubic-bezier(.23,1,.32,1)}
 .lh .post h3{font-size:22px}
 .lh .post .tag{background:var(--lav-100);padding:2px 10px;border-radius:999px;display:inline-block}
 .lh summary{font-size:21px}
@@ -256,7 +256,7 @@
 .lh #courses,.lh #why,.lh #how,.lh #blog{background-image:radial-gradient(var(--lav-200) 1.6px,transparent 1.6px);background-size:26px 26px}
 .lh .course,.lh .post,.lh .mentor,.lh .steps li,.lh .wc,.lh blockquote,.lh .dform,.lh .room{border:2px solid var(--ink);box-shadow:var(--pop)}
 .lh .stage .room{box-shadow:10px 10px 0 var(--lav-600)}
-.lh .course:hover,.lh .post:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}
+@media(hover:hover) and (pointer:fine){.lh .course:hover,.lh .post:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}}
 .lh .thumb{height:120px}
 .lh .thumb span{position:relative;z-index:1;display:grid;place-items:center;min-width:72px;height:72px;padding:0 12px;background:#fff;border:2px solid var(--ink);border-radius:999px;font-size:26px;box-shadow:3px 3px 0 var(--ink)}
 .lh .why{gap:24px}
@@ -342,7 +342,8 @@
   .lh section{padding:64px 0}
 }
 @media(max-width:520px){.lh .steps,.lh .dgrid,.lh .fgrid{grid-template-columns:1fr}.lh .stats{gap:24px}}
-@media(prefers-reduced-motion:reduce){.lh *{animation:none!important;transition:none!important}}
+/* Reduced motion: no animations, and only colour/opacity/shadow may still ease; movement is instant. */
+@media(prefers-reduced-motion:reduce){.lh *,.lh *::before,.lh *::after{animation:none!important;transition-property:color,background-color,border-color,opacity,box-shadow!important}}
 
 /* ---- v6: floating pill navbar, full-viewport hero, chip strip, clean footer edge ---- */
 .lh header{position:sticky;top:0;z-index:30;height:0;background:none;backdrop-filter:none;border:0;box-shadow:none!important}
@@ -354,6 +355,7 @@
 .lh .links .mob{display:none}
 .lh .nav>.btn.ghost{border:0;background:none;padding:0 14px;min-height:44px}
 .lh .nav>.btn.ghost:hover{background:var(--lav-100);transform:none}
+.lh .nav>.btn.ghost:active{transform:scale(.97)}
 .lh .nav>.btn:not(.ghost){padding:0 20px;min-height:44px;white-space:nowrap}
 .lh .logo{font-size:24px}
 .lh main>section{scroll-margin-top:96px}

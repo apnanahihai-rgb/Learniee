@@ -148,7 +148,7 @@ function Tab({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border-2 transition-all flex-shrink-0 ${
+      className={`flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full border-2 transition-[scale,box-shadow,background-color,border-color,color] duration-200 ease-out motion-reduce:transition-none flex-shrink-0 ${
         active
           ? "bg-brand border-brand text-white shadow-playful scale-[1.02]"
           : "bg-white border-violet-100 text-gray-700 hover:border-brand-light"

@@ -175,14 +175,20 @@
 }
 
 .shadow-playful-hover {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.shadow-playful-hover:hover {
-  box-shadow:
-    0 16px 32px -10px rgba(126, 43, 241, 0.25),
-    0 4px 10px -2px rgba(126, 43, 241, 0.14);
-  transform: translateY(-3px);
+/* Hover lifts only on devices that really hover, so a tap on a phone
+   doesn't leave the card stuck in its "lifted" state. */
+@media (hover: hover) and (pointer: fine) {
+  .shadow-playful-hover:hover {
+    box-shadow:
+      0 16px 32px -10px rgba(126, 43, 241, 0.25),
+      0 4px 10px -2px rgba(126, 43, 241, 0.14);
+    transform: translateY(-3px);
+  }
 }
 
 .bg-dot-pattern {
@@ -203,6 +209,17 @@
 
 .animate-pop-in {
   animation: pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Reduced motion: keep the fade, drop the movement. */
+@keyframes pop-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop-in { animation-name: pop-in-fade; }
+  .shadow-playful-hover { transition: box-shadow 0.2s ease; }
 }
 
 .phone-input {

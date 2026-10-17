@@ -117,10 +117,10 @@ export default function CourseFormSidebar({ formData, hasThumbnail, hasIntroVide
               {doneCount} of {COURSE_SECTIONS.length} sections
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 rounded-full bg-gray-100">
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
             <div
-              className="h-1.5 rounded-full bg-violet-600 transition-all"
-              style={{ width: `${(doneCount / COURSE_SECTIONS.length) * 100}%` }}
+              className="h-full w-full origin-left bg-violet-600 transition-transform duration-300 ease-out motion-reduce:transition-none"
+              style={{ transform: `scaleX(${doneCount / COURSE_SECTIONS.length})` }}
             />
           </div>
         </div>

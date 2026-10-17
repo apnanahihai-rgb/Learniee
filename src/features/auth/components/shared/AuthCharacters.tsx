@@ -24,12 +24,12 @@ interface Character {
 
 const CHARACTERS: Character[] = [
   {
-    cx: 210, k: 1, i: 0, d: ".15s",
+    cx: 210, k: 1, i: 0, d: ".08s",
     body: <rect x="150" y="90" width="120" height="310" fill="#7e2bf1" />,
     eyes: [[188, 140], [232, 140]], scleras: true, mouth: [211, 172, 1], sy: 0.93,
   },
   {
-    cx: 292, k: 0.7, i: 1, d: ".3s",
+    cx: 292, k: 0.7, i: 1, d: ".16s",
     body: (
       <>
         <rect x="252" y="205" width="80" height="195" fill="#2a1659" />
@@ -45,7 +45,7 @@ const CHARACTERS: Character[] = [
     eyes: [[118, 354], [162, 354]], scleras: false, mouth: [140, 376, 1], sy: 0.97,
   },
   {
-    cx: 372, k: 0.5, i: 3, d: ".45s",
+    cx: 372, k: 0.5, i: 3, d: ".24s",
     body: <path d="M335 400V292a37 37 0 0 1 74 0V400Z" fill="#f4c01e" />,
     eyes: [[355, 294], [389, 294]], scleras: false, mouth: [372, 318, 0.8], sy: 0.97,
   },
@@ -121,7 +121,6 @@ export default function AuthCharacters({ ref }: { ref?: Ref<CastHandle> }) {
     function render() {
       if (!svg) return;
       const m = mood();
-      svg.dataset.mood = m;
       const r = svg.getBoundingClientRect();
       const sc = r.width / 480;
       const a = document.activeElement as HTMLInputElement | null;
@@ -136,7 +135,12 @@ export default function AuthCharacters({ ref }: { ref?: Ref<CastHandle> }) {
         t = { x: r.left - 600, y: r.top + r.height * 0.7 };
       }
 
-      chars.forEach((c) => {
+      // Read every eye position first and write styles afterwards, so the browser
+      // lays out once per frame instead of once per eye.
+      const eyeRects = chars.map((c) => c.eyes.map((e) => e.getBoundingClientRect()));
+      svg.dataset.mood = m;
+
+      chars.forEach((c, ci) => {
         let lean = Math.max(-1, Math.min(1, (t.x - (r.left + c.cx * sc)) / (110 * sc))) * 6 * c.k;
         let sy = 1;
         if (m === "pass") lean = -8 * c.k;
@@ -145,10 +149,10 @@ export default function AuthCharacters({ ref }: { ref?: Ref<CastHandle> }) {
         c.el.style.setProperty("--lean", lean.toFixed(2));
         c.el.style.setProperty("--sy", String(sy));
 
-        c.eyes.forEach((e) => {
+        c.eyes.forEach((e, ei) => {
           const pu = e.querySelector<SVGElement>(".pu");
           if (!pu) return;
-          const b = e.getBoundingClientRect();
+          const b = eyeRects[ci][ei];
           const max = Number(pu.dataset.max);
           let dx = t.x - (b.left + b.width / 2);
           let dy = t.y - (b.top + b.height / 2);
@@ -162,16 +166,22 @@ export default function AuthCharacters({ ref }: { ref?: Ref<CastHandle> }) {
     }
     renderRef.current = render;
 
-    const onMove = (e: MouseEvent) => { mouse = { x: e.clientX, y: e.clientY }; render(); };
+    // mousemove / input / resize can fire many times per frame: draw once per frame.
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; render(); });
+    };
+    const onMove = (e: MouseEvent) => { mouse = { x: e.clientX, y: e.clientY }; schedule(); };
     // Password show/hide toggles input.type after React re-renders.
     const onClick = () => window.setTimeout(render, 0);
     const onFocusOut = () => window.setTimeout(render, 0);
 
     window.addEventListener("mousemove", onMove);
-    window.addEventListener("resize", render);
+    window.addEventListener("resize", schedule);
     document.addEventListener("focusin", render);
     document.addEventListener("focusout", onFocusOut);
-    document.addEventListener("input", render);
+    document.addEventListener("input", schedule);
     document.addEventListener("click", onClick);
 
     const blink = window.setInterval(() => {
@@ -185,12 +195,13 @@ export default function AuthCharacters({ ref }: { ref?: Ref<CastHandle> }) {
 
     return () => {
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("resize", render);
+      window.removeEventListener("resize", schedule);
       document.removeEventListener("focusin", render);
       document.removeEventListener("focusout", onFocusOut);
-      document.removeEventListener("input", render);
+      document.removeEventListener("input", schedule);
       document.removeEventListener("click", onClick);
       window.clearInterval(blink);
+      window.cancelAnimationFrame(raf);
       renderRef.current = () => {};
     };
   }, []);
