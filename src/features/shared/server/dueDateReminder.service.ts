@@ -59,6 +59,10 @@ export async function runDueDateReminderCheck(now: Date = new Date()): Promise<D
   const candidates = await prisma.enrollment.findMany({
     where: {
       status: EnrollmentStatus.ACTIVE,
+      // Cycle-model enrollments get the 7 / 5 / 2-day renewal reminders
+      // instead (`renewalReminder.service.ts`); their `dueDate` is just the
+      // day after the cycle ends, so this would be a duplicate.
+      isLegacy: true,
       dueDateReminderSentAt: null,
       dueDate: { gte: now, lte: windowEnd },
     },

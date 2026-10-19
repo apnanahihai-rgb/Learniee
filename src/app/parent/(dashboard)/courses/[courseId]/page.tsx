@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -98,12 +99,16 @@ export default function CourseDetailPage() {
 
         {/* BOOKING SIDEBAR */}
         <div className="lg:col-span-1">
-          <BookingPanel
-            price={course.price}
-            teacherId={course.teacherId}
-            courseId={course.id}
-            subject={course.subject}
-          />
+          {/* BookingPanel reads the query string (?mode=enroll&studentId=…
+              from the post-demo survey), which needs a Suspense boundary. */}
+          <Suspense fallback={<div className="h-64 rounded-3xl bg-violet-50 animate-pulse" />}>
+            <BookingPanel
+              price={course.price}
+              teacherId={course.teacherId}
+              courseId={course.id}
+              subject={course.subject}
+            />
+          </Suspense>
         </div>
       </div>
 

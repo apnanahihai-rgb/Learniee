@@ -5,6 +5,7 @@
 #
 #   resolve-sessions       every 5 min
 #   session-reminders      every 5 min
+#   demo-reminders         every 5 min
 #   payout-reconcile       every 15 min
 #   enrollment-auto-lapse  daily 03:00 UTC
 #   due-date-reminders     daily 03:30 UTC
@@ -51,6 +52,7 @@ while true; do
   if [ $((e % 5)) -eq 0 ]; then
     hit resolve-sessions &
     hit session-reminders &
+    hit demo-reminders &
   fi
 
   if [ $((e % 15)) -eq 0 ]; then

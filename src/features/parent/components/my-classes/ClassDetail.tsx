@@ -147,7 +147,19 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
               <CycleProgressCard progress={progress} />
 
               {enrollment.status === "ACTIVE" && (
-                <RenewalPanel enrollmentId={enrollment.id} onRenewed={reload} />
+                <RenewalPanel
+                  enrollmentId={enrollment.id}
+                  onRenewed={reload}
+                  recap={
+                    progress
+                      ? {
+                          attended: progress.countedSessions,
+                          total: progress.sessionCount,
+                          cyclesCompleted: enrollment.cyclesCompleted,
+                        }
+                      : undefined
+                  }
+                />
               )}
             </div>
 

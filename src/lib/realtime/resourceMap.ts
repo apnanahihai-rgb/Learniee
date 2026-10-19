@@ -27,6 +27,7 @@ const PARENT_CLASS_VIEWS = [
   "/api/parent/calendar",
   "/api/parent/enrollments",
   "/api/parent/class-sessions",
+  "/api/parent/next-action",
 ];
 
 const TEACHER_CLASS_VIEWS = [
@@ -89,11 +90,13 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
     paths: ["/api/parent/courses", "/api/teacher/course", "/api/teacher-profiles", "/api/admin/courses"],
   },
   DemoCoupon: { scope: "owner", paths: ["/api/parent/demo-coupons", "/api/parent/invoices"] },
+  DemoFeedback: { scope: "owner", paths: ["/api/parent/next-action", "/api/parent/demo-feedback"] },
   DemoCouponPurchase: { scope: "owner", paths: ["/api/parent/demo-coupons", "/api/parent/invoices"] },
   DemoBooking: {
     scope: "owner",
     paths: [
       "/api/parent/demo-bookings",
+      "/api/parent/next-action",
       "/api/teacher/demo-bookings",
       "/api/parent/demo-coupons",
       "/api/parent/calendar",

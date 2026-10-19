@@ -10,6 +10,7 @@ import {
 } from "@/features/shared/utils/enrollmentStatus";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
+import EnrollmentProgressTracker from "@/features/parent/components/enrollments/EnrollmentProgressTracker";
 import RenewalPanel from "@/features/parent/components/enrollments/RenewalPanel";
 import { displayName } from "@/features/shared/utils/displayName";
 
@@ -76,6 +77,8 @@ export default function EnrollmentStatusCard({
       <p className="text-[11px] text-gray-400 mt-1">
         {formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}
       </p>
+
+      <EnrollmentProgressTracker status={enrollment.status} />
 
       {needsReconfirmation && (
         <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-3">

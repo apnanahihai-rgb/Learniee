@@ -8,9 +8,20 @@ import CustomDatePicker from "@/features/shared/components/CustomDatePicker";
 import { weekdaysOfDateKeys } from "@/features/shared/utils/cyclePlan";
 import { WEEKDAY_LABELS, formatScheduleTime, toggleWeekday } from "@/features/shared/utils/weekdays";
 
+export interface RenewalRecap {
+  /** Classes counted so far in the cycle that is ending. */
+  attended: number;
+  /** Classes planned in that cycle. */
+  total: number;
+  /** Cycles finished before this one. */
+  cyclesCompleted: number;
+}
+
 interface Props {
   enrollmentId: string;
   onRenewed?: () => void;
+  /** Mini recap shown above the Renew form so renewing feels earned. */
+  recap?: RenewalRecap;
 }
 
 /**
@@ -20,7 +31,7 @@ interface Props {
  * renewed (a next cycle exists) since the Enrollment just keeps
  * going with no further action needed.
  */
-export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
+export default function RenewalPanel({ enrollmentId, onRenewed, recap }: Props) {
   const { status, loading, paying, error, renew, renewWithWallet, walletBalance } =
     useRenewal(enrollmentId);
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
@@ -89,6 +100,11 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
   }
 
   const preview = status.preview;
+  // Nothing changed from the schedule already running → one-tap wording.
+  const sameSchedule =
+    !isCustom &&
+    scheduleTime === (status.currentScheduleTime ?? "") &&
+    [...scheduleDays].sort().join(",") === [...status.currentScheduleDays].sort().join(",");
   // The wallet pays the base price (no card surcharge), all of it or not at all.
   const canPayPartWallet =
     !!preview && walletBalance !== null && walletBalance >= 1 && walletBalance < preview.totalAmount;
@@ -103,6 +119,16 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
           Renew cycle {status.currentCycleNumber + 1}
         </p>
       </div>
+
+      {recap && (
+        <p className="text-[11px] text-violet-700 mb-3">
+          {recap.attended} of {recap.total} classes attended this cycle
+          {recap.cyclesCompleted > 0
+            ? ` · ${recap.cyclesCompleted} earlier cycle${recap.cyclesCompleted === 1 ? "" : "s"} completed`
+            : ""}
+          . Keep the momentum going.
+        </p>
+      )}
 
       {isCustom ? (
         <div className="mb-2">
@@ -163,7 +189,7 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
         disabled={paying || !scheduleReady || !scheduleTime}
         className="text-xs font-bold text-white bg-brand px-3 py-1.5 rounded-full disabled:opacity-50"
       >
-        {paying ? "Processing…" : "Renew & Pay"}
+        {paying ? "Processing…" : sameSchedule ? "Renew same schedule" : "Renew & Pay"}
       </button>
 
       {canPayPartWallet && (

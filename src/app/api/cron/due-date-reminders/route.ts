@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { runDueDateReminderCheck } from "@/features/shared/server/dueDateReminder.service";
+import { runRenewalReminderSweep } from "@/features/shared/server/renewalReminder.service";
 
 /**
  * GET /api/cron/due-date-reminders
@@ -34,7 +35,16 @@ export async function GET(req: Request) {
 
     const result = await runDueDateReminderCheck();
 
-    return NextResponse.json({ success: true, ...result });
+    // Parent journey: renewal reminders at 7 / 5 / 2 days left + "cycle
+    // ended". Isolated so a failure here never hides the due-date result.
+    let renewal = null;
+    try {
+      renewal = await runRenewalReminderSweep();
+    } catch (renewalError) {
+      console.error("Renewal reminder sweep error:", renewalError);
+    }
+
+    return NextResponse.json({ success: true, ...result, renewal });
   } catch (error) {
     console.error("Due-date reminder cron error:", error);
 

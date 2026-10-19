@@ -381,6 +381,15 @@ model DemoBooking {
   razorpayPaymentId String?           @unique
   isInternationalPayment Boolean      @default(false)
   internationalSurchargeAmount Decimal @default(0) @db.Decimal(10, 2)
+  /// Parent journey (Oct 2026): dedupe stamps for the demo reminder sweep.
+  reminderDayBeforeSentAt  DateTime?
+  reminderHourBeforeSentAt DateTime?
+  /// "How was the demo?" notification sent once the demo has ended.
+  endedPromptSentAt        DateTime?
+  /// First time the parent opened the survey page (drives the one-time
+  /// "show it again on next login" redirect).
+  surveyOpenedAt           DateTime?
+  feedback          DemoFeedback?
   course            Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   demoCoupon        DemoCoupon        @relation(fields: [demoCouponId], references: [id], onDelete: Cascade)
   student           Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -1024,6 +1033,12 @@ model EnrollmentCycle {
   /// window. Set at most once; `cycleClose.service.ts` is the only
   /// writer. Legacy cycles don't exist, so always null there.
   payoutReleasedAt DateTime?
+  /// Parent journey (Oct 2026): one stamp per renewal reminder tier so a
+  /// re-run of the daily sweep never double-sends.
+  renewalReminder7SentAt DateTime?
+  renewalReminder5SentAt DateTime?
+  renewalReminder2SentAt DateTime?
+  cycleEndedNoticeSentAt DateTime?
   /// Reschedule/Leave Phase 2.2: set when approved teacher leave left a
   /// session of this cycle EXCUSED. The last day an excused class's
   /// make-up may be placed (after day 45). Applies ONLY to make-ups of
@@ -1778,6 +1793,12 @@ enum CertificateStatus {
 }
 
 enum NotificationType {
+  /// Parent journey (Oct 2026): demo reminders, post-demo survey, renewal reminders
+  DEMO_REMINDER
+  DEMO_SURVEY_PROMPT
+  DEMO_SURVEY_NUDGE
+  RENEWAL_REMINDER
+  CYCLE_ENDED
   /// Refund requests (Oct 12, 2026)
   REFUND_REQUEST_SUBMITTED
   REFUND_REQUEST_DECIDED
@@ -2196,4 +2217,64 @@ model RefundRequest {
   @@index([parentId, createdAt])
   @@index([status, createdAt])
   @@index([invoiceId])
+}
+
+/// Post-demo survey (Parent journey, Oct 2026). One row per demo booking,
+/// written once by the Parent. Teachers only ever see aggregates; Admin
+/// sees rows. `outcome` is derived from `overall` + `intent` by
+/// `deriveDemoSurveyOutcome()` (src/features/shared/utils/demoSurvey.ts).
+model DemoFeedback {
+  id             String              @id @default(uuid())
+  demoBookingId  String              @unique
+  parentId       String
+  studentId      String
+  teacherId      String
+  courseId       String
+  overall        DemoFeedbackRating
+  levelFit       DemoFeedbackFit
+  intent         DemoFeedbackIntent
+  reason         DemoFeedbackReason?
+  outcome        DemoFeedbackOutcome
+  /// Nudges for an UNDECIDED survey (24 h and 3 days after it was sent).
+  nudge24hSentAt DateTime?
+  nudge3dSentAt  DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  demoBooking    DemoBooking         @relation(fields: [demoBookingId], references: [id], onDelete: Cascade)
+
+  @@index([parentId])
+  @@index([teacherId])
+  @@index([outcome, createdAt])
+}
+
+enum DemoFeedbackRating {
+  GREAT
+  OKAY
+  NOT_GOOD
+}
+
+enum DemoFeedbackFit {
+  YES
+  SOMEWHAT
+  NO
+}
+
+enum DemoFeedbackIntent {
+  ENROLL
+  NEED_TIME
+  NO
+}
+
+enum DemoFeedbackReason {
+  LATE
+  UNCLEAR
+  LEVEL_MISMATCH
+  TECH_ISSUE
+  OTHER
+}
+
+enum DemoFeedbackOutcome {
+  POSITIVE
+  UNDECIDED
+  NEGATIVE
 }

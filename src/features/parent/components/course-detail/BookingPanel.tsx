@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import ChildPicker from "./booking/ChildPicker";
 import DemoBookingSection from "./booking/DemoBookingSection";
@@ -49,8 +50,27 @@ export default function BookingPanel({
   courseId,
   subject,
 }: Props) {
-  const [selectedStudentId, setSelectedStudentId] = useState("");
+  // Pre-fill from the post-demo survey: /parent/courses/<id>?mode=enroll
+  // &studentId=<child>&from=demo-survey opens the Enroll tab with the child
+  // already chosen. Read once; the parent can still change anything.
+  const searchParams = useSearchParams();
+  const prefillStudentId = searchParams.get("studentId") ?? "";
+  const fromDemoSurvey = searchParams.get("from") === "demo-survey";
+
+  const [selectedStudentId, setSelectedStudentId] = useState(prefillStudentId);
   const { students, loading: studentsLoading } = useStudents();
+
+  // Never keep a pre-filled child that isn't on this account (a stale or
+  // hand-edited link); the server re-checks ownership at payment anyway.
+  useEffect(() => {
+    if (
+      !studentsLoading &&
+      selectedStudentId &&
+      !students.some((s) => s.id === selectedStudentId)
+    ) {
+      setSelectedStudentId("");
+    }
+  }, [studentsLoading, students, selectedStudentId]);
   const {
     balance,
     loading: balanceLoading,
@@ -77,7 +97,9 @@ export default function BookingPanel({
     subject,
   });
 
-  const [mode, setMode] = useState<"demo" | "enroll">("demo");
+  const [mode, setMode] = useState<"demo" | "enroll">(
+    searchParams.get("mode") === "enroll" ? "enroll" : "demo",
+  );
 
   const tabs = [
     {
@@ -97,6 +119,13 @@ export default function BookingPanel({
       <h2 className="font-heading text-base font-bold text-gray-800 mb-4">
         Book this course
       </h2>
+
+      {fromDemoSurvey && (
+        <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5 mb-4 text-xs text-emerald-800 leading-relaxed">
+          Glad the demo went well! Your child is already selected — choose a
+          plan (monthly or weekly), your days and a start date.
+        </div>
+      )}
 
       {/* Shared by both modes; for a demo, the (teacher, subject,
           child) cap is enforced server-side. */}
