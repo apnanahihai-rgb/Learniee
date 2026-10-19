@@ -5,33 +5,30 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   CalendarDays,
-  RefreshCw,
-  Calculator,
-  Landmark,
   Wallet,
   User,
   BookOpen,
-  Award,
   Newspaper,
-  Briefcase,
-  ClipboardCheck,
-  CalendarOff,
-  FolderOpen,
-  Video,
-  Radio,
-  MessageCircle,
-  ListChecks,
+  Inbox,
   GraduationCap,
-  AlertCircle,
-  Settings,
+  LifeBuoy,
   X,
   type LucideIcon,
 } from "lucide-react";
+
+import { useTeacherRequestCount } from "@/features/teacher/hooks/useTeacherRequestCount";
 
 interface MenuItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  /**
+   * Other route prefixes that belong to this item (its old pages, which now
+   * redirect into a hub tab, and detail pages) so it stays highlighted there.
+   */
+  matches?: string[];
+  /** Key of a live count shown as a badge (see TeacherSidebar). */
+  badgeKey?: "requests";
 }
 
 interface MenuSection {
@@ -39,62 +36,73 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Same grouping/order as before — only the visual treatment below
-// was changed (Sep 7, 2026) to match ParentSidebar's design system
-// (gradient background, pill-shaped active state, section labels)
-// so the Teacher and Parent dashboards read as one consistent
-// product instead of two different UI styles.
+// Navigation restructure (Oct 19, 2026, docs/NAVIGATION-RESTRUCTURE.md):
+// 21 items -> 9. Each item is a hub page with tabs (?tab=...); the old
+// routes (/teacher/enrollments, /teacher/leave, ...) redirect into the hub,
+// and `matches` keeps the right item highlighted on them and on detail pages.
+// "Requests" is the one place for what needs the teacher's reply (count badge).
 //
-// Sections put what's actually built first (Main), then group the
-// remaining placeholder items by theme instead of leaving them as
-// one long, arbitrarily-ordered list — see 01-PROJECT-STATUS.md /
-// 05-MODULE-SPECS-INDEX.md for what's built vs. still a placeholder
-// route on the Teacher side.
+// "Go Live" is removed: it was a dead link and is deferred scope.
 const menuSections: MenuSection[] = [
   {
-    label: "Main",
+    label: "Teach",
     items: [
       { label: "Home", path: "/teacher", icon: LayoutDashboard },
-      { label: "My Classes", path: "/teacher/my-classes", icon: GraduationCap },
-      { label: "Course Management", path: "/teacher/course-management", icon: BookOpen },
-      { label: "Enrollments", path: "/teacher/enrollments", icon: ListChecks },
-      { label: "Vacancy", path: "/teacher/vacancy", icon: Briefcase },
-      { label: "Calendar", path: "/teacher/calendar", icon: CalendarDays },
-      { label: "Chat", path: "/teacher/chat", icon: MessageCircle },
+      {
+        label: "My Courses",
+        path: "/teacher/courses",
+        icon: BookOpen,
+        matches: ["/teacher/course-management", "/teacher/vacancy"],
+      },
+      {
+        label: "My Classes",
+        path: "/teacher/my-classes",
+        icon: GraduationCap,
+        matches: [
+          "/teacher/enrollments",
+          "/teacher/hw-tests",
+          "/teacher/resources",
+          "/teacher/certificates",
+          "/teacher/chat",
+        ],
+      },
+      {
+        label: "Requests",
+        path: "/teacher/requests",
+        icon: Inbox,
+        matches: ["/teacher/demo", "/teacher/reschedule"],
+        badgeKey: "requests",
+      },
+      {
+        label: "Calendar",
+        path: "/teacher/calendar",
+        icon: CalendarDays,
+        matches: ["/teacher/leave", "/teacher/classes"],
+      },
     ],
   },
   {
-    label: "Schedule",
+    label: "Earn & Share",
     items: [
-      { label: "HW & Tests", path: "/teacher/hw-tests", icon: ClipboardCheck },
-      { label: "Resources", path: "/teacher/resources", icon: FolderOpen },
-      { label: "Reschedule", path: "/teacher/reschedule", icon: RefreshCw },
-      { label: "Leave", path: "/teacher/leave", icon: CalendarOff },
-      { label: "Complain", path: "/teacher/complain", icon: AlertCircle },
-    ],
-  },
-  {
-    label: "Growth & Earnings",
-    items: [
-      { label: "Earnings", path: "/teacher/earnings", icon: Wallet },
-      { label: "Rate Calculator", path: "/teacher/rate-calculator", icon: Calculator },
-      { label: "Bank Account", path: "/teacher/bank-account", icon: Landmark },
-      { label: "Certificate Management", path: "/teacher/certificates", icon: Award },
-    ],
-  },
-  {
-    label: "Community & Live",
-    items: [
+      {
+        label: "Earnings",
+        path: "/teacher/earnings",
+        icon: Wallet,
+        matches: ["/teacher/bank-account", "/teacher/rate-calculator"],
+      },
       { label: "Blogs", path: "/teacher/blogs", icon: Newspaper },
-      { label: "Demo", path: "/teacher/demo", icon: Video },
-      { label: "Go Live", path: "/teacher/go-live", icon: Radio },
     ],
   },
   {
-    label: "Account",
+    label: "Account & Support",
     items: [
-      { label: "Profile", path: "/teacher/profile", icon: User },
-      { label: "Settings", path: "/teacher/settings", icon: Settings },
+      {
+        label: "Account",
+        path: "/teacher/account",
+        icon: User,
+        matches: ["/teacher/profile", "/teacher/settings"],
+      },
+      { label: "Help", path: "/teacher/complain", icon: LifeBuoy },
     ],
   },
 ];
@@ -117,6 +125,7 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
 
   const router = useRouter();
   const pathname = usePathname();
+  const requestCount = useTeacherRequestCount();
 
   const handleNavigation = (path: string) => {
     router.push(path);
@@ -131,7 +140,10 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
     const isActive =
       item.path === "/teacher"
         ? pathname === "/teacher"
-        : pathname === item.path || pathname.startsWith(`${item.path}/`);
+        : [item.path, ...(item.matches ?? [])].some(
+            (p) => pathname === p || pathname.startsWith(`${p}/`),
+          );
+    const badge = item.badgeKey === "requests" ? requestCount.total : 0;
 
     return (
       <button
@@ -160,6 +172,14 @@ export default function TeacherSidebar({ isOpen, onClose }: TeacherSidebarProps)
           <Icon size={14} strokeWidth={2} />
         </span>
         <span className="truncate">{item.label}</span>
+        {badge > 0 && (
+          <span
+            aria-label={`${badge} waiting for you`}
+            className="ml-auto rounded-full bg-brand-yellow px-1.5 py-0.5 text-[10px] font-bold leading-none text-violet-900"
+          >
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
       </button>
     );
   };

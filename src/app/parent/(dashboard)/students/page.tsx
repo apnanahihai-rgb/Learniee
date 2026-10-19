@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 
 /**
- * "Your Children" now lives directly on the parent dashboard
- * (/parent) instead of a separate list page. This route is kept
- * only so any existing links/bookmarks to /parent/students don't
- * 404 - it just forwards to the dashboard.
+ * The student list is now the "Students" tab of Account. Kept as a
+ * redirect so old links and bookmarks to /parent/students don't 404.
  */
 export default function StudentsRedirectPage() {
-  redirect("/parent");
+  redirect("/parent/account?tab=students");
 }

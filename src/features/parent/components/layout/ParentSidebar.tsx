@@ -4,25 +4,14 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Settings,
-  Share2,
-  Video,
-  BookOpen,
-  Calendar,
-  RefreshCw,
-  CreditCard,
-  FolderOpen,
+  Search,
   ListChecks,
-  GraduationCap,
-  Star,
-  User,
-  AlertCircle,
-  Wallet as WalletIcon,
-  X,
-  MessageCircle,
-  ClipboardList,
+  Calendar,
+  CreditCard,
   Newspaper,
-  PlusCircle,
+  User,
+  LifeBuoy,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +19,13 @@ interface MenuItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  /**
+   * Other route prefixes that belong to this item (its old pages, which now
+   * redirect into a hub tab, and detail pages) so it stays highlighted there.
+   */
+  matches?: string[];
+  /** Key of a live count shown as a badge (see TeacherSidebar). */
+  badgeKey?: "requests";
 }
 
 interface MenuSection {
@@ -37,64 +33,69 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Grouped + reordered per request (Aug 31, 2026): "Home" was
-// previously missing entirely from the sidebar — on mobile the
-// navbar's HOME button is hidden (`hidden sm:block`), so there was
-// no way back to /parent except browser back. It's now the first
-// item here, always visible regardless of screen size.
+// Navigation restructure (Oct 19, 2026, docs/NAVIGATION-RESTRUCTURE.md):
+// 19 items -> 8. Each item is a hub page with tabs (?tab=...); the old
+// routes (/parent/free-demo, /parent/wallet, ...) redirect into the hub, and
+// `matches` keeps the right item highlighted on them and on detail pages.
+// Parent journey: Find -> Try -> Learn -> Pay -> Account.
 //
-// Part 2C (Sep 2026): "My Enrollments", "Home works/tests" and "Chat"
-// were merged into "My Classes" (/parent/my-classes) — each course's
-// classes, homework and chat live on one page. The old routes stay
-// as redirects/legacy views so no existing link breaks.
-//
-// Standalone "Homework" and "Chat" items open their own pages
-// (/parent/homework-tests, /parent/chat) — course list -> homework /
-// conversation. "Favorites" was removed (no page ever existed).
-//
-// Note (still true): Preference, Notification, Gift, Go Live,
-// Learnie Mall, Suggestions, Transcripts and FAQs stay
-// removed — none of those pages are built yet (see
-// 02-ARCHITECTURE.md's Deliberately Deferred list / 06-OPEN-DECISIONS.md
-// #6). "Blogs" was re-added Sep 29, 2026: it opens the in-dashboard reader (/parent/blogs).
+// Still deferred (no menu item): Favorites, Learnie Mall, Gift, FAQs, Go Live.
+// "Reviews" has no page of its own - reviews are written from the course page.
 const menuSections: MenuSection[] = [
   {
-    label: "Main",
+    label: "Learn",
     items: [
       { label: "Home", path: "/parent", icon: LayoutDashboard },
-      { label: "Courses", path: "/parent/courses", icon: BookOpen },
-      { label: "Free Demo", path: "/parent/free-demo", icon: Video },
-      { label: "Request Class", path: "/parent/request-class", icon: PlusCircle },
-      { label: "Calendar", path: "/parent/calendar", icon: Calendar },
+      {
+        label: "Find a Course",
+        path: "/parent/courses",
+        icon: Search,
+        matches: ["/parent/teachers", "/parent/request-class"],
+      },
+      {
+        label: "My Classes",
+        path: "/parent/my-classes",
+        icon: ListChecks,
+        matches: [
+          "/parent/free-demo",
+          "/parent/demo-feedback",
+          "/parent/homework-tests",
+          "/parent/chat",
+          "/parent/resources",
+          "/parent/enrollments",
+          "/parent/certificates",
+        ],
+      },
+      {
+        label: "Calendar",
+        path: "/parent/calendar",
+        icon: Calendar,
+        matches: ["/parent/reschedule", "/parent/classes"],
+      },
     ],
   },
   {
-    label: "My Learning",
+    label: "Manage",
     items: [
-      { label: "My Classes", path: "/parent/my-classes", icon: ListChecks },
-      { label: "Homework", path: "/parent/homework-tests", icon: ClipboardList },
-      { label: "Chat", path: "/parent/chat", icon: MessageCircle },
-      { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
-      { label: "Payments", path: "/parent/payments", icon: CreditCard },
-      { label: "Wallet", path: "/parent/wallet", icon: WalletIcon },
-    ],
-  },
-  {
-    label: "Discover",
-    items: [
-      { label: "Teacher", path: "/parent/teachers", icon: GraduationCap },
-      { label: "Resources", path: "/parent/resources", icon: FolderOpen },
+      {
+        label: "Payments",
+        path: "/parent/payments",
+        icon: CreditCard,
+        matches: ["/parent/wallet", "/parent/referral"],
+      },
       { label: "Blogs", path: "/parent/blogs", icon: Newspaper },
-      { label: "Reviews", path: "/parent/reviews", icon: Star },
     ],
   },
   {
     label: "Account & Support",
     items: [
-      { label: "Referral", path: "/parent/referral", icon: Share2 },
-      { label: "Profile", path: "/parent/profile", icon: User },
-      { label: "Settings", path: "/parent/settings", icon: Settings },
-      { label: "Complain", path: "/parent/complain", icon: AlertCircle },
+      {
+        label: "Account",
+        path: "/parent/account",
+        icon: User,
+        matches: ["/parent/profile", "/parent/settings", "/parent/students"],
+      },
+      { label: "Help", path: "/parent/complain", icon: LifeBuoy },
     ],
   },
 ];
@@ -126,10 +127,13 @@ export default function ParentSidebar({ isOpen, onClose }: ParentSidebarProps) {
   const renderItem = (item: MenuItem) => {
     const Icon = item.icon;
 
+    // "/parent" needs an exact match, otherwise Home would be active everywhere.
     const isActive =
       item.path === "/parent"
         ? pathname === "/parent"
-        : pathname === item.path || pathname.startsWith(`${item.path}/`);
+        : [item.path, ...(item.matches ?? [])].some(
+            (p) => pathname === p || pathname.startsWith(`${p}/`),
+          );
 
     return (
       <button
