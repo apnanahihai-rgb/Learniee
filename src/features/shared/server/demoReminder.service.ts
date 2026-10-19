@@ -2,6 +2,7 @@ import {
   notifyDemoReminder,
   notifyDemoSurveyNudge,
   notifyDemoSurveyPrompt,
+  notifyTeacherDemoReminder,
 } from "@/features/shared/server/notificationTriggers.service";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { prisma } from "@/lib/prisma";
@@ -22,6 +23,8 @@ import "server-only";
  *
  *  1. Reminder 1 day before the demo  (`reminderDayBeforeSentAt`)
  *  2. Reminder ~1 hour before         (`reminderHourBeforeSentAt`)
+ *  1b/2b. The same two reminders to the TEACHER
+ *     (`teacherReminderDayBeforeSentAt` / `teacherReminderHourBeforeSentAt`)
  *  3. "How was the demo?" once it ended (`endedPromptSentAt`)
  *  4. Nudges for an UNDECIDED survey at +24 h and +3 days
  *     (`DemoFeedback.nudge24hSentAt` / `nudge3dSentAt`), skipped once the
@@ -38,6 +41,8 @@ const PROMPT_MAX_AGE_DAYS = 7;
 export interface DemoReminderResult {
   dayReminders: number;
   hourReminders: number;
+  teacherDayReminders: number;
+  teacherHourReminders: number;
   surveyPrompts: number;
   surveyNudges: number;
 }
@@ -50,6 +55,8 @@ export async function runDemoReminderSweep(now: Date = new Date()): Promise<Demo
   const result: DemoReminderResult = {
     dayReminders: 0,
     hourReminders: 0,
+    teacherDayReminders: 0,
+    teacherHourReminders: 0,
     surveyPrompts: 0,
     surveyNudges: 0,
   };
@@ -119,6 +126,69 @@ export async function runDemoReminderSweep(now: Date = new Date()): Promise<Demo
       }
     } catch (err) {
       console.error(`Demo reminder failed for booking ${b.id}:`, err);
+    }
+  }
+
+  // 1b + 2b: the same reminders for the Teacher.
+  const teacherUpcoming = await prisma.demoBooking.findMany({
+    where: {
+      status: DemoBookingStatus.CONFIRMED,
+      scheduledAt: { gt: now, lte: new Date(now.getTime() + DAY) },
+      OR: [{ teacherReminderDayBeforeSentAt: null }, { teacherReminderHourBeforeSentAt: null }],
+    },
+    select: {
+      ...select,
+      teacherId: true,
+      teacherReminderDayBeforeSentAt: true,
+      teacherReminderHourBeforeSentAt: true,
+    },
+  });
+
+  for (const b of teacherUpcoming) {
+    try {
+      const startsAt = b.scheduledAt as Date;
+      const msUntil = startsAt.getTime() - now.getTime();
+      const name = studentName(b.student);
+
+      // Skipped for a demo booked inside the last 24 h (the booking notice was just sent).
+      const bookedInsideDay = b.createdAt.getTime() > startsAt.getTime() - DAY;
+
+      if (!b.teacherReminderHourBeforeSentAt && msUntil <= HOUR) {
+        const claimed = await prisma.demoBooking.updateMany({
+          where: { id: b.id, teacherReminderHourBeforeSentAt: null },
+          data: {
+            teacherReminderHourBeforeSentAt: now,
+            ...(b.teacherReminderDayBeforeSentAt ? {} : { teacherReminderDayBeforeSentAt: now }),
+          },
+        });
+        if (claimed.count === 1) {
+          await notifyTeacherDemoReminder({
+            teacherId: b.teacherId,
+            bookingId: b.id,
+            courseTitle: b.course.courseTitle,
+            studentName: name,
+            kind: "HOUR",
+          });
+          result.teacherHourReminders += 1;
+        }
+      } else if (!b.teacherReminderDayBeforeSentAt && msUntil > HOUR) {
+        const claimed = await prisma.demoBooking.updateMany({
+          where: { id: b.id, teacherReminderDayBeforeSentAt: null },
+          data: { teacherReminderDayBeforeSentAt: now },
+        });
+        if (claimed.count === 1 && !bookedInsideDay) {
+          await notifyTeacherDemoReminder({
+            teacherId: b.teacherId,
+            bookingId: b.id,
+            courseTitle: b.course.courseTitle,
+            studentName: name,
+            kind: "DAY",
+          });
+          result.teacherDayReminders += 1;
+        }
+      }
+    } catch (err) {
+      console.error(`Teacher demo reminder failed for booking ${b.id}:`, err);
     }
   }
 

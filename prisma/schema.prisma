@@ -389,6 +389,24 @@ model DemoBooking {
   /// First time the parent opened the survey page (drives the one-time
   /// "show it again on next login" redirect).
   surveyOpenedAt           DateTime?
+  /// Teacher-side reminder dedupe stamps (Oct 19, 2026), same contract as
+  /// the parent ones above.
+  teacherReminderDayBeforeSentAt  DateTime?
+  teacherReminderHourBeforeSentAt DateTime?
+  /// Google Meet room (Oct 19, 2026). Created lazily on the first join
+  /// inside the join window, owned by one of the Workspace organizer
+  /// accounts (`meetOrganizerEmail`), teacher added as co-host. Never sent
+  /// to the browser in a list: the link is only handed out by the
+  /// window-checked join routes.
+  meetSpaceName           String?
+  meetingUri              String?
+  meetOrganizerEmail      String?
+  meetOrganizerAssignedAt DateTime?
+  meetCohostEmail         String?
+  meetCohostConfirmedAt   DateTime?
+  /// First time each side asked for the link (set once, never overwritten).
+  teacherJoinedAt         DateTime?
+  parentJoinedAt          DateTime?
   feedback          DemoFeedback?
   course            Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   demoCoupon        DemoCoupon        @relation(fields: [demoCouponId], references: [id], onDelete: Cascade)
@@ -397,6 +415,8 @@ model DemoBooking {
 
   @@unique([teacherId, subject, studentId])
   @@index([parentId])
+  @@index([status, scheduledAt])
+  @@index([meetOrganizerEmail, meetOrganizerAssignedAt])
 }
 
 /// Cycle-based Enrollment (03-DATA-MODEL.md's "Enrollment (extended

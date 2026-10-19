@@ -43,7 +43,7 @@ export function notifyDemoBooked(bookingId: string) {
       recipientRole: R.PARENT,
       type: T.DEMO_BOOKED,
       title: "Demo booked",
-      message: `Demo for "${courseTitle}" is booked for ${dateLabel}.`,
+      message: `Demo for "${courseTitle}" is booked for ${dateLabel}. The join link appears on the Free Demo page 10 minutes before.`,
       link: "/parent/free-demo",
     });
 

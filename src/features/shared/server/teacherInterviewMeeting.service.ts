@@ -2,6 +2,7 @@ import "server-only";
 
 import { ClassSessionStatus, TeacherApprovalStatus } from "@prisma/client";
 
+import { findBusyDemoOrganizers } from "@/features/shared/server/demoOrganizerBusy";
 import { getInterviewJoinWindow } from "@/features/shared/utils/interviewWindow";
 import { rankOrganizers } from "@/features/shared/utils/meetOrganizerPool";
 import {
@@ -70,7 +71,7 @@ async function rankInterviewOrganizers(teacherId: string, scheduledAt: Date): Pr
   const start = scheduledAt;
   const end = new Date(scheduledAt.getTime() + lengthMs);
 
-  const [classRows, interviewRows, classUsage, interviewUsage] = await Promise.all([
+  const [classRows, interviewRows, classUsage, interviewUsage, demoBusy] = await Promise.all([
     prisma.classSession.findMany({
       where: {
         status: ClassSessionStatus.SCHEDULED,
@@ -99,6 +100,8 @@ async function rankInterviewOrganizers(teacherId: string, scheduledAt: Date): Pr
       where: { organizerEmail: { in: organizers } },
       _max: { createdAt: true },
     }),
+    // Demo rooms (Oct 19, 2026) count as busy too.
+    findBusyDemoOrganizers(prisma, start, end, organizers[0]),
   ]);
 
   const busy = new Set<string>([
@@ -109,6 +112,7 @@ async function rankInterviewOrganizers(teacherId: string, scheduledAt: Date): Pr
     ...(interviewRows as Array<{ organizerEmail: string }>).map((row) =>
       row.organizerEmail.toLowerCase(),
     ),
+    ...demoBusy,
   ]);
 
   const lastUsedMs = new Map<string, number>();

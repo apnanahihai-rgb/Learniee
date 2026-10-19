@@ -34,6 +34,18 @@ export const INTERVIEW_POLICY = {
   assumedLengthMinutes: 60,
 } as const;
 
+/**
+ * Free / paid demo Meet room. The link unlocks `joinOpensMinutesBefore`
+ * before the demo and locks `joinClosesMinutesAfterEnd` after its scheduled
+ * end (the course's lecture length). `assumedLengthMinutes` is only used to
+ * spread rooms over the organizer accounts.
+ */
+export const DEMO_POLICY = {
+  joinOpensMinutesBefore: 10,
+  joinClosesMinutesAfterEnd: 30,
+  assumedLengthMinutes: 60,
+} as const;
+
 export const SESSION_POLICY = {
   /** Join opens this many minutes before a session starts. */
   joinOpensMinutesBefore: 10,

@@ -20,6 +20,7 @@ import {
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
 import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
+import UpcomingDemosCard from "@/features/teacher/components/UpcomingDemosCard";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 interface TeacherProfile {
@@ -239,6 +240,9 @@ export default function TeacherDashboard() {
           </div>
         )}
       </section>
+
+      {/* UPCOMING DEMOS */}
+      <UpcomingDemosCard />
 
       {/* UPCOMING CLASSES */}
       <section className="mb-10">

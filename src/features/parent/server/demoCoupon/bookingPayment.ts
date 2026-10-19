@@ -1,3 +1,7 @@
+import {
+    DEMO_MEET_PRIVATE_FIELDS,
+    withDemoJoinWindow,
+} from "@/features/shared/server/demoBooking.service";
 import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 import { notifyDemoBooked } from "@/features/shared/server/notificationTriggers.service";
 import { prisma } from "@/lib/prisma";
@@ -231,9 +235,10 @@ export async function reconcileDemoBookingFromWebhook(
  * built twice.
  */
 export async function getDemoBookingsForParent(parentId: string) {
-  return prisma.demoBooking.findMany({
+  const bookings = await prisma.demoBooking.findMany({
     where: { parentId },
     orderBy: { createdAt: "desc" },
+    omit: DEMO_MEET_PRIVATE_FIELDS,
     include: {
       student: {
         select: { id: true, firstName: true, visibleName: true },
@@ -247,8 +252,12 @@ export async function getDemoBookingsForParent(parentId: string) {
         },
       },
       course: {
-        select: { id: true, courseTitle: true },
+        select: { id: true, courseTitle: true, duration: true },
       },
     },
   });
+
+  const now = new Date();
+
+  return bookings.map((b) => withDemoJoinWindow(b, now));
 }

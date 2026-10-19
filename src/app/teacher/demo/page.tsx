@@ -2,6 +2,9 @@
 
 import { CalendarClock, Sparkles } from "lucide-react";
 
+import DemoJoinButton, {
+  liveDemoJoinState,
+} from "@/features/shared/components/DemoJoinButton";
 import {
   useTeacherDemoBookings,
   type TeacherDemoBookingListItem,
@@ -14,22 +17,29 @@ import {
  * "Past / other" — mirrors /parent/free-demo's booking list, minus
  * the coupon-purchase block (buying demo coupons is a Parent-only
  * action).
+ *
+ * Oct 19, 2026: each confirmed demo has a Start button that opens its
+ * Google Meet room from 10 minutes before the demo (see
+ * `DemoJoinButton` / `demoMeeting.service.ts`). A demo that is live
+ * right now stays under "Upcoming" until its window closes.
  */
 export default function TeacherDemoPage() {
-  const { bookings, loading, error } = useTeacherDemoBookings();
+  const { bookings, loading, error, meetEnabled, skewMs } = useTeacherDemoBookings();
 
   const now = Date.now();
+  const isUpcoming = (b: TeacherDemoBookingListItem) =>
+    !!b.scheduledAt &&
+    (new Date(b.scheduledAt).getTime() >= now ||
+      (b.status === "CONFIRMED" && liveDemoJoinState(b.joinWindow, now + skewMs) === "OPEN"));
   const upcoming = bookings
-    .filter((b) => b.scheduledAt && new Date(b.scheduledAt).getTime() >= now)
+    .filter(isUpcoming)
     .sort(
       (a, b) =>
         new Date(a.scheduledAt as string).getTime() -
         new Date(b.scheduledAt as string).getTime(),
     );
   const pastOrUnscheduled = bookings
-    .filter(
-      (b) => !b.scheduledAt || new Date(b.scheduledAt).getTime() < now,
-    )
+    .filter((b) => !isUpcoming(b))
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -82,7 +92,12 @@ export default function TeacherDemoPage() {
               </p>
               <div className="space-y-2">
                 {upcoming.map((booking) => (
-                  <BookingRow key={booking.id} booking={booking} />
+                  <BookingRow
+                    key={booking.id}
+                    booking={booking}
+                    meetEnabled={meetEnabled}
+                    skewMs={skewMs}
+                  />
                 ))}
               </div>
             </div>
@@ -95,7 +110,12 @@ export default function TeacherDemoPage() {
               </p>
               <div className="space-y-2">
                 {pastOrUnscheduled.map((booking) => (
-                  <BookingRow key={booking.id} booking={booking} />
+                  <BookingRow
+                    key={booking.id}
+                    booking={booking}
+                    meetEnabled={meetEnabled}
+                    skewMs={skewMs}
+                  />
                 ))}
               </div>
             </div>
@@ -121,7 +141,15 @@ function statusLabel(booking: TeacherDemoBookingListItem) {
   }
 }
 
-function BookingRow({ booking }: { booking: TeacherDemoBookingListItem }) {
+function BookingRow({
+  booking,
+  meetEnabled,
+  skewMs,
+}: {
+  booking: TeacherDemoBookingListItem;
+  meetEnabled: boolean;
+  skewMs: number;
+}) {
   const status = statusLabel(booking);
   const childName = booking.student.visibleName || booking.student.firstName;
   const parentName = booking.parent
@@ -166,6 +194,16 @@ function BookingRow({ booking }: { booking: TeacherDemoBookingListItem }) {
             ? ` · ₹${booking.amount} demo`
             : " · Free demo"}
         </p>
+
+        <DemoJoinButton
+          role="teacher"
+          bookingId={booking.id}
+          status={booking.status}
+          joinWindow={booking.joinWindow}
+          meetEnabled={meetEnabled}
+          skewMs={skewMs}
+          className="mt-3"
+        />
       </div>
     </div>
   );

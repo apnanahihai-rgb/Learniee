@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { isGoogleMeetEnabled } from "@/lib/googleMeet";
+
 import { requireTeacherId } from "@/features/teacher/server/auth";
 import { getDemoBookingsForTeacher } from "@/features/shared/server/demoBooking.service";
 
@@ -20,7 +22,14 @@ export async function GET(req: Request) {
 
     const bookings = await getDemoBookingsForTeacher(teacher.teacherId);
 
-    return NextResponse.json({ success: true, bookings });
+    return NextResponse.json({
+      success: true,
+      bookings,
+      // Lets the screen show the join buttons on the SERVER's clock, and
+      // say so if video isn't switched on, instead of a dead button.
+      serverNow: new Date().toISOString(),
+      meetEnabled: isGoogleMeetEnabled(),
+    });
   } catch (error) {
     console.error("Teacher demo-bookings GET error:", error);
 

@@ -1,4 +1,34 @@
+import { getDemoJoinWindow } from "@/features/shared/utils/demoWindow";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { prisma } from "@/lib/prisma";
+
+/**
+ * Meet room columns on `DemoBooking`. Never put in a list response: the
+ * link is only handed out by the window-checked join routes
+ * (`demoMeeting.service.ts`), so a parent or teacher can't read it early.
+ */
+export const DEMO_MEET_PRIVATE_FIELDS = {
+  meetSpaceName: true,
+  meetingUri: true,
+  meetOrganizerEmail: true,
+  meetOrganizerAssignedAt: true,
+  meetCohostEmail: true,
+  meetCohostConfirmedAt: true,
+} as const;
+
+/** Adds the join window (when the Meet link is usable) to a booking row. */
+export function withDemoJoinWindow<
+  T extends { scheduledAt: Date | null; course: { duration: string | null } },
+>(booking: T, now: Date = new Date()) {
+  return {
+    ...booking,
+    joinWindow: getDemoJoinWindow(
+      booking.scheduledAt,
+      sessionLengthForCourse(booking.course.duration),
+      now,
+    ),
+  };
+}
 
 /**
  * Lists every demo booking made WITH a given teacher, most recent
@@ -18,15 +48,18 @@ export async function getDemoBookingsForTeacher(teacherId: string) {
   const bookings = await prisma.demoBooking.findMany({
     where: { teacherId },
     orderBy: { createdAt: "desc" },
+    omit: DEMO_MEET_PRIVATE_FIELDS,
     include: {
       student: {
         select: { id: true, firstName: true, visibleName: true },
       },
       course: {
-        select: { id: true, courseTitle: true },
+        select: { id: true, courseTitle: true, duration: true },
       },
     },
   });
+
+  const now = new Date();
 
   const parentIds = [...new Set(bookings.map((b) => b.parentId))];
 
@@ -40,7 +73,7 @@ export async function getDemoBookingsForTeacher(teacherId: string) {
   const parentById = new Map(parents.map((p) => [p.id, p]));
 
   return bookings.map((b) => ({
-    ...b,
+    ...withDemoJoinWindow(b, now),
     parent: parentById.get(b.parentId) ?? null,
   }));
 }

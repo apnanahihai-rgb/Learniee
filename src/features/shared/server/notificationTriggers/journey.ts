@@ -27,8 +27,32 @@ export function notifyDemoReminder(args: {
       message:
         args.kind === "DAY"
           ? `${args.studentName}'s demo for "${course}" is tomorrow.`
-          : `${args.studentName}'s demo for "${course}" starts in about an hour.`,
+          : `${args.studentName}'s demo for "${course}" starts in about an hour. The join link opens on the Free Demo page 10 minutes before.`,
       link: "/parent/free-demo",
+    });
+  });
+}
+
+/** Teacher-side demo reminder (Oct 19, 2026). Same type as the parent's, sent to the Teacher. */
+export function notifyTeacherDemoReminder(args: {
+  teacherId: string;
+  bookingId: string;
+  courseTitle: string | null;
+  studentName: string;
+  kind: "DAY" | "HOUR";
+}) {
+  return safe("teacher demo reminder", async () => {
+    const course = args.courseTitle || "a course";
+    await createNotification({
+      recipientId: args.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.DEMO_REMINDER,
+      title: args.kind === "DAY" ? "Demo tomorrow" : "Demo starts in about an hour",
+      message:
+        args.kind === "DAY"
+          ? `Your demo with ${args.studentName} for "${course}" is tomorrow.`
+          : `Your demo with ${args.studentName} for "${course}" starts in about an hour. Open Demo to join — the link opens 10 minutes before.`,
+      link: "/teacher/demo",
     });
   });
 }

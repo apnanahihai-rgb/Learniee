@@ -2,6 +2,7 @@ import "server-only";
 
 import { ClassSessionStatus, type Prisma } from "@prisma/client";
 
+import { findBusyDemoOrganizers } from "@/features/shared/server/demoOrganizerBusy";
 import { rankOrganizers } from "@/features/shared/utils/meetOrganizerPool";
 import { prisma } from "@/lib/prisma";
 import {
@@ -193,6 +194,18 @@ async function chooseOrganizers(session: {
         (row.meetOrganizerEmail ?? organizers[0]).toLowerCase(),
       ),
     );
+
+    // Demo rooms (Oct 19, 2026) count too: an account running a demo is busy.
+    if (session.startsAt && session.endsAt) {
+      for (const email of await findBusyDemoOrganizers(
+        tx,
+        session.startsAt,
+        session.endsAt,
+        organizers[0],
+      )) {
+        busy.add(email);
+      }
+    }
 
     // When each account was last given a room.
     const usage = await tx.classSession.groupBy({

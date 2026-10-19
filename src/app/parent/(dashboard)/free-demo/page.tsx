@@ -11,6 +11,9 @@ import {
   Loader2,
 } from "lucide-react";
 
+import DemoJoinButton, {
+  liveDemoJoinState,
+} from "@/features/shared/components/DemoJoinButton";
 import { useDemoCoupons } from "@/features/parent/hooks/useDemoCoupons";
 import {
   useDemoBookings,
@@ -47,23 +50,28 @@ export default function FreeDemoPage() {
     bookings,
     loading: bookingsLoading,
     error: bookingsError,
+    meetEnabled,
+    skewMs,
   } = useDemoBookings();
 
   const remainingFree = balance?.remainingFree ?? 0;
   const paidDemoPrice = balance?.paidDemoPrice ?? 100;
 
   const now = Date.now();
+  // A demo that is live right now stays "Upcoming" until its join window closes.
+  const isUpcoming = (b: DemoBookingListItem) =>
+    !!b.scheduledAt &&
+    (new Date(b.scheduledAt).getTime() >= now ||
+      (b.status === "CONFIRMED" && liveDemoJoinState(b.joinWindow, now + skewMs) === "OPEN"));
   const upcoming = bookings
-    .filter((b) => b.scheduledAt && new Date(b.scheduledAt).getTime() >= now)
+    .filter(isUpcoming)
     .sort(
       (a, b) =>
         new Date(a.scheduledAt as string).getTime() -
         new Date(b.scheduledAt as string).getTime(),
     );
   const pastOrUnscheduled = bookings
-    .filter(
-      (b) => !b.scheduledAt || new Date(b.scheduledAt).getTime() < now,
-    )
+    .filter((b) => !isUpcoming(b))
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -140,7 +148,12 @@ export default function FreeDemoPage() {
                 </p>
                 <div className="space-y-2">
                   {upcoming.map((booking) => (
-                    <BookingRow key={booking.id} booking={booking} />
+                    <BookingRow
+                      key={booking.id}
+                      booking={booking}
+                      meetEnabled={meetEnabled}
+                      skewMs={skewMs}
+                    />
                   ))}
                 </div>
               </div>
@@ -153,7 +166,12 @@ export default function FreeDemoPage() {
                 </p>
                 <div className="space-y-2">
                   {pastOrUnscheduled.map((booking) => (
-                    <BookingRow key={booking.id} booking={booking} />
+                    <BookingRow
+                      key={booking.id}
+                      booking={booking}
+                      meetEnabled={meetEnabled}
+                      skewMs={skewMs}
+                    />
                   ))}
                 </div>
               </div>
@@ -278,7 +296,15 @@ function statusLabel(booking: DemoBookingListItem) {
   }
 }
 
-function BookingRow({ booking }: { booking: DemoBookingListItem }) {
+function BookingRow({
+  booking,
+  meetEnabled,
+  skewMs,
+}: {
+  booking: DemoBookingListItem;
+  meetEnabled: boolean;
+  skewMs: number;
+}) {
   const status = statusLabel(booking);
   const childName = booking.student.visibleName || booking.student.firstName;
   const teacherName =
@@ -322,6 +348,17 @@ function BookingRow({ booking }: { booking: DemoBookingListItem }) {
             ? ` · ₹${booking.amount} demo`
             : " · Free demo"}
         </p>
+
+        <DemoJoinButton
+          role="parent"
+          bookingId={booking.id}
+          status={booking.status}
+          joinWindow={booking.joinWindow}
+          meetEnabled={meetEnabled}
+          skewMs={skewMs}
+          copyText={childName}
+          className="mt-3"
+        />
       </div>
     </div>
   );
