@@ -47,3 +47,5 @@ next-env.d.ts
 /src/generated/prisma
 
 sweep-output.txt
+
+forged-exposed.txt
