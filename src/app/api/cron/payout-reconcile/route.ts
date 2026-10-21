@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCronAuth } from "@/lib/cronAuth";
 
 import { reconcileProcessingPayouts } from "@/features/shared/server/teacherPayout/gateway";
 import { isRazorpayXEnabled } from "@/lib/razorpayX";
@@ -16,11 +17,8 @@ import { isRazorpayXEnabled } from "@/lib/razorpayX";
  */
 export async function GET(req: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && req.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
+    const denied = requireCronAuth(req);
+    if (denied) return denied;
 
     if (!isRazorpayXEnabled()) {
       return NextResponse.json({ success: true, skipped: "RAZORPAYX_ENABLED is not true" });

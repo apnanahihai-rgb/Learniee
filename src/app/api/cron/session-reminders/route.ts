@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCronAuth } from "@/lib/cronAuth";
 
 import { prisma } from "@/lib/prisma";
 import { ClassSessionStatus } from "@prisma/client";
@@ -72,14 +73,8 @@ function computeSessionStartUtc(scheduledDate: Date, scheduledTime: string | nul
 
 export async function GET(req: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret) {
-      const authHeader = req.headers.get("authorization");
-      if (authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-      }
-    }
+    const denied = requireCronAuth(req);
+    if (denied) return denied;
 
     const now = new Date();
     const windowEnd = new Date(now.getTime() + REMINDER_LEAD_MINUTES * 60_000);

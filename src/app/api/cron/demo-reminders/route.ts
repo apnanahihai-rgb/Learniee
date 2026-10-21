@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCronAuth } from "@/lib/cronAuth";
 
 import { runDemoReminderSweep } from "@/features/shared/server/demoReminder.service";
 
@@ -14,14 +15,8 @@ import { runDemoReminderSweep } from "@/features/shared/server/demoReminder.serv
  */
 export async function GET(req: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret) {
-      const authHeader = req.headers.get("authorization");
-      if (authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-      }
-    }
+    const denied = requireCronAuth(req);
+    if (denied) return denied;
 
     const result = await runDemoReminderSweep();
 
