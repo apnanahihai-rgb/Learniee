@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
@@ -11,5 +11,6 @@ export default defineConfig({
   test: {
     setupFiles: ["tests/setup.ts"],
     fileParallelism: false,
+    exclude: [...configDefaults.exclude, "tests/integration/**"],
   },
 });

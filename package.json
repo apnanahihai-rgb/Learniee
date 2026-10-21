@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "payout:test": "tsx --conditions=react-server scripts/razorpayxTestPayout.ts"
   },
   "dependencies": {

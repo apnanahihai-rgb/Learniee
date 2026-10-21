@@ -45,3 +45,5 @@ next-env.d.ts
 *.patch
 
 /src/generated/prisma
+
+sweep-output.txt
