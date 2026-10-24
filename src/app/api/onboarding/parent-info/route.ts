@@ -40,6 +40,13 @@ export async function POST(req: NextRequest) {
 
   const { payload } = auth;
 
+  // `email` is optional on the token type but required (and unique) on
+  // ParentProfile — refuse rather than create a row with a blank email.
+  const email = payload.email;
+  if (!email) {
+    return NextResponse.json({ error: "Your account has no email address." }, { status: 400 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -80,7 +87,7 @@ export async function POST(req: NextRequest) {
       update: { ...profileFields, onboardingComplete: true },
       create: {
         cognitoSub: payload.sub,
-        email: payload.email,
+        email,
         firstName: payload.given_name ?? "",
         lastName: payload.family_name ?? "",
         phone: payload.phone_number ?? "",
