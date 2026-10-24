@@ -5,7 +5,6 @@ import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import { getApprovedCourses } from "@/features/parent/server/course.service";
 import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
-import { FUNCTIONS_CONFIG_MANIFEST } from "next/dist/shared/lib/constants";
 
 type ApprovedCourse = Awaited<ReturnType<typeof getApprovedCourses>>[number];
 
@@ -33,14 +32,32 @@ export async function GET(req: Request) {
       Array.from(new Set(courses.map((course: ApprovedCourse) => course.teacherId))),
     );
 
+    // One presigned photo URL per teacher (not per course). The raw S3
+    // key and the professional-info row never go to the browser — only
+    // the short summary fields the Teachers tab shows.
+    const photoUrls = new Map<string, string | null>();
+    for (const course of courses as ApprovedCourse[]) {
+      if (photoUrls.has(course.teacherId)) continue;
+      const key = course.teacher.files[0]?.s3Key;
+      photoUrls.set(
+        course.teacherId,
+        key ? await createPresignedDownloadUrl(key).catch(() => null) : null,
+      );
+    }
+
     const coursesWithThumbnails = await Promise.all(
       courses.map(async (course: ApprovedCourse) => {
         const rating = ratings.get(course.teacherId);
+        const { files: _files, professionalInfo, ...teacherFields } = course.teacher;
+        void _files;
 
         return {
           ...course,
           teacher: {
-            ...course.teacher,
+            ...teacherFields,
+            photoUrl: photoUrls.get(course.teacherId) ?? null,
+            qualifications: professionalInfo?.qualifications ?? null,
+            experience: professionalInfo?.overallExperience ?? null,
             averageRating: rating?.averageRating ?? null,
             reviewCount: rating?.totalReviews ?? 0,
           },

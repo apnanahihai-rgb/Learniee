@@ -22,6 +22,17 @@ export async function getApprovedCourses() {
           firstName: true,
           lastName: true,
           visibleName: true,
+          city: true,
+          country: true,
+          isIITian: true,
+          professionalInfo: {
+            select: { qualifications: true, overallExperience: true },
+          },
+          files: {
+            where: { type: TeacherFileType.PROFILE_PHOTO },
+            select: { s3Key: true },
+            take: 1,
+          },
         },
       },
     },
