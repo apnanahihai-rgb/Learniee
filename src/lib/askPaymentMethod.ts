@@ -67,13 +67,13 @@ export function askPaymentMethod(options: {
           method === value ? "#9347FF" : "#ddd"
         };border-radius:10px;cursor:pointer;margin-top:8px;">
           <input type="radio" name="pm" value="${value}" ${method === value ? "checked" : ""} style="margin-top:3px;" />
-          <span><strong style="font-size:14px;">${title}</strong><br/><span style="font-size:12px;color:#666;">${hint}</span></span>
+          <span><strong style="font-size:14px;">${title}</strong>${hint ? `<br/><span style="font-size:12px;color:#666;">${hint}</span>` : ""}</span>
         </label>`;
 
       card.innerHTML = `
         <h3 style="margin:0 0 4px;font-size:17px;font-weight:600;">How would you like to pay?</h3>
         <p style="margin:0 0 8px;font-size:12px;color:#666;">Choose a method — the total updates below.</p>
-        ${option("UPI", "UPI", "Transaction charge applies above ₹2,000")}
+        ${option("UPI", "UPI", "")}
         ${option("OTHER", "Card, netbanking & others", "No transaction charge")}
         <div style="margin-top:14px;font-size:14px;display:grid;gap:6px;">
           ${row("Amount", inr(base))}
