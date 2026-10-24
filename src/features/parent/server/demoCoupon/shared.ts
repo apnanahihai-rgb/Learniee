@@ -46,16 +46,13 @@ export class DemoBookingError extends Error {
  * to every existing ParentProfile.
  */
 export async function getOrCreateDemoCoupon(parentId: string) {
-  const existing = await prisma.demoCoupon.findUnique({
+  // upsert (not find-then-create): the dashboard fires several requests at
+  // once on a brand-new account, and two of them could both see "no coupon"
+  // and both try to create one, hitting the unique constraint on parentId.
+  return prisma.demoCoupon.upsert({
     where: { parentId },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.demoCoupon.create({
-    data: {
+    update: {},
+    create: {
       parentId,
       totalIssued: FREE_DEMOS_PER_ACCOUNT,
       usedCount: 0,
