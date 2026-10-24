@@ -13,6 +13,7 @@ import LearnerSwitcher, {
 } from "@/features/parent/components/LearnerSwitcher";
 import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
 import NextActionCard from "@/features/parent/components/NextActionCard";
+import ProfileCompletionCard from "@/features/parent/components/ProfileCompletionCard";
 import DashboardClassesSection from "@/features/parent/components/my-classes/DashboardClassesSection";
 
 function currentMonthKey() {
@@ -72,6 +73,12 @@ export default function ParentHome() {
       {/* NEXT BEST ACTION — one card, driven by where the parent is in
           the journey (demo → survey → enroll → classes → renew). */}
       <NextActionCard />
+
+      {/* Details we no longer ask for at signup — fill in gradually. */}
+      <ProfileCompletionCard
+        studentCount={students.length}
+        studentsLoading={studentsLoading}
+      />
 
       {/* HERO */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-violet-800 p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6 mb-10 shadow-playful">

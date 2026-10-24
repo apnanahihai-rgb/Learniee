@@ -13,9 +13,9 @@ interface PrefillResponse {
   whatsappNumber?: string;
 }
 
-// Sensible regional defaults for an India-first platform (see
-// onboardingOptions.ts) — pre-selected but still fully editable, just like
-// the account-derived autofill below.
+// Regional defaults for an India-first platform. Only applied for "Indian"
+// parents; an NRI's country/timezone are left blank and can be filled in
+// later from the profile page.
 const DEFAULT_COUNTRY = "India";
 const DEFAULT_CURRENCY = "INR - Indian Rupee";
 const DEFAULT_TIMEZONE = "Asia/Kolkata (IST)";
@@ -30,7 +30,19 @@ async function fetchPrefill(): Promise<PrefillResponse | null> {
   }
 }
 
-async function postStep1(body: Step1FormData) {
+async function postStep1(formData: Step1FormData) {
+  const isIndian = formData.nriOrIndian === "Indian";
+
+  const body = {
+    visibleName: formData.visibleName.trim(),
+    nriOrIndian: formData.nriOrIndian,
+    city: formData.city.trim(),
+    whatsappNumber: formData.whatsappNumber.trim(),
+    referredByCode: formData.referredByCode.trim(),
+    currency: DEFAULT_CURRENCY,
+    ...(isIndian ? { country: DEFAULT_COUNTRY, timezone: DEFAULT_TIMEZONE } : {}),
+  };
+
   const res = await fetch("/api/onboarding/parent-info", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,29 +54,19 @@ async function postStep1(body: Step1FormData) {
   }
 }
 
-/** Every field here is shown to the user with a required "*" in step1/page.tsx — keep the two in sync. `referredByCode` is deliberately excluded, it's optional. */
+/** Every field shown with a required "*" in step1/page.tsx — keep the two in sync. `referredByCode` is optional. */
 function validateStep1(formData: Step1FormData): Step1FormErrors {
   const errors: Step1FormErrors = {};
 
   if (!formData.visibleName.trim()) errors.visibleName = "Display name is required";
-  if (!formData.nationality.trim()) errors.nationality = "Nationality is required";
   if (!formData.nriOrIndian) errors.nriOrIndian = "Please select one";
-  if (!formData.relationToStudent) errors.relationToStudent = "Please select a relation";
-  if (!formData.tuitionType) errors.tuitionType = "Please select a tuition type";
-
-  if (!formData.address.trim()) errors.address = "Address is required";
   if (!formData.city.trim()) errors.city = "City is required";
-  if (!formData.pincode.trim()) errors.pincode = "Pincode is required";
-  if (!formData.country) errors.country = "Please select a country";
-  if (!formData.timezone) errors.timezone = "Please select a timezone";
 
   if (!formData.whatsappNumber.trim()) {
     errors.whatsappNumber = "WhatsApp number is required";
   } else if (!isValidPhoneNumber(formData.whatsappNumber)) {
     errors.whatsappNumber = "Enter a valid phone number";
   }
-
-  if (!formData.currency) errors.currency = "Please select a currency";
 
   return errors;
 }
@@ -78,9 +80,8 @@ export function useParentStep1Form() {
   const [error, setError] = useState("");
   const [autofilled, setAutofilled] = useState<AutofilledFields>({});
 
-  // Pre-fill what we already know from signup (name, phone) plus sensible
-  // regional defaults — never overwrites anything the user has already
-  // typed, and every field it touches stays fully editable.
+  // Pre-fill what we already know from signup (name, phone). Never
+  // overwrites anything the user has already typed.
   useEffect(() => {
     let cancelled = false;
 
@@ -99,9 +100,6 @@ export function useParentStep1Form() {
           next.whatsappNumber = data.whatsappNumber;
           filled.whatsappNumber = true;
         }
-        if (!prev.country) next.country = DEFAULT_COUNTRY;
-        if (!prev.currency) next.currency = DEFAULT_CURRENCY;
-        if (!prev.timezone) next.timezone = DEFAULT_TIMEZONE;
 
         if (Object.keys(filled).length > 0) {
           setAutofilled((prevAutofilled) => ({ ...prevAutofilled, ...filled }));
@@ -149,7 +147,7 @@ export function useParentStep1Form() {
 
     try {
       await postStep1(formData);
-      router.push("/parent/onboarding/step2");
+      router.push("/parent");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setSubmitting(false);
