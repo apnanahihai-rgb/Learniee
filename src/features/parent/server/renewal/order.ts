@@ -1,3 +1,4 @@
+import { addTransactionCharge, type PaymentMethodChoice } from "@/lib/transactionCharges";
 import {
     addDays,
     dateToCalendarDate,
@@ -63,7 +64,7 @@ export async function createRenewalOrder(
   enrollmentId: string,
   parentId: string,
   input: RenewalInput,
-  options: { useWallet?: boolean } = {},
+  options: { useWallet?: boolean; paymentMethod?: PaymentMethodChoice } = {},
 ) {
   const plan = await buildRenewalPlan(enrollmentId, parentId, input);
 
@@ -72,6 +73,7 @@ export async function createRenewalOrder(
   let walletAmount = 0;
   let cardCharge = plan.amountPayable;
   let cardSurcharge = plan.internationalSurchargeAmount;
+  let cardGst = plan.gstAmount;
 
   if (options.useWallet) {
     const wallet = await getOrCreateWallet(parentId);
@@ -92,12 +94,19 @@ export async function createRenewalOrder(
     walletAmount = split.walletAmount;
     cardCharge = split.cardCharge;
     cardSurcharge = split.surchargeAmount;
+    cardGst = split.gstAmount;
   }
+
+  // UPI adds a transaction charge on top (see src/lib/transactionCharges.ts).
+  const { transactionCharge, total: payNow } = addTransactionCharge(
+    cardCharge,
+    options.paymentMethod ?? "OTHER",
+  );
 
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(cardCharge),
+    amount: rupeesToPaise(payNow),
     currency: "INR",
     receipt: `ren_${Date.now()}`,
     notes: {
@@ -131,7 +140,14 @@ export async function createRenewalOrder(
       currency: order.currency,
     },
     keyId: getRazorpayKeyId(),
-    pricing: { ...plan, walletAmount, amountPayable: cardCharge, internationalSurchargeAmount: cardSurcharge },
+    pricing: {
+      ...plan,
+      walletAmount,
+      amountPayable: payNow,
+      internationalSurchargeAmount: cardSurcharge,
+      gstAmount: cardGst,
+      transactionChargeAmount: transactionCharge,
+    },
   };
 }
 export interface VerifyRenewalPaymentInput {

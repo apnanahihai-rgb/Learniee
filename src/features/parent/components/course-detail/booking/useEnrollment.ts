@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { askPaymentMethod } from "@/lib/askPaymentMethod";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import {
   buildCyclePlan,
@@ -175,10 +176,20 @@ export function useEnrollment({
         ...schedulePayload(),
       };
 
+      // UPI adds a transaction charge, so ask BEFORE the order is created.
+      const total = pricePreview?.totalAmount ?? 0;
+      const cardBase = useWallet ? Math.max(total - (walletBalance ?? 0), 1) : total;
+      const paymentMethod = await askPaymentMethod({ baseAmount: cardBase });
+
+      if (!paymentMethod) {
+        setEnrollError("Payment cancelled — no charge was made.");
+        return;
+      }
+
       const orderRes = await fetch("/api/parent/enrollments/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, useWallet }),
+        body: JSON.stringify({ ...payload, useWallet, paymentMethod }),
       });
 
       const orderData = await orderRes.json();
@@ -192,6 +203,7 @@ export function useEnrollment({
         amount: orderData.amount,
         currency: orderData.currency,
         keyId: orderData.keyId,
+        paymentMethod,
         name: "Learnie",
         description:
           `Enrollment — ₹${orderData.pricing.totalAmount.toLocaleString("en-IN")}` +

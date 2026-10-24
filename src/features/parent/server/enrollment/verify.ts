@@ -2,9 +2,9 @@ import { generateInvoiceForPayment } from "@/features/shared/server/invoice.serv
 import { notifyEnrollmentCreated } from "@/features/shared/server/notificationTriggers.service";
 import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
 import { prisma } from "@/lib/prisma";
+import { matchPaidAmount } from "@/lib/transactionCharges";
 import {
     getRazorpayClient,
-    rupeesToPaise,
     verifyCheckoutSignature,
 } from "@/lib/razorpay";
 import {
@@ -89,9 +89,10 @@ export async function verifyEnrollmentPayment(
   // Part payment from the Wallet: the order was for the card remainder only.
   const { walletAmount, cardCharge, paidPriced } = applyWalletPortion(priced, notes);
 
-  const expectedPaise = rupeesToPaise(cardCharge);
+  // UPI orders carry a transaction charge on top of `cardCharge`.
+  const paid = matchPaidAmount(Number(order.amount), cardCharge);
 
-  if (Number(order.amount) !== expectedPaise) {
+  if (!paid.ok) {
     // The order amount no longer matches what this course/cycle
     // combination prices to right now (e.g. Course.price changed
     // mid-checkout, or the parent's international status changed) —
@@ -113,7 +114,11 @@ export async function verifyEnrollmentPayment(
       data: buildEnrollmentCreateData({
         parentId,
         input,
-        priced: paidPriced,
+        priced: {
+          ...paidPriced,
+          transactionChargeAmount: paid.transactionCharge,
+          amountPayable: Math.round((paidPriced.amountPayable + paid.transactionCharge) * 100) / 100,
+        },
         orderId: input.razorpayOrderId,
         paymentId: input.razorpayPaymentId,
       }),

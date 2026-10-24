@@ -1,5 +1,6 @@
 import "server-only";
 import { round2 } from '@/lib/money';
+import { gstOn } from '@/lib/transactionCharges';
 
 /**
  * International-payment surcharge (added Sep 8, 2026, per direct
@@ -40,7 +41,9 @@ export interface InternationalPricing {
   isInternationalPayment: boolean;
   /** Extra amount added on top of the base price, in rupees. Zero for domestic payments. */
   surchargeAmount: number;
-  /** base + surchargeAmount — this is the amount actually charged via Razorpay. */
+  /** GST (18%) on the base amount — added for every payer, domestic or international. */
+  gstAmount: number;
+  /** base + surchargeAmount + gstAmount — the amount charged via Razorpay (before any UPI transaction charge). */
   amountPayable: number;
 }
 
@@ -72,8 +75,8 @@ export function isInternationalParent(parent: {
 
 /** Rounds to 2 decimal places — matches the `Decimal(10,2)` precision of every money field. */
 /**
- * Applies the international surcharge (if applicable) to a base
- * rupee amount. Call this AFTER computing the normal price
+ * Applies the international surcharge (if applicable) and 18% GST to a
+ * base rupee amount. Call this AFTER computing the normal price
  * (course/demo formula) and BEFORE converting to paise for
  * Razorpay — same "compute once, reuse at order-create and
  * verify/webhook time" pattern as the rest of the pricing code, so
@@ -83,8 +86,17 @@ export function priceWithInternationalSurcharge(
   baseAmount: number,
   isInternational: boolean,
 ): InternationalPricing {
+  // GST is on the base amount only (Oct 24, 2026); the international
+  // surcharge stays a % of the base, exactly as before.
+  const gstAmount = gstOn(baseAmount);
+
   if (!isInternational) {
-    return { isInternationalPayment: false, surchargeAmount: 0, amountPayable: baseAmount };
+    return {
+      isInternationalPayment: false,
+      surchargeAmount: 0,
+      gstAmount,
+      amountPayable: round2(baseAmount + gstAmount),
+    };
   }
 
   const surchargeAmount = round2(baseAmount * (getSurchargePercent() / 100));
@@ -92,6 +104,7 @@ export function priceWithInternationalSurcharge(
   return {
     isInternationalPayment: true,
     surchargeAmount,
-    amountPayable: round2(baseAmount + surchargeAmount),
+    gstAmount,
+    amountPayable: round2(baseAmount + surchargeAmount + gstAmount),
   };
 }

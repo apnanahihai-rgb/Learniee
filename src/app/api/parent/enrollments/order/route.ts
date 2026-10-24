@@ -1,3 +1,4 @@
+import { parsePaymentMethod } from "@/lib/transactionCharges";
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
       return parent.error;
     }
 
-    const input: CreateEnrollmentInput & { useWallet?: boolean } = await req.json();
+    const input: CreateEnrollmentInput & { useWallet?: boolean; paymentMethod?: string } =
+      await req.json();
 
     if (!input.studentId || !input.teacherId || !input.courseId) {
       return NextResponse.json(
@@ -44,7 +46,10 @@ export async function POST(req: Request) {
     const { order, pricing } = await createEnrollmentOrder(
       parent.parentId,
       input,
-      { useWallet: input.useWallet === true },
+      {
+        useWallet: input.useWallet === true,
+        paymentMethod: parsePaymentMethod(input.paymentMethod),
+      },
     );
 
     return NextResponse.json({

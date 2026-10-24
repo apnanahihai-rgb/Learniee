@@ -1,3 +1,4 @@
+import { addTransactionCharge, type PaymentMethodChoice } from "@/lib/transactionCharges";
 import { notifyDemoBooked } from "@/features/shared/server/notificationTriggers.service";
 import { prisma } from "@/lib/prisma";
 import {
@@ -152,6 +153,7 @@ export async function createFreeDemoBooking(
 export async function createDemoBookingOrder(
   parentId: string,
   input: CreateDemoBookingInput,
+  paymentMethod: PaymentMethodChoice = "OTHER",
 ) {
   const validated = await validateDemoBooking(parentId, input);
   const coupon = await getOrCreateDemoCoupon(parentId);
@@ -164,10 +166,15 @@ export async function createDemoBookingOrder(
   }
 
   const pricing = await priceDemoBooking(parentId);
+  // UPI adds a transaction charge on top (see src/lib/transactionCharges.ts).
+  const { transactionCharge, total: payNow } = addTransactionCharge(
+    pricing.amountPayable,
+    paymentMethod,
+  );
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(pricing.amountPayable),
+    amount: rupeesToPaise(payNow),
     currency: "INR",
     receipt: `demo_${Date.now()}`,
     // Full enough to reconstruct the DemoBooking from the webhook
@@ -184,7 +191,11 @@ export async function createDemoBookingOrder(
     },
   });
 
-  return { order, amount: pricing.amountPayable, pricing };
+  return {
+    order,
+    amount: payNow,
+    pricing: { ...pricing, transactionChargeAmount: transactionCharge, amountPayable: payNow },
+  };
 }
 export interface VerifyDemoBookingPaymentInput extends CreateDemoBookingInput {
   razorpayOrderId: string;

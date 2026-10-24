@@ -73,6 +73,9 @@ export async function payEnrollmentWithWallet(
     amountPayable: priced.totalAmount,
     isInternationalPayment: false,
     internationalSurchargeAmount: 0,
+    // The Wallet was GST-paid when it was topped up — nothing more to add.
+    gstAmount: 0,
+    transactionChargeAmount: 0,
   };
 
   let enrollment;

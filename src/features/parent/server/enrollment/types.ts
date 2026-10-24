@@ -88,7 +88,11 @@ export interface PricedEnrollment {
   isInternationalPayment: boolean;
   /** Extra amount on top of totalAmount for international parents. Zero otherwise. */
   internationalSurchargeAmount: number;
-  /** totalAmount + internationalSurchargeAmount — this is what's actually charged via Razorpay. */
+  /** 18% GST on the card-paid part of totalAmount (0 when the Wallet pays everything). */
+  gstAmount: number;
+  /** UPI transaction charge actually paid. Always 0 here; set once the paid order is matched (verify / webhook). */
+  transactionChargeAmount: number;
+  /** totalAmount + international surcharge + GST (+ UPI charge once paid) — what's actually charged via Razorpay. */
   amountPayable: number;
   cycleStartDate: Date;
   dueDate: Date;

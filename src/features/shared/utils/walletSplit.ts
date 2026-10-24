@@ -11,7 +11,9 @@ export interface WalletSplit {
   cardBase: number;
   /** International surcharge — charged on the CARD part only (it covers card fees). */
   surchargeAmount: number;
-  /** What the card is actually charged: `cardBase + surchargeAmount`. */
+  /** GST on the card part only (the wallet part was GST-paid when it was topped up). */
+  gstAmount: number;
+  /** What the card is actually charged: `cardBase + surchargeAmount + gstAmount` (before any UPI charge). */
   cardCharge: number;
   isInternationalPayment: boolean;
 }
@@ -51,6 +53,7 @@ export function splitWalletPayment(args: {
     walletAmount: wallet,
     cardBase,
     surchargeAmount: card.surchargeAmount,
+    gstAmount: card.gstAmount,
     cardCharge: card.amountPayable,
     isInternationalPayment: card.isInternationalPayment,
   };

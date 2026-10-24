@@ -1,3 +1,4 @@
+import { parsePaymentMethod } from "@/lib/transactionCharges";
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
     const { order, amount } = await createDemoCouponPurchaseOrder(
       parent.parentId,
       quantity,
+      parsePaymentMethod(body?.paymentMethod),
     );
 
     return NextResponse.json({

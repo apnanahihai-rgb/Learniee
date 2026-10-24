@@ -1,3 +1,4 @@
+import { matchPaidAmount } from "@/lib/transactionCharges";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 import { createCycleSessions } from "@/features/shared/server/classSession.service";
 import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
@@ -13,7 +14,7 @@ import {
 } from "@/lib/internationalPayments";
 import { calendarDateToDate } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
-import { getRazorpayClient, rupeesToPaise } from "@/lib/razorpay";
+import { getRazorpayClient } from "@/lib/razorpay";
 import {
     CycleStatus,
     EnrollmentStatus,
@@ -294,7 +295,8 @@ export async function applyPaidRenewal(args: {
     expectedCharge = split.cardCharge;
   }
 
-  if (Number(order.amount) !== rupeesToPaise(expectedCharge)) {
+  // A UPI order carries a transaction charge on top of `expectedCharge`.
+  if (!matchPaidAmount(Number(order.amount), expectedCharge).ok) {
     throw new RenewalError(
       "The paid amount no longer matches this enrollment's current rate — contact support with your payment ID for a refund.",
       409,

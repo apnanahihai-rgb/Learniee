@@ -1,3 +1,4 @@
+import { parsePaymentMethod } from "@/lib/transactionCharges";
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
@@ -27,7 +28,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const amount = Number(body?.amount);
 
-    const { order, pricing } = await createWalletTopupOrder(parent.parentId, amount);
+    const { order, pricing, transactionCharge } = await createWalletTopupOrder(
+      parent.parentId,
+      amount,
+      parsePaymentMethod(body?.paymentMethod),
+    );
 
     return NextResponse.json({
       success: true,
@@ -35,9 +40,11 @@ export async function POST(req: Request) {
       amount: order.amount,
       currency: order.currency,
       // What the Wallet is credited vs what the card is charged — the
-      // difference is the international card-fee surcharge (0 for domestic).
+      // difference is GST + any UPI transaction charge + the international surcharge.
       creditAmount: amount,
       surchargeAmount: pricing.surchargeAmount,
+      gstAmount: pricing.gstAmount,
+      transactionCharge,
       keyId: getRazorpayKeyId(),
     });
   } catch (error) {

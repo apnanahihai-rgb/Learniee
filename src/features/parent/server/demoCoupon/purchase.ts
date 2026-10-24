@@ -1,3 +1,4 @@
+import { addTransactionCharge, matchPaidAmount, type PaymentMethodChoice } from "@/lib/transactionCharges";
 import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 import {
     DEMO_COUPON_PURCHASE_MAX_QTY,
@@ -50,17 +51,20 @@ function assertValidPurchaseQuantity(quantity: number) {
 export async function createDemoCouponPurchaseOrder(
   parentId: string,
   quantity: number,
+  paymentMethod: PaymentMethodChoice = "OTHER",
 ) {
   assertValidPurchaseQuantity(quantity);
 
   const pricing = await priceDemoBooking(parentId);
   const totalAmount =
     Math.round(pricing.amountPayable * quantity * 100) / 100;
+  // UPI adds a transaction charge on the whole purchase.
+  const { total: payNow } = addTransactionCharge(totalAmount, paymentMethod);
 
   const razorpay = getRazorpayClient();
 
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(totalAmount),
+    amount: rupeesToPaise(payNow),
     currency: "INR",
     // Razorpay caps receipt at 40 chars — keep it short.
     receipt: `dcp_${Date.now()}`,
@@ -71,7 +75,7 @@ export async function createDemoCouponPurchaseOrder(
     },
   });
 
-  return { order, amount: totalAmount, quantity };
+  return { order, amount: payNow, quantity };
 }
 export interface VerifyDemoCouponPurchaseInput {
   quantity: number;
@@ -132,7 +136,9 @@ export async function verifyDemoCouponPurchase(
   const expectedAmount =
     Math.round(pricing.amountPayable * input.quantity * 100) / 100;
 
-  if (Number(order.amount) !== rupeesToPaise(expectedAmount)) {
+  const paid = matchPaidAmount(Number(order.amount), expectedAmount);
+
+  if (!paid.ok) {
     throw new DemoBookingError(
       "The paid amount doesn't match the coupon quantity — contact support with your payment ID for a refund.",
       409,
@@ -150,7 +156,7 @@ export async function verifyDemoCouponPurchase(
       data: {
         parentId,
         quantity: input.quantity,
-        amount: expectedAmount,
+        amount: Math.round((expectedAmount + paid.transactionCharge) * 100) / 100,
         razorpayOrderId: input.razorpayOrderId,
         razorpayPaymentId: input.razorpayPaymentId,
         paidAt: new Date(),
@@ -165,7 +171,7 @@ export async function verifyDemoCouponPurchase(
     await generateInvoiceForPayment({
       type: InvoiceType.DEMO_COUPON_PURCHASE,
       payerId: parentId,
-      amount: expectedAmount,
+      amount: Math.round((expectedAmount + paid.transactionCharge) * 100) / 100,
       description: `${input.quantity} demo coupon${input.quantity === 1 ? "" : "s"}`,
       referenceType: "DEMO_COUPON_PURCHASE",
       referenceId: purchase.id,
@@ -226,7 +232,9 @@ export async function reconcileDemoCouponPurchaseFromWebhook(
   const pricing = await priceDemoBooking(parentId);
   const expectedAmount = Math.round(pricing.amountPayable * quantity * 100) / 100;
 
-  if (Number(order.amount) !== rupeesToPaise(expectedAmount)) {
+  const paid = matchPaidAmount(Number(order.amount), expectedAmount);
+
+  if (!paid.ok) {
     console.error("Razorpay webhook: demo coupon purchase amount mismatch", orderId);
     return null;
   }
@@ -242,7 +250,7 @@ export async function reconcileDemoCouponPurchaseFromWebhook(
       data: {
         parentId,
         quantity,
-        amount: expectedAmount,
+        amount: Math.round((expectedAmount + paid.transactionCharge) * 100) / 100,
         razorpayOrderId: orderId,
         razorpayPaymentId: paymentId,
         paidAt: new Date(),
@@ -254,7 +262,7 @@ export async function reconcileDemoCouponPurchaseFromWebhook(
     await generateInvoiceForPayment({
       type: InvoiceType.DEMO_COUPON_PURCHASE,
       payerId: parentId,
-      amount: expectedAmount,
+      amount: Math.round((expectedAmount + paid.transactionCharge) * 100) / 100,
       description: `${quantity} demo coupon${quantity === 1 ? "" : "s"}`,
       referenceType: "DEMO_COUPON_PURCHASE",
       referenceId: purchase.id,

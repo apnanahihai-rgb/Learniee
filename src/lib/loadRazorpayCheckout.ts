@@ -19,6 +19,8 @@ export interface RazorpayCheckoutOptions {
     razorpay_signature: string;
   }) => void;
   modal?: { ondismiss?: () => void };
+  /** Razorpay Checkout display config — used to show only UPI, or hide it (see `paymentMethod`). */
+  config?: { display: Record<string, unknown> };
 }
 
 interface RazorpayCheckoutInstance {
@@ -99,6 +101,12 @@ export function openRazorpayCheckout(options: {
   keyId: string;
   name: string;
   description: string;
+  /**
+   * The method the parent chose in `askPaymentMethod()`. The order amount
+   * already includes (UPI) or leaves out (other) the transaction charge, so
+   * checkout only offers the matching methods.
+   */
+  paymentMethod?: "UPI" | "OTHER";
 }): Promise<RazorpayCheckoutResult | null> {
   return new Promise((resolve, reject) => {
     loadRazorpayCheckout().then((loaded) => {
@@ -119,6 +127,19 @@ export function openRazorpayCheckout(options: {
         name: options.name,
         description: options.description,
         theme: { color: "#9347FF" },
+        ...(options.paymentMethod === "UPI"
+          ? {
+              config: {
+                display: {
+                  blocks: { upi: { name: "Pay via UPI", instruments: [{ method: "upi" }] } },
+                  sequence: ["block.upi"],
+                  preferences: { show_default_blocks: false },
+                },
+              },
+            }
+          : options.paymentMethod === "OTHER"
+            ? { config: { display: { hide: [{ method: "upi" }] } } }
+            : {}),
         handler: (response) => resolve(response),
         modal: {
           ondismiss: () => resolve(null),

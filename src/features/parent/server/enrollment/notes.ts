@@ -51,12 +51,14 @@ export function buildEnrollmentCreateData(args: {
     razorpayOrderId: orderId,
     razorpayPaymentId: paymentId,
     // amountPaid is the actual charge (base + international
-    // surcharge, if any) — can legitimately differ from
+    // surcharge, if any + GST + UPI transaction charge) — can legitimately differ from
     // totalAmount now, which is exactly what amountPaid being a
     // separate field was already designed for.
     amountPaid: priced.amountPayable,
     isInternationalPayment: priced.isInternationalPayment,
     internationalSurchargeAmount: priced.internationalSurchargeAmount,
+    gstAmount: priced.gstAmount,
+    transactionChargeAmount: priced.transactionChargeAmount,
     ...(isCycleModel && priced.cycleEndDate
       ? {
           cycles: {

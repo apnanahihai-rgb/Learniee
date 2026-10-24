@@ -1,3 +1,4 @@
+import { parsePaymentMethod } from "@/lib/transactionCharges";
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
@@ -34,7 +35,10 @@ export async function POST(
       scheduleDays: body.scheduleDays,
       scheduleTime: body.scheduleTime,
       customDates: body.customDates,
-    }, { useWallet: body.useWallet === true });
+    }, {
+      useWallet: body.useWallet === true,
+      paymentMethod: parsePaymentMethod(body.paymentMethod),
+    });
 
     return NextResponse.json({
       success: true,

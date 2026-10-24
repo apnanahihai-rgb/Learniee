@@ -1,3 +1,4 @@
+import { parsePaymentMethod } from "@/lib/transactionCharges";
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       return parent.error;
     }
 
-    const input: CreateDemoBookingInput = await req.json();
+    const input: CreateDemoBookingInput & { paymentMethod?: string } = await req.json();
 
     if (!input.studentId || !input.teacherId || !input.courseId) {
       return NextResponse.json(
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
     const { order, amount, pricing } = await createDemoBookingOrder(
       parent.parentId,
       input,
+      parsePaymentMethod(input.paymentMethod),
     );
 
     return NextResponse.json({

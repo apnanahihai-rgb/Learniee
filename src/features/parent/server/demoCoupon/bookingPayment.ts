@@ -1,3 +1,4 @@
+import { matchPaidAmount } from "@/lib/transactionCharges";
 import {
     DEMO_MEET_PRIVATE_FIELDS,
     withDemoJoinWindow,
@@ -7,7 +8,6 @@ import { notifyDemoBooked } from "@/features/shared/server/notificationTriggers.
 import { prisma } from "@/lib/prisma";
 import {
     getRazorpayClient,
-    rupeesToPaise,
     verifyCheckoutSignature,
 } from "@/lib/razorpay";
 import { DemoBookingStatus, InvoiceType } from "@prisma/client";
@@ -69,7 +69,9 @@ export async function verifyDemoBookingPayment(
 
   const pricing = await priceDemoBooking(parentId);
 
-  if (Number(order.amount) !== rupeesToPaise(pricing.amountPayable)) {
+  const paid = matchPaidAmount(Number(order.amount), pricing.amountPayable);
+
+  if (!paid.ok) {
     throw new DemoBookingError(
       "The paid amount doesn't match the demo fee — contact support with your payment ID for a refund.",
       409,
@@ -87,7 +89,8 @@ export async function verifyDemoBookingPayment(
       courseId: input.courseId,
       subject: validated.subject,
       isPaid: true,
-      amount: pricing.amountPayable,
+      // Includes GST and, for UPI, the transaction charge.
+      amount: Math.round((pricing.amountPayable + paid.transactionCharge) * 100) / 100,
       isInternationalPayment: pricing.isInternationalPayment,
       internationalSurchargeAmount: pricing.surchargeAmount,
       status: DemoBookingStatus.CONFIRMED,
@@ -107,7 +110,7 @@ export async function verifyDemoBookingPayment(
     await generateInvoiceForPayment({
       type: InvoiceType.DEMO_BOOKING_PAYMENT,
       payerId: parentId,
-      amount: Number(booking.amount ?? pricing.amountPayable),
+      amount: Number(booking.amount ?? pricing.amountPayable + paid.transactionCharge),
       description: `Demo booking payment${validated.subject ? ` — ${validated.subject}` : ""}`,
       referenceType: "DEMO_BOOKING",
       referenceId: booking.id,
@@ -164,7 +167,9 @@ export async function reconcileDemoBookingFromWebhook(
 
   const pricing = await priceDemoBooking(parentId);
 
-  if (Number(order.amount) !== rupeesToPaise(pricing.amountPayable)) {
+  const paid = matchPaidAmount(Number(order.amount), pricing.amountPayable);
+
+  if (!paid.ok) {
     console.error("Razorpay webhook: demo amount mismatch", orderId);
     return null;
   }
@@ -195,7 +200,8 @@ export async function reconcileDemoBookingFromWebhook(
       courseId,
       subject,
       isPaid: true,
-      amount: pricing.amountPayable,
+      // Includes GST and, for UPI, the transaction charge.
+      amount: Math.round((pricing.amountPayable + paid.transactionCharge) * 100) / 100,
       isInternationalPayment: pricing.isInternationalPayment,
       internationalSurchargeAmount: pricing.surchargeAmount,
       status: DemoBookingStatus.CONFIRMED,
@@ -215,7 +221,7 @@ export async function reconcileDemoBookingFromWebhook(
     await generateInvoiceForPayment({
       type: InvoiceType.DEMO_BOOKING_PAYMENT,
       payerId: parentId,
-      amount: Number(booking.amount ?? pricing.amountPayable),
+      amount: Number(booking.amount ?? pricing.amountPayable + paid.transactionCharge),
       description: `Demo booking payment${subject ? ` — ${subject}` : ""}`,
       referenceType: "DEMO_BOOKING",
       referenceId: booking.id,

@@ -81,6 +81,8 @@ export interface RenewalPlan {
   totalAmount: number;
   isInternationalPayment: boolean;
   internationalSurchargeAmount: number;
+  /** 18% GST on the card-paid part of totalAmount. */
+  gstAmount: number;
   amountPayable: number;
 }
 export async function loadRenewableEnrollment(enrollmentId: string, parentId: string) {
@@ -233,7 +235,7 @@ export async function buildRenewalPlan(
   const ratePerSession = Number(enrollment.ratePerSession);
   const totalAmount = priceForSessions(ratePerSession, plan.sessionCount);
 
-  const { isInternationalPayment, surchargeAmount, amountPayable } =
+  const { isInternationalPayment, surchargeAmount, gstAmount, amountPayable } =
     priceWithInternationalSurcharge(
       totalAmount,
       enrollment.parent ? isInternationalParent(enrollment.parent) : false,
@@ -251,6 +253,7 @@ export async function buildRenewalPlan(
     totalAmount,
     isInternationalPayment,
     internationalSurchargeAmount: surchargeAmount,
+    gstAmount,
     amountPayable,
   };
 }

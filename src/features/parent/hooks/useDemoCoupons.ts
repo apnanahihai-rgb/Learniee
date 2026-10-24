@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { askPaymentMethod } from "@/lib/askPaymentMethod";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import {
   DEMO_COUPON_PURCHASE_MIN_QTY,
@@ -91,10 +92,19 @@ export function useDemoCoupons() {
       setPurchasing(true);
 
       try {
+        // UPI adds a transaction charge, so ask BEFORE the order is created.
+        const paymentMethod = await askPaymentMethod({
+          baseAmount: quantity * (balance?.paidDemoPrice ?? 100),
+        });
+
+        if (!paymentMethod) {
+          return { ok: false, message: "Payment cancelled — no charge was made." };
+        }
+
         const orderRes = await fetch("/api/parent/demo-coupons/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quantity }),
+          body: JSON.stringify({ quantity, paymentMethod }),
         });
         const orderData = await orderRes.json();
 
@@ -107,6 +117,7 @@ export function useDemoCoupons() {
           amount: orderData.amount,
           currency: orderData.currency,
           keyId: orderData.keyId,
+          paymentMethod,
           name: "Learnie",
           description: `${quantity} demo coupon${quantity === 1 ? "" : "s"}`,
         });
@@ -154,7 +165,7 @@ export function useDemoCoupons() {
         setPurchasing(false);
       }
     },
-    [reload],
+    [reload, balance],
   );
 
   return { balance, loading, error, reload, purchaseCoupons, purchasing };

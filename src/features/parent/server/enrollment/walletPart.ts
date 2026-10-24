@@ -51,6 +51,7 @@ export function applyWalletPortion(
       amountPayable: Math.round((walletAmount + split.cardCharge) * 100) / 100,
       isInternationalPayment: split.isInternationalPayment,
       internationalSurchargeAmount: split.surchargeAmount,
+      gstAmount: split.gstAmount,
     },
   };
 }

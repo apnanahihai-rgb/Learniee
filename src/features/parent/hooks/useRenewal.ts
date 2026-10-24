@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { askPaymentMethod } from "@/lib/askPaymentMethod";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
@@ -19,6 +20,7 @@ export interface RenewalPreview {
   totalAmount: number;
   isInternationalPayment: boolean;
   internationalSurchargeAmount: number;
+  gstAmount?: number;
   amountPayable: number;
 }
 
@@ -83,10 +85,19 @@ export function useRenewal(enrollmentId: string) {
       setPaying(true);
       setError("");
 
+      // UPI adds a transaction charge, so ask BEFORE the order is created.
+      const total = status?.preview?.totalAmount ?? 0;
+      const cardBase = options.useWallet ? Math.max(total - (walletBalance ?? 0), 1) : total;
+      const paymentMethod = await askPaymentMethod({ baseAmount: cardBase });
+
+      if (!paymentMethod) {
+        return { ok: false, message: "Payment cancelled — no charge was made." };
+      }
+
       const orderRes = await fetch(`/api/parent/enrollments/${enrollmentId}/renew/order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...overrides, useWallet: options.useWallet === true }),
+        body: JSON.stringify({ ...overrides, useWallet: options.useWallet === true, paymentMethod }),
       });
       const orderData = await orderRes.json();
 
@@ -99,6 +110,7 @@ export function useRenewal(enrollmentId: string) {
         amount: orderData.amount,
         currency: orderData.currency,
         keyId: orderData.keyId,
+        paymentMethod,
         name: "Learnie",
         description: `Cycle ${orderData.pricing.nextCycleNumber} renewal`,
       });

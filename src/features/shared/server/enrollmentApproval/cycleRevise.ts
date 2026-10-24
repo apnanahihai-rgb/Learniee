@@ -167,7 +167,9 @@ export async function reviseCycleEnrollment(
   const basePaid =
     Math.round(
       (Number(enrollment.amountPaid) -
-        Number(enrollment.internationalSurchargeAmount)) *
+        Number(enrollment.internationalSurchargeAmount) -
+        Number(enrollment.gstAmount) -
+        Number(enrollment.transactionChargeAmount)) *
         100,
     ) / 100;
 

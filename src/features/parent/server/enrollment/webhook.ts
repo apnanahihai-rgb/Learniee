@@ -2,9 +2,9 @@ import { generateInvoiceForPayment } from "@/features/shared/server/invoice.serv
 import { notifyEnrollmentCreated } from "@/features/shared/server/notificationTriggers.service";
 import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
 import { prisma } from "@/lib/prisma";
+import { matchPaidAmount } from "@/lib/transactionCharges";
 import {
-    getRazorpayClient,
-    rupeesToPaise
+    getRazorpayClient
 } from "@/lib/razorpay";
 import {
     InvoiceType
@@ -67,9 +67,10 @@ export async function reconcileEnrollmentFromWebhook(
     priceOptionsFromNotes(notes),
   );
   const { walletAmount, cardCharge, paidPriced } = applyWalletPortion(priced, notes);
-  const expectedPaise = rupeesToPaise(cardCharge);
+  // UPI orders carry a transaction charge on top of `cardCharge`.
+  const paid = matchPaidAmount(Number(order.amount), cardCharge);
 
-  if (Number(order.amount) !== expectedPaise) {
+  if (!paid.ok) {
     console.error("Razorpay webhook: enrollment amount mismatch", orderId);
     return null;
   }
@@ -81,7 +82,11 @@ export async function reconcileEnrollmentFromWebhook(
       data: buildEnrollmentCreateData({
         parentId,
         input,
-        priced: paidPriced,
+        priced: {
+          ...paidPriced,
+          transactionChargeAmount: paid.transactionCharge,
+          amountPayable: Math.round((paidPriced.amountPayable + paid.transactionCharge) * 100) / 100,
+        },
         orderId,
         paymentId,
       }),

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { askPaymentMethod } from "@/lib/askPaymentMethod";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 
 function formatSelection(date: Date | null, hour: number | null) {
@@ -103,10 +104,18 @@ export function useDemoBooking({
       }
 
       // Paid demo — create a Razorpay order, open Checkout, verify.
+      // UPI adds a transaction charge, so ask BEFORE the order is created.
+      const paymentMethod = await askPaymentMethod({ baseAmount: paidDemoPrice });
+
+      if (!paymentMethod) {
+        setBookingError("Payment cancelled — no charge was made.");
+        return;
+      }
+
       const orderRes = await fetch("/api/parent/demo-bookings/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, paymentMethod }),
       });
 
       const orderData = await orderRes.json();
@@ -120,6 +129,7 @@ export function useDemoBooking({
         amount: orderData.amount,
         currency: orderData.currency,
         keyId: orderData.keyId,
+        paymentMethod,
         name: "Learnie",
         description: `Demo — ₹${paidDemoPrice}`,
       });

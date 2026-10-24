@@ -147,7 +147,7 @@ async function priceLegacyEnrollment(
     select: { nriOrIndian: true, country: true },
   });
 
-  const { isInternationalPayment, surchargeAmount, amountPayable } =
+  const { isInternationalPayment, surchargeAmount, gstAmount, amountPayable } =
     priceWithInternationalSurcharge(
       totalAmount,
       parent ? isInternationalParent(parent) : false,
@@ -163,6 +163,8 @@ async function priceLegacyEnrollment(
     totalAmount,
     isInternationalPayment,
     internationalSurchargeAmount: surchargeAmount,
+    gstAmount,
+    transactionChargeAmount: 0,
     amountPayable,
     cycleStartDate,
     dueDate,
@@ -283,7 +285,7 @@ async function priceCycleEnrollment(
     select: { nriOrIndian: true, country: true },
   });
 
-  const { isInternationalPayment, surchargeAmount, amountPayable } =
+  const { isInternationalPayment, surchargeAmount, gstAmount, amountPayable } =
     priceWithInternationalSurcharge(
       totalAmount,
       parent ? isInternationalParent(parent) : false,
@@ -299,6 +301,8 @@ async function priceCycleEnrollment(
     totalAmount,
     isInternationalPayment,
     internationalSurchargeAmount: surchargeAmount,
+    gstAmount,
+    transactionChargeAmount: 0,
     amountPayable,
     cycleStartDate: calendarDateToDate(plan.startDate),
     dueDate: calendarDateToDate(plan.nextCycleStart),

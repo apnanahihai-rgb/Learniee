@@ -5,6 +5,7 @@ import {
 import { getOrCreateWallet } from "@/features/shared/server/wallet/core";
 import { customDateOffsets } from "@/features/shared/utils/cyclePlan";
 import { splitWalletPayment } from "@/features/shared/utils/walletSplit";
+import { addTransactionCharge, type PaymentMethodChoice } from "@/lib/transactionCharges";
 import { priceEnrollment } from './pricing';
 import { CYCLE_MODEL_TAG, CreateEnrollmentInput, EnrollmentError } from './types';
 
@@ -25,7 +26,7 @@ import { CYCLE_MODEL_TAG, CreateEnrollmentInput, EnrollmentError } from './types
 export async function createEnrollmentOrder(
   parentId: string,
   input: CreateEnrollmentInput,
-  options: { useWallet?: boolean } = {},
+  options: { useWallet?: boolean; paymentMethod?: PaymentMethodChoice } = {},
 ) {
   const priced = await priceEnrollment(parentId, input, {
     model: "CYCLE_V1",
@@ -37,6 +38,7 @@ export async function createEnrollmentOrder(
   let walletAmount = 0;
   let cardCharge = priced.amountPayable;
   let cardSurcharge = priced.internationalSurchargeAmount;
+  let cardGst = priced.gstAmount;
 
   if (options.useWallet) {
     const wallet = await getOrCreateWallet(parentId);
@@ -57,7 +59,14 @@ export async function createEnrollmentOrder(
     walletAmount = split.walletAmount;
     cardCharge = split.cardCharge;
     cardSurcharge = split.surchargeAmount;
+    cardGst = split.gstAmount;
   }
+
+  // UPI adds a transaction charge on top (see src/lib/transactionCharges.ts).
+  const { transactionCharge, total: payNow } = addTransactionCharge(
+    cardCharge,
+    options.paymentMethod ?? "OTHER",
+  );
 
   const razorpay = getRazorpayClient();
 
@@ -65,7 +74,7 @@ export async function createEnrollmentOrder(
     // Charges the surcharge-inclusive amount for international
     // parents — see src/lib/internationalPayments.ts. Domestic
     // parents get amountPayable === totalAmount, unchanged.
-    amount: rupeesToPaise(cardCharge),
+    amount: rupeesToPaise(payNow),
     currency: "INR",
     // Razorpay caps receipt at 40 chars — keep it short.
     receipt: `enr_${Date.now()}`,
@@ -106,7 +115,14 @@ export async function createEnrollmentOrder(
 
   return {
     order,
-    pricing: { ...priced, walletAmount, amountPayable: cardCharge, internationalSurchargeAmount: cardSurcharge },
+    pricing: {
+      ...priced,
+      walletAmount,
+      amountPayable: payNow,
+      internationalSurchargeAmount: cardSurcharge,
+      gstAmount: cardGst,
+      transactionChargeAmount: transactionCharge,
+    },
   };
 }
 export interface VerifyEnrollmentPaymentInput extends CreateEnrollmentInput {

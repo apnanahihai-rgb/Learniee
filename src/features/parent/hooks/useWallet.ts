@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { askPaymentMethod } from "@/lib/askPaymentMethod";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import {
   WALLET_TOPUP_MIN_AMOUNT,
@@ -79,10 +80,17 @@ export function useWallet() {
     setError("");
 
     try {
+      // UPI adds a transaction charge, so ask BEFORE the order is created.
+      const paymentMethod = await askPaymentMethod({ baseAmount: amount });
+
+      if (!paymentMethod) {
+        return { ok: false, message: "Payment cancelled — no charge was made." };
+      }
+
       const orderRes = await fetch("/api/parent/wallet/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, paymentMethod }),
       });
       const orderData = await orderRes.json();
 
@@ -95,11 +103,12 @@ export function useWallet() {
         amount: orderData.amount,
         currency: orderData.currency,
         keyId: orderData.keyId,
+        paymentMethod,
         name: "Learnie Wallet",
         description:
           `Add ₹${amount.toLocaleString("en-IN")} to wallet` +
-          (orderData.surchargeAmount > 0
-            ? ` (+₹${Number(orderData.surchargeAmount).toLocaleString("en-IN")} international fee)`
+          (orderData.amount / 100 > amount
+            ? ` (+₹${(orderData.amount / 100 - amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })} GST & charges)`
             : ""),
       });
 

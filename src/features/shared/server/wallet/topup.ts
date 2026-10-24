@@ -1,3 +1,4 @@
+import { addTransactionCharge, type PaymentMethodChoice } from "@/lib/transactionCharges";
 import {
     WALLET_TOPUP_MAX_AMOUNT,
     WALLET_TOPUP_MIN_AMOUNT,
@@ -44,7 +45,11 @@ function assertValidTopupAmount(amount: number) {
  * reconciliation never has to trust anything the client sends back
  * later — only what Razorpay confirms was actually paid.
  */
-export async function createWalletTopupOrder(parentId: string, amount: number) {
+export async function createWalletTopupOrder(
+  parentId: string,
+  amount: number,
+  paymentMethod: PaymentMethodChoice = "OTHER",
+) {
   assertValidTopupAmount(amount);
 
   const roundedAmount = Math.round(amount * 100) / 100;
@@ -63,8 +68,15 @@ export async function createWalletTopupOrder(parentId: string, amount: number) {
     parent ? isInternationalParent(parent) : false,
   );
 
+  // GST on the top-up, then (UPI only) the transaction charge on top of that.
+  // Money spent FROM the Wallet later carries no GST — it was paid here.
+  const { transactionCharge, total: payNow } = addTransactionCharge(
+    pricing.amountPayable,
+    paymentMethod,
+  );
+
   const order = await razorpay.orders.create({
-    amount: rupeesToPaise(pricing.amountPayable),
+    amount: rupeesToPaise(payNow),
     currency: "INR",
     // Razorpay caps receipt at 40 chars — keep it short.
     receipt: `wtop_${Date.now()}`,
@@ -74,10 +86,12 @@ export async function createWalletTopupOrder(parentId: string, amount: number) {
       // The amount credited to the Wallet (excludes the surcharge).
       amountRupees: String(roundedAmount),
       surchargeRupees: String(pricing.surchargeAmount),
+      gstRupees: String(pricing.gstAmount),
+      transactionChargeRupees: String(transactionCharge),
     },
   });
 
-  return { order, pricing };
+  return { order, pricing, transactionCharge, totalPayable: payNow };
 }
 /**
  * What to credit for a paid top-up order: the base amount stamped in the
@@ -163,7 +177,7 @@ export async function verifyWalletTopup(
     parentId,
     amount,
     invoiceAmount: amount + surcharge,
-    invoiceDescription: surcharge > 0 ? `Wallet top-up (incl. ₹${surcharge} international fee)` : undefined,
+    invoiceDescription: surcharge > 0 ? `Wallet top-up (incl. ₹${surcharge} GST and charges)` : undefined,
     reason: "Wallet top-up",
     referenceType: "WALLET_TOPUP",
     razorpayOrderId: input.razorpayOrderId,
@@ -216,7 +230,7 @@ export async function reconcileWalletTopupFromWebhook(
     parentId,
     amount,
     invoiceAmount: amount + surcharge,
-    invoiceDescription: surcharge > 0 ? `Wallet top-up (incl. ₹${surcharge} international fee)` : undefined,
+    invoiceDescription: surcharge > 0 ? `Wallet top-up (incl. ₹${surcharge} GST and charges)` : undefined,
     reason: "Wallet top-up",
     referenceType: "WALLET_TOPUP",
     razorpayOrderId: orderId,

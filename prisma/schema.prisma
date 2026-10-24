@@ -473,6 +473,10 @@ model Enrollment {
   razorpayPaymentId          String               @unique
   isInternationalPayment     Boolean              @default(false)
   internationalSurchargeAmount Decimal            @default(0) @db.Decimal(10, 2)
+  /// GST (18%) on the card-paid part of the price (Oct 2026). Wallet-paid money was GST-paid at top-up.
+  gstAmount                    Decimal            @default(0) @db.Decimal(10, 2)
+  /// UPI transaction charge actually paid (0 for non-UPI).
+  transactionChargeAmount      Decimal            @default(0) @db.Decimal(10, 2)
   adminApprovedAt            DateTime?
   pricingChangedAfterPayment Boolean              @default(false)
   rejectedBy                 String?

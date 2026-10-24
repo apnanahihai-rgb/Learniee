@@ -25,7 +25,8 @@ describe("splitWalletPayment", () => {
     const r = split(1000, 300);
     expect(r.walletAmount).toBe(300);
     expect(r.cardBase).toBe(700);
-    expect(r.cardCharge).toBe(700);
+    expect(r.gstAmount).toBe(126);
+    expect(r.cardCharge).toBe(826);
   });
   it("card remainder under Rs 1 is bumped to Rs 1", () => {
     const r = split(1000, 999.5);
@@ -36,7 +37,7 @@ describe("splitWalletPayment", () => {
     const r = split(1000, 400, true);
     expect(r.cardBase).toBe(600);
     expect(r.surchargeAmount).toBeGreaterThan(0);
-    expect(r.cardCharge).toBe(r.cardBase + r.surchargeAmount);
+    expect(r.cardCharge).toBe(r.cardBase + r.surchargeAmount + r.gstAmount);
     expect(r.walletAmount).toBe(400);
   });
   it("no surcharge when wallet covers all, even international", () => {
