@@ -106,7 +106,7 @@ export default function CourseCard({ course }: Props) {
           {course.price ? (
             <span className="text-sm font-bold text-gray-800">
               ₹{course.price}
-              <span className="text-[11px] font-medium text-gray-400">/mo</span>
+              <span className="text-[11px] font-medium text-gray-400">/session</span>
             </span>
           ) : (
             <span />
