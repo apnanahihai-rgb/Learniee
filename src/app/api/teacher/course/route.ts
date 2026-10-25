@@ -144,27 +144,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Standard pricing (Sep 2026): a manual price always works, but
-    // if the teacher leaves Price blank we need a standard rate to
-    // fall back to — i.e. a recognised grade, or the IITian flag.
-    const hasManualPrice = Boolean(input.price) && Number.isFinite(Number(input.price));
-    const hasStandardPrice =
-      getStandardSessionPrice(
-        input.grade || null,
-        Boolean(input.isIITian),
-        sessionLengthForCourse(input.duration),
-      ) != null;
-
-    if (!hasManualPrice && !hasStandardPrice) {
-      return NextResponse.json(
-        {
-          error:
-            "Select a grade (or mark this course as IITian-listed) to get a standard price, or enter your own price.",
-        },
-        { status: 400 },
-      );
-    }
-
     // Listing for an accepted class-request vacancy: check the Teacher
     // really accepted it (and hasn't listed one yet) before creating.
     const classRequestId =
@@ -185,6 +164,17 @@ export async function POST(req: Request) {
           getStandardSessionPrice(input.grade, false, sessionLengthForCourse(input.duration)),
         );
       }
+    }
+
+    // Teachers set their own price (no fixed grade/IITian rates). A vacancy
+    // listing has already been given the request's fixed price above.
+    const price = Number(input.price);
+
+    if (!Number.isFinite(price) || price <= 0) {
+      return NextResponse.json(
+        { error: "Enter a price per session greater than 0." },
+        { status: 400 },
+      );
     }
 
     const course = await createCourse(

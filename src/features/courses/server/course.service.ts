@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 export interface CourseFormInput {
@@ -40,38 +39,23 @@ export interface CourseFormInput {
 }
 
 /**
- * Standard pricing (Sep 2026; per-hour rate scaled by duration since Oct 2026). Authoritative — never trust a
- * client-computed price/flag, same principle as enrollment pricing
- * (see priceCycleEnrollment in enrollment.service.ts). `standardPrice`
- * is the tier rate for the chosen grade / IITian flag (null if
- * neither is set). The form now prefills Price with the standard
- * rate, so a manual price that differs from it sets
- * `isPriceCustomized` for the Admin review screen.
- *
- * IITian-listed courses are always the fixed ₹700/hour rate — any
- * client-submitted `price` is ignored for them, same as any other
- * server-authoritative price. There is nothing to "customize" for an
- * IITian listing, so `isPriceCustomized` is always false for one.
+ * Course pricing (Oct 2026): teachers set their own price per session —
+ * there are no fixed per-grade or IITian rates any more. The price is
+ * required and must be a positive number. `standardPrice` is no longer
+ * computed (null) and `isPriceCustomized` is always false, so the Admin
+ * review screen no longer shows a "non-standard price" warning; Admin
+ * approval itself is unchanged. The IITian flag is still derived
+ * server-side by the route and stored as before.
  */
 function priceCourse(input: CourseFormInput) {
   const isIITian = Boolean(input.isIITian);
-  // Standard rates are per hour; the session price scales with the lecture length.
-  const standardPrice = getStandardSessionPrice(
-    input.grade || null,
-    isIITian,
-    sessionLengthForCourse(input.duration),
-  );
+  const price = Number(input.price);
 
-  if (isIITian) {
-    return { isIITian, standardPrice, price: standardPrice, isPriceCustomized: false };
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error("Price per session must be a positive number.");
   }
 
-  const manualPrice = input.price ? Number(input.price) : null;
-  const price = manualPrice ?? standardPrice;
-  const isPriceCustomized =
-    standardPrice != null && manualPrice != null && manualPrice !== standardPrice;
-
-  return { isIITian, standardPrice, price, isPriceCustomized };
+  return { isIITian, standardPrice: null, price, isPriceCustomized: false };
 }
 
 function buildCourseData(input: CourseFormInput) {

@@ -23,15 +23,14 @@ interface Props {
 }
 
 /**
- * Sets Price to the standard per-session rate for the given
- * grade/IITian combination and lecture duration (hourly rate scaled by
- * length). No-op (keeps whatever Price already holds) when neither the
- * grade nor the IITian flag resolves to a standard rate.
+ * Vacancy listings only: Price is fixed to the request's grade rate scaled
+ * by lecture length. Normal courses have no fixed rate — the teacher types
+ * their own price.
  */
 function withStandardPrice(data: CourseFormData): CourseFormData {
   const standard = getStandardSessionPrice(
     data.grade || null,
-    data.isIITian,
+    false,
     sessionLengthForCourse(data.duration),
   );
   return standard != null ? { ...data, price: String(standard) } : data;
@@ -51,10 +50,6 @@ function withDerivedGrade(data: CourseFormData): CourseFormData {
 
 export default function CreateCourseForm({ onChange, initialValues, pricingLocked = false }: Props) {
   const [formData, setFormData] = useState<CourseFormData>(initialCourseFormData);
-  // Tracks whether the teacher has deliberately typed their own price,
-  // so we stop auto-prefilling once they have (and never for IITian,
-  // whose price is always fixed).
-  const [priceTouched, setPriceTouched] = useState(false);
   // Latest form state for the async effects below, so they can compute the
   // next value outside a setState updater and call onChange (a parent
   // setState) from the effect itself, never from inside an updater.
@@ -99,7 +94,7 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
         if (cancelled || !eligible) return;
 
         setTeacherIITianEligible(true);
-        applyForm(withStandardPrice({ ...latestForm.current, isIITian: true }));
+        applyForm({ ...latestForm.current, isIITian: true });
       } catch {
         // Non-fatal — worst case the teacher doesn't see the IITian
         // lock; the price/flag are still enforced server-side on submit.
@@ -114,12 +109,12 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // One-time prefill. Price follows the standard rate for the prefilled
-  // grade unless the teacher later types their own (priceTouched).
+  // One-time prefill. Only a vacancy listing gets a fixed (grade-based) price.
   useEffect(() => {
     if (!initialValues) return;
 
-    applyForm(withStandardPrice(withDerivedGrade({ ...latestForm.current, ...initialValues })));
+    const prefilled = withDerivedGrade({ ...latestForm.current, ...initialValues });
+    applyForm(lockedRef.current ? withStandardPrice(prefilled) : prefilled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
@@ -133,16 +128,8 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
 
     let updatedData = withDerivedGrade({ ...formData, [name]: value });
 
-    if (name === "price") {
-      // Manual edit — stop auto-prefilling for the rest of this form.
-      setPriceTouched(true);
-    } else if (
-      (name === "gradeFrom" || name === "gradeTo" || name === "duration") &&
-      // IITian / vacancy prices always follow the rate; otherwise only until
-      // the teacher has typed their own.
-      (formData.isIITian || pricingLocked || !priceTouched)
-    ) {
-      // Grade or lecture length changed — keep Price at the standard rate.
+    if (pricingLocked && (name === "gradeFrom" || name === "gradeTo" || name === "duration")) {
+      // Vacancy listing: keep Price at the request's grade rate.
       updatedData = withStandardPrice(updatedData);
     }
 
@@ -156,7 +143,7 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     let next: CourseFormData = { ...formData, gradeMode: mode, gradeTo: mode === "single" ? "" : formData.gradeTo };
     next = withDerivedGrade(next);
 
-    applyForm(!priceTouched && !formData.isIITian ? withStandardPrice(next) : next);
+    applyForm(next);
   }
 
   function handleCertificateToggle(checked: boolean) {

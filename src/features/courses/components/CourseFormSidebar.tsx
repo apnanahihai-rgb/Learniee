@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 
 import { COURSE_SECTIONS } from "@/features/courses/components/courseSections";
-import { getStandardPrice, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import type { CourseFormData } from "@/features/courses/types/course";
 
@@ -103,8 +102,6 @@ export default function CourseFormSidebar({ formData, hasThumbnail, hasIntroVide
   const doneCount = COURSE_SECTIONS.filter((s) => done[s.id]).length;
 
   const minutes = sessionLengthForCourse(formData.duration);
-  const hourly = getStandardPrice(formData.grade || null, formData.isIITian);
-  const standard = getStandardSessionPrice(formData.grade || null, formData.isIITian, minutes);
   const price = Number(formData.price) > 0 ? Number(formData.price) : null;
 
   return (
@@ -156,9 +153,6 @@ export default function CourseFormSidebar({ formData, hasThumbnail, hasIntroVide
         <p className="mt-1 text-3xl font-bold">{price != null ? `₹${price}` : "—"}</p>
         <p className="mt-2 text-xs text-violet-100">
           {minutes}-minute lecture
-          {hourly != null && standard != null
-            ? ` · standard ₹${standard} (₹${hourly}/hour)`
-            : " · pick a grade to see the standard rate"}
         </p>
       </div>
     </aside>

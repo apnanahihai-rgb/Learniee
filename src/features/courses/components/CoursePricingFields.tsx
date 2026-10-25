@@ -1,4 +1,4 @@
-import { Info, Lock, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Info, Lock, ShieldCheck } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import FormField, { controlClass } from "@/features/courses/components/FormField";
@@ -25,31 +25,20 @@ interface Props {
 /** "Pricing" section. Standard rates are per hour; the per-session price scales with lecture length. */
 export default function CoursePricingFields({ formData, onChange, iitianEligible, priceLocked }: Props) {
   const lectureMinutes = sessionLengthForCourse(formData.duration);
-  const hourlyRate = getStandardPrice(formData.grade || null, formData.isIITian);
-  const standardPrice = getStandardSessionPrice(formData.grade || null, formData.isIITian, lectureMinutes);
-  const manualPrice = formData.price ? Number(formData.price) : null;
-  const isPriceCustomized =
-    standardPrice != null && manualPrice != null && manualPrice !== standardPrice;
-  const readOnly = formData.isIITian || Boolean(priceLocked);
+  const hourlyRate = getStandardPrice(formData.grade || null, false);
+  const standardPrice = getStandardSessionPrice(formData.grade || null, false, lectureMinutes);
+  const readOnly = Boolean(priceLocked);
 
-  let tone = "bg-violet-50 text-violet-800 border-violet-100";
+  const tone = "bg-violet-50 text-violet-800 border-violet-100";
   let Icon = Info;
-  let message =
-    "Select a grade to prefill the standard price, or enter your own.";
+  let message = "Set the price per session you want to charge. Admin approval is still required before the course goes live.";
 
   if (priceLocked) {
-    tone = "bg-violet-50 text-violet-800 border-violet-100";
     Icon = Lock;
     message = `This course is for a parent's class request, so the price is fixed by grade at ₹${hourlyRate ?? "-"}/hour — ₹${standardPrice ?? formData.price}/session for a ${lectureMinutes}-minute lecture. It can't be changed.`;
   } else if (iitianEligible) {
     Icon = ShieldCheck;
-    message = `Your profile is marked as an IITian, so this course is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/hour — ₹${standardPrice ?? "-"}/session for a ${lectureMinutes}-minute lecture.`;
-  } else if (isPriceCustomized) {
-    tone = "bg-amber-50 text-amber-800 border-amber-200";
-    Icon = TriangleAlert;
-    message = `You changed the price to ₹${manualPrice} (standard is ₹${standardPrice}). Admin approval will be required before this course goes live.`;
-  } else if (standardPrice != null) {
-    message = `Standard rate for ${formData.grade || "this grade"} is ₹${hourlyRate}/hour, scaled to your ${lectureMinutes}-minute lecture: ₹${standardPrice}/session. You can change it, but a different price will need Admin approval.`;
+    message = "Your profile is marked as an IITian, so this course is listed as an IITian course. Set the price per session you want to charge.";
   }
 
   return (
@@ -63,10 +52,10 @@ export default function CoursePricingFields({ formData, onChange, iitianEligible
             id="field-price"
             name="price"
             type="number"
-            min={0}
+            min={1}
             step={1}
             inputMode="numeric"
-            placeholder="0"
+            placeholder="Enter price"
             value={formData.price}
             onChange={onChange}
             disabled={readOnly}
