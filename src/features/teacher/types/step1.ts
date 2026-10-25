@@ -27,6 +27,8 @@ export interface Step1FormData {
 
   /** Self-declared, no Admin approval gate — see schema.prisma. */
   isIITian: boolean;
+  /** Degree / field studied at IIT. Required when `isIITian` is true. */
+  iitDegree: string;
 }
 
 export interface CognitoProfile {
@@ -67,6 +69,7 @@ export const emptyStep1EditableFields = {
   criminalCase: "",
 
   isIITian: false,
+  iitDegree: "",
 };
 
 /** Full empty form state (Cognito fields + editable fields), used client-side. */

@@ -135,6 +135,9 @@ model Teacher {
   /// ₹700 rate server-side (see createCourse in course.service.ts),
   /// regardless of what the create-course form submits.
   isIITian           Boolean               @default(false)
+  /// Degree / field studied at IIT (Oct 2026). Required at onboarding Step 1
+  /// when `isIITian` is true; null otherwise.
+  iitDegree          String?
   /// Teacher interview + appeal (Oct 7, 2026). Interview is optional and only
   /// meaningful while `approvalStatus = PENDING`. A rejection starts a cooldown
   /// (`reapplyAvailableAt`); after it the Teacher can appeal, which puts the

@@ -39,6 +39,7 @@ export async function getStep1FormData(
       aboutMe: true,
       criminalCase: true,
       isIITian: true,
+      iitDegree: true,
       currentStep: true,
       onboardingStatus: true,
       approvalStatus: true,
@@ -86,6 +87,7 @@ export async function getStep1FormData(
       aboutMe: teacher.aboutMe || "",
       criminalCase: teacher.criminalCase || "",
       isIITian: teacher.isIITian,
+      iitDegree: teacher.iitDegree || "",
     },
     currentStep: teacher.currentStep,
     onboardingStatus: teacher.onboardingStatus,
@@ -120,6 +122,7 @@ export async function saveStep1FormData(
     aboutMe: input.aboutMe,
     criminalCase: input.criminalCase,
     isIITian: Boolean(input.isIITian),
+    iitDegree: input.isIITian ? (input.iitDegree ?? "").trim() || null : null,
   };
 
   const teacher = await prisma.teacher.upsert({

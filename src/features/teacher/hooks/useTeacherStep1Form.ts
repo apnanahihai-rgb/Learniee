@@ -94,6 +94,11 @@ export function useTeacherStep1Form() {
       return;
     }
 
+    if (formData.isIITian && !formData.iitDegree.trim()) {
+      setError("Please enter the degree / field you studied at IIT.");
+      return;
+    }
+
     setError("");
     setSubmitting(true);
 

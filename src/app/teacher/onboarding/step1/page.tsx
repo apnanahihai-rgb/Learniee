@@ -172,6 +172,24 @@ export default function TeacherStep1() {
               onChange={handleChange}
             />
           </FormField>
+
+          {formData.isIITian && (
+            <FormField
+              label="Degree / field studied at IIT"
+              htmlFor="iitDegree"
+              helperText="e.g. B.Tech Computer Science, M.Sc Physics, Dual Degree Chemical Engineering."
+              fullWidth
+            >
+              <Input
+                id="iitDegree"
+                name="iitDegree"
+                placeholder="Enter your degree and field"
+                value={formData.iitDegree}
+                onChange={handleChange}
+                required
+              />
+            </FormField>
+          )}
         </FormSection>
 
         <FormSection

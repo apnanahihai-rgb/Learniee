@@ -95,6 +95,17 @@ export async function POST(req: Request) {
     const input =
       await req.json();
 
+    // An IITian must say what they studied at IIT.
+    if (
+      input.isIITian &&
+      (typeof input.iitDegree !== "string" || !input.iitDegree.trim())
+    ) {
+      return NextResponse.json(
+        { error: "Please enter the degree / field you studied at IIT." },
+        { status: 400 }
+      );
+    }
+
     const teacher =
       await saveStep1FormData(
         auth.payload.sub,
