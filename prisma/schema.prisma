@@ -2047,6 +2047,8 @@ enum ActivityAction {
   TEACHER_APPEALED
   COURSE_APPROVED
   COURSE_REJECTED
+  /// Admin deleted a course, e.g. from the Lowest rated screen (Oct 27, 2026)
+  COURSE_DELETED
   USER_DELETED
   /// Teacher Payouts (Sep 9, 2026)
   PAYOUT_HELD_OR_REJECTED

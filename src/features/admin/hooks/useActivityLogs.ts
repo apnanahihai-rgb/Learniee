@@ -23,6 +23,7 @@ export type ActivityAction =
   | "TEACHER_APPEALED"
   | "COURSE_APPROVED"
   | "COURSE_REJECTED"
+  | "COURSE_DELETED"
   | "USER_DELETED"
   | "BLOG_SUBMITTED"
   | "BLOG_PUBLISHED"

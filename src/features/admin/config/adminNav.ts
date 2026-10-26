@@ -18,6 +18,7 @@ import {
   Receipt,
   RefreshCw,
   ShieldAlert,
+  Star,
   UserCheck,
   UserX,
   Users,
@@ -83,6 +84,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     label: "People",
     items: [
+      { label: "Lowest rated", href: "/admin/lowest-rated", icon: Star },
       { label: "Teacher directory", href: "/admin/teacher-directory", icon: GraduationCap },
       { label: "Parent directory", href: "/admin/parent-directory", icon: Users },
       { label: "Manage users", href: "/admin/users", icon: UserX },
