@@ -184,6 +184,7 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
   // Chat
   ChatRoom: { scope: "owner", paths: CHAT },
   ChatMessage: { scope: "owner", paths: CHAT },
+  ChatSafetyFlag: { scope: "all", paths: ["/api/admin/chat-reports", "/api/admin/chat"] },
   ChatMessageReport: { scope: "all", paths: ["/api/admin/chat-reports", ...CHAT] },
 
   // Requests, complaints, content, system

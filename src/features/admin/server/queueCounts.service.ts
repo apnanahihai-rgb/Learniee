@@ -41,6 +41,7 @@ export async function getAdminQueueCounts(): Promise<AdminQueueCounts> {
     leave,
     classRequests,
     chatReports,
+    chatFlags,
     complaints,
     refunds,
     payouts,
@@ -65,6 +66,7 @@ export async function getAdminQueueCounts(): Promise<AdminQueueCounts> {
     prisma.leaveRequest.count({ where: { status: LeaveRequestStatus.PENDING } }),
     prisma.classRequest.count({ where: { status: ClassRequestStatus.PENDING_REVIEW } }),
     prisma.chatMessageReport.count({ where: { status: ChatReportStatus.OPEN } }),
+    prisma.chatSafetyFlag.count({ where: { status: ChatReportStatus.OPEN } }),
     prisma.complaint.count({ where: { status: ComplaintStatus.OPEN } }),
     prisma.refundRequest.count({ where: { status: RefundRequestStatus.PENDING } }),
     prisma.tuitionLedgerEntry.count({
@@ -85,7 +87,8 @@ export async function getAdminQueueCounts(): Promise<AdminQueueCounts> {
     strikes,
     leave,
     classRequests,
-    chatReports,
+    // One badge for both: messages users reported and ones the screening flagged.
+    chatReports: chatReports + chatFlags,
     complaints,
     refunds,
     payouts,

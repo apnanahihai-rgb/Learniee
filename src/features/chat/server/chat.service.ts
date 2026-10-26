@@ -1,12 +1,21 @@
 import { prisma } from "@/lib/prisma";
-import { ActivityAction, ActivityActorRole, ChatSenderRole } from "@prisma/client";
+import {
+  ActivityAction,
+  ActivityActorRole,
+  ChatFlagLevel,
+  ChatSenderRole,
+} from "@prisma/client";
 import { SENDABLE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
 import {
-  notifyAdminChatPhoneNumberFlagged,
+  notifyAdminChatMessageFlagged,
   notifyChatMessage,
 } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
-import { maskPhoneNumbers } from "@/features/chat/utils/phoneDetection";
+import {
+  SPLIT_LOOKBACK_MESSAGES,
+  SPLIT_LOOKBACK_MINUTES,
+  screenChatMessage,
+} from "@/features/chat/utils/chatScreening";
 
 export class ChatError extends Error {
   status: number;
@@ -105,12 +114,23 @@ export async function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
     return [] as Array<(typeof rooms)[number] & { hasFlaggedMessages: boolean }>;
   }
 
-  const flagged = await prisma.chatMessage.findMany({
-    where: { chatRoomId: { in: rooms.map((room) => room.id) }, containsPhoneNumber: true },
-    select: { chatRoomId: true },
-    distinct: ["chatRoomId"],
-  });
-  const flaggedRoomIds = new Set(flagged.map((row) => row.chatRoomId));
+  const roomIds = rooms.map((room) => room.id);
+  const [flagged, safetyFlagged] = await Promise.all([
+    prisma.chatMessage.findMany({
+      where: { chatRoomId: { in: roomIds }, containsPhoneNumber: true },
+      select: { chatRoomId: true },
+      distinct: ["chatRoomId"],
+    }),
+    prisma.chatSafetyFlag.findMany({
+      where: { chatRoomId: { in: roomIds } },
+      select: { chatRoomId: true },
+      distinct: ["chatRoomId"],
+    }),
+  ]);
+  const flaggedRoomIds = new Set([
+    ...flagged.map((row) => row.chatRoomId),
+    ...safetyFlagged.map((row) => row.chatRoomId),
+  ]);
 
   return rooms.map((room) => ({
     ...room,
@@ -271,44 +291,116 @@ export async function sendMessage(input: SendMessageInput) {
     );
   }
 
-  // Phone-number flagging (06 #31): mask anything phone-shaped out of
-  // what gets saved as `body` (what everyone but Admin ever reads),
-  // and keep the real text in `originalBody` for Admin's moderation
-  // view only. The sender and recipient are never told this happened
-  // beyond the placeholder text itself — no separate warning, no
-  // notification to either of them.
-  const { masked, found } = maskPhoneNumbers(body);
+  // Screening (06 #31): a clear phone number is BLOCKED (never saved,
+  // never shown to the other party, Admin is told). Anything that only
+  // looks like a workaround (digits as words, a number split over several
+  // messages, …) is SUSPICIOUS: it is sent normally and Admin is told.
+  const since = new Date(Date.now() - SPLIT_LOOKBACK_MINUTES * 60 * 1000);
+  const recent = await prisma.chatMessage.findMany({
+    where: {
+      chatRoomId: input.roomId,
+      senderRole: input.senderRole as ChatSenderRole,
+      senderId: input.senderId,
+      createdAt: { gte: since },
+    },
+    orderBy: { createdAt: "desc" },
+    take: SPLIT_LOOKBACK_MESSAGES,
+    select: { body: true, originalBody: true },
+  });
 
-  const [message] = await prisma.$transaction([
-    prisma.chatMessage.create({
+  const screening = screenChatMessage(
+    body,
+    recent.map((row) => row.originalBody ?? row.body),
+  );
+
+  const actorRole =
+    input.senderRole === "PARENT" ? ActivityActorRole.PARENT : ActivityActorRole.TEACHER;
+
+  if (screening.level === "BLOCKED") {
+    // Reporting must never decide whether the block happens: if saving
+    // the flag fails, the message is still refused.
+    try {
+      await prisma.chatSafetyFlag.create({
+        data: {
+          chatRoomId: input.roomId,
+          senderRole: input.senderRole as ChatSenderRole,
+          senderId: input.senderId,
+          level: ChatFlagLevel.BLOCKED,
+          reasons: screening.reasons,
+          text: body,
+          detail: screening.detail,
+        },
+      });
+
+      await notifyAdminChatMessageFlagged(input.roomId, input.senderRole, "BLOCKED");
+
+      await logActivity({
+        action: ActivityAction.CHAT_PHONE_NUMBER_FLAGGED,
+        actorRole,
+        actorId: input.senderId,
+        description: `Message with a phone number was blocked in chat room ${input.roomId}.`,
+        metadata: { chatRoomId: input.roomId, level: "BLOCKED", reasons: screening.reasons },
+      });
+    } catch (error) {
+      console.error("Chat block flag error:", error);
+    }
+
+    throw new ChatError(
+      "Your message wasn't sent because it appears to contain a phone number. For everyone's safety, please keep all communication on Learniee.",
+      422,
+    );
+  }
+
+  const message = await prisma.$transaction(async (tx) => {
+    const created = await tx.chatMessage.create({
       data: {
         chatRoomId: input.roomId,
         senderRole: input.senderRole as ChatSenderRole,
         senderId: input.senderId,
-        body: found ? masked : body,
-        containsPhoneNumber: found,
-        originalBody: found ? body : null,
+        body,
       },
       select: baseMessageSelect,
-    }),
-    prisma.chatRoom.update({
+    });
+
+    await tx.chatRoom.update({
       where: { id: input.roomId },
       data: { lastMessageAt: new Date() },
-    }),
-  ]);
+    });
+
+    if (screening.level === "SUSPICIOUS") {
+      await tx.chatSafetyFlag.create({
+        data: {
+          chatRoomId: input.roomId,
+          chatMessageId: created.id,
+          senderRole: input.senderRole as ChatSenderRole,
+          senderId: input.senderId,
+          level: ChatFlagLevel.SUSPICIOUS,
+          reasons: screening.reasons,
+          text: body,
+          detail: screening.detail,
+        },
+      });
+    }
+
+    return created;
+  });
 
   await notifyChatMessage(input.roomId, input.senderRole);
 
-  if (found) {
-    await notifyAdminChatPhoneNumberFlagged(input.roomId, input.senderRole);
+  if (screening.level === "SUSPICIOUS") {
+    await notifyAdminChatMessageFlagged(input.roomId, input.senderRole, "SUSPICIOUS");
 
     await logActivity({
       action: ActivityAction.CHAT_PHONE_NUMBER_FLAGGED,
-      actorRole:
-        input.senderRole === "PARENT" ? ActivityActorRole.PARENT : ActivityActorRole.TEACHER,
+      actorRole,
       actorId: input.senderId,
-      description: `Possible phone number shared and masked in chat room ${input.roomId}.`,
-      metadata: { chatRoomId: input.roomId, chatMessageId: message.id },
+      description: `Suspicious message (possible hidden phone number) sent in chat room ${input.roomId}.`,
+      metadata: {
+        chatRoomId: input.roomId,
+        chatMessageId: message.id,
+        level: "SUSPICIOUS",
+        reasons: screening.reasons,
+      },
     });
   }
 

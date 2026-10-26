@@ -25,7 +25,8 @@ interface ChatWindowProps {
   /** The viewer's own sender role, so their messages align right. `null` for Admin — every bubble is "theirs" (someone else's) since Admin only ever views, never sends. */
   viewerSenderRole: ChatSenderRole | null;
   canSend: boolean;
-  onSend: (body: string) => Promise<void> | void;
+  /** Return false (or resolve false) when the send failed, so the typed text is put back. */
+  onSend: (body: string) => Promise<boolean | void> | boolean | void;
   disabledReason?: string;
   /**
    * Draws the chat as a card inside another page (the Parent's My
@@ -77,7 +78,12 @@ export default function ChatWindow({
     if (!body || sending) return;
 
     setDraft("");
-    await onSend(body);
+    const ok = await onSend(body);
+
+    // A refused or failed send (e.g. a blocked phone number) keeps what was typed.
+    if (ok === false) {
+      setDraft((current) => current || body);
+    }
   }
 
   function openReport(messageId: string) {

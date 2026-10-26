@@ -113,3 +113,41 @@ export function notifyAdminChatMessageReported(
     });
   });
 }
+
+/**
+ * The chat screening flagged a message (see chatScreening.ts). Admin-only;
+ * the sender and recipient are never sent anything. BLOCKED = a clear phone
+ * number that was not delivered; SUSPICIOUS = delivered, needs a look.
+ * Reuses the CHAT_PHONE_NUMBER_FLAGGED notification type.
+ */
+export function notifyAdminChatMessageFlagged(
+  roomId: string,
+  senderRole: "PARENT" | "TEACHER",
+  level: "BLOCKED" | "SUSPICIOUS",
+) {
+  return safe("chat message flagged", async () => {
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: {
+        parent: { select: { firstName: true, lastName: true, visibleName: true } },
+        teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!room) return;
+
+    const courseTitle = room.course.courseTitle || "an enrollment";
+    const senderName =
+      senderRole === "PARENT" ? displayName(room.parent) : displayName(room.teacher);
+
+    await notifyAllAdmins({
+      type: T.CHAT_PHONE_NUMBER_FLAGGED,
+      title: level === "BLOCKED" ? "Phone number blocked in chat" : "Suspicious chat message",
+      message:
+        level === "BLOCKED"
+          ? `${senderName} (${senderRole.toLowerCase()}) tried to share a phone number in the chat for "${courseTitle}". The message was not sent.`
+          : `${senderName} (${senderRole.toLowerCase()}) sent a message in the chat for "${courseTitle}" that may be hiding a phone number. It was delivered — please review.`,
+      link: "/admin/chat-reports",
+    });
+  });
+}

@@ -68,7 +68,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: "Leave requests", href: "/admin/leave-requests", icon: CalendarOff, countKey: "leave" },
       { label: "Class requests", href: "/admin/class-requests", icon: Briefcase, countKey: "classRequests" },
       { label: "Chat monitor", href: "/admin/chat", icon: MessageCircle },
-      { label: "Reported messages", href: "/admin/chat-reports", icon: Flag, countKey: "chatReports" },
+      { label: "Reported & flagged messages", href: "/admin/chat-reports", icon: Flag, countKey: "chatReports" },
       { label: "Complaints", href: "/admin/complaints", icon: AlertCircle, countKey: "complaints" },
     ],
   },

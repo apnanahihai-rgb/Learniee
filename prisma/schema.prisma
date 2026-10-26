@@ -720,6 +720,7 @@ model ChatRoom {
   updatedAt     DateTime      @updatedAt
   messages      ChatMessage[]
   reports       ChatMessageReport[]
+  safetyFlags   ChatSafetyFlag[]
   course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   enrollment    Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent        ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -748,6 +749,7 @@ model ChatMessage {
   createdAt  DateTime       @default(now())
   chatRoom   ChatRoom       @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   reports    ChatMessageReport[]
+  safetyFlags ChatSafetyFlag[]
 
   /// Phone-number flagging (`06` #31, Sep 22, 2026). If `body` (sent
   /// to Parent/Teacher) contained anything shaped like a phone
@@ -761,6 +763,15 @@ model ChatMessage {
 
   @@index([chatRoomId, createdAt])
   @@index([chatRoomId, containsPhoneNumber])
+}
+
+/// Automatic chat screening result (Oct 26, 2026). BLOCKED = a clear phone
+/// number, the message was never sent. SUSPICIOUS = sent normally, Admin
+/// reviews (digits as words, split over messages, …). See
+/// `src/features/chat/utils/chatScreening.ts`.
+enum ChatFlagLevel {
+  BLOCKED
+  SUSPICIOUS
 }
 
 enum ChatReportStatus {
@@ -793,6 +804,32 @@ model ChatMessageReport {
   @@unique([chatMessageId, reporterRole, reporterId])
   @@index([status, createdAt])
   @@index([chatRoomId])
+}
+
+/// One row per message the screening flagged (Oct 26, 2026). `text` is
+/// exactly what the sender typed (Admin only). `chatMessageId` is null for
+/// BLOCKED rows because that message was never saved. `reasons` holds
+/// `ChatScreenReason` codes. Reuses `ChatReportStatus` (OPEN / REVIEWED).
+model ChatSafetyFlag {
+  id            String           @id @default(uuid())
+  chatRoomId    String
+  chatMessageId String?
+  senderRole    ChatSenderRole
+  senderId      String
+  level         ChatFlagLevel
+  reasons       String[]
+  text          String
+  detail        String?
+  status        ChatReportStatus @default(OPEN)
+  reviewedAt    DateTime?
+  reviewedBySub String?
+  createdAt     DateTime         @default(now())
+  chatRoom      ChatRoom         @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatMessage   ChatMessage?     @relation(fields: [chatMessageId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([chatRoomId])
+  @@index([chatMessageId])
 }
 
 /// Homework module (added Sep 4, 2026) — deliberately simple, a

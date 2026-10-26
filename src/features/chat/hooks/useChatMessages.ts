@@ -85,8 +85,9 @@ export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
 
   useAutoRefresh(() => poll(), { paths: [messagesEndpoint], staleMs: 5_000 });
 
-  async function sendMessage(body: string) {
-    if (!canSend) return;
+  /** Resolves true when the message was sent, false when it failed or was refused (the reason is in `error`). */
+  async function sendMessage(body: string): Promise<boolean> {
+    if (!canSend) return false;
 
     try {
       setSending(true);
@@ -106,9 +107,11 @@ export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
 
       setMessages((prev) => mergeMessages(prev, [data.message]));
       lastTimestampRef.current = data.message.createdAt;
+      return true;
     } catch (err) {
       console.error("Send chat message error:", err);
       setError(err instanceof Error ? err.message : "Failed to send message.");
+      return false;
     } finally {
       setSending(false);
     }
