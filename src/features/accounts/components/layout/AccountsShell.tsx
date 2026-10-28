@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import { LogOut, Menu, X } from "lucide-react";
 
 import {
@@ -16,6 +15,7 @@ import {
   AccountsLedgerContext,
   useAccountsLedger,
 } from "@/features/accounts/components/layout/AccountsLedgerContext";
+import { endSession } from "@/features/shared/utils/endSession";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -60,7 +60,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
   async function handleLogout() {
     await logClientActivity("LOGOUT");
-    Cookies.remove("idToken");
+    await endSession();
     router.push("/login");
   }
 

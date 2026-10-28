@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 import {
   getIdTokenFromRequest,
   unauthorizedResponse,
   type CognitoTokenPayload,
 } from "@/lib/api-auth";
+import { idTokenVerifier as verifier } from "@/lib/cognitoVerifier";
 
 /**
  * Signature-verified drop-in for `requireAdminAuth(req)` in
@@ -27,12 +27,6 @@ import {
  * from `lib/verifyAdmin.ts` instead — same verification, different
  * way of getting the token.)
  */
-const verifier = CognitoJwtVerifier.create({
-  userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!,
-  tokenUse: "id",
-  clientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!,
-});
-
 export async function requireVerifiedAdminAuth(req: Request): Promise<
   | { token: string; payload: CognitoTokenPayload }
   | { error: ReturnType<typeof NextResponse.json> }

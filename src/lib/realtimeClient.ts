@@ -42,7 +42,9 @@ let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let retryMs = RETRY_MIN_MS;
 
 function hasSession(): boolean {
-  return /(?:^|;\s*)idToken=/.test(document.cookie);
+  // The session tokens are httpOnly (not readable here); `viewerRole` is the
+  // readable hint cookie the login route sets alongside them.
+  return /(?:^|;\s*)viewerRole=/.test(document.cookie);
 }
 
 function emit(prefixes: string[]) {

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
+import { endSession } from "@/features/shared/utils/endSession";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 import {
   fetchTeacherAccess,
@@ -86,10 +86,10 @@ export function useTeacherApprovalWatch() {
   }
 
   async function logout() {
-    // Log before removing the cookie — the endpoint needs it to identify the user.
+    // Log before ending the session — the endpoint needs the cookie to identify the user.
     await logClientActivity("LOGOUT");
 
-    Cookies.remove("idToken");
+    await endSession();
     localStorage.removeItem("teacherId");
 
     router.push("/login");

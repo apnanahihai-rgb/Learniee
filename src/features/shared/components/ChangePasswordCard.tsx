@@ -3,23 +3,15 @@
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Lock } from "lucide-react";
 
-import { userPool } from "@/lib/cognito";
 import ErrorBanner from "./ErrorBanner";
 
 /**
- * Shared between `/parent/settings` and `/teacher/settings`. Changes
- * the password for the currently-logged-in Cognito user directly
- * from the browser (`CognitoUser.changePassword`) — same "talk to
- * Cognito directly, no API route" pattern already used by
- * login/forgot-password (`useLogin.ts`, `useForgotPassword.ts`).
- * Requires the current password, unlike the forgot-password OTP
- * flow, since the user is already authenticated here.
- *
- * `userPool.getCurrentUser()` relies on amazon-cognito-identity-js's
- * own session storage (populated on login by `authenticateUser`),
- * which is separate from the `idToken` cookie the API routes read —
- * if that local session is missing (e.g. cleared storage) this shows
- * a "log in again" message rather than failing silently.
+ * Shared between `/parent/settings` and `/teacher/settings`. Changes the
+ * password for the currently-logged-in user through our own
+ * `/api/auth/change-password` route — the server holds the session tokens
+ * (httpOnly cookies) and talks to Cognito; the browser never does.
+ * Requires the current password, unlike the forgot-password OTP flow, since
+ * the user is already authenticated here.
  */
 export default function ChangePasswordCard() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -38,7 +30,7 @@ export default function ChangePasswordCard() {
     setConfirmPassword("");
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setNotice("");
@@ -60,35 +52,33 @@ export default function ChangePasswordCard() {
       return;
     }
 
-    const cognitoUser = userPool.getCurrentUser();
-
-    if (!cognitoUser) {
-      setError("Your session has expired. Please log out and log back in.");
-      return;
-    }
-
     setSaving(true);
 
-    cognitoUser.getSession((sessionErr: Error | null) => {
-      if (sessionErr) {
-        setSaving(false);
-        setError("Your session has expired. Please log out and log back in.");
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(
+          res.status === 401
+            ? "Your session has expired. Please log out and log back in."
+            : data.error || "Failed to change your password.",
+        );
         return;
       }
 
-      cognitoUser.changePassword(currentPassword, newPassword, (changeErr) => {
-        setSaving(false);
-
-        if (changeErr) {
-          setError(changeErr.message || "Failed to change your password.");
-          return;
-        }
-
-        resetFields();
-        setNotice("Password changed.");
-        setTimeout(() => setNotice(""), 3000);
-      });
-    });
+      resetFields();
+      setNotice("Password changed.");
+      setTimeout(() => setNotice(""), 3000);
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

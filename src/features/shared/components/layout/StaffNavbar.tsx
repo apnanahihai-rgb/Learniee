@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 
 import BrandLogo from "@/features/shared/components/BrandLogo";
+import { endSession } from "@/features/shared/utils/endSession";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 interface StaffNavbarProps {
@@ -26,7 +26,7 @@ export default function StaffNavbar({ label, homePath }: StaffNavbarProps) {
 
   const handleLogout = async () => {
     await logClientActivity("LOGOUT");
-    Cookies.remove("idToken");
+    await endSession();
     router.push("/login");
   };
 

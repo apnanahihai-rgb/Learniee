@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import { LogOut, Menu, Search } from "lucide-react";
 
 import NotificationBell from "@/features/shared/components/NotificationBell";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import BrandLogo from "@/features/shared/components/BrandLogo";
+import { endSession } from "@/features/shared/utils/endSession";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 import { getInitial } from "@/lib/initials";
 
@@ -52,11 +52,11 @@ export default function TeacherNavbar({ onMenuClick }: TeacherNavbarProps) {
   useAutoRefresh(() => fetchTeacher(), { paths: ["/api/teacher/profile"] });
 
   const handleLogout = async () => {
-    // Fire the log before removing the cookie — the endpoint needs
+    // Fire the log before ending the session — the endpoint needs
     // the idToken cookie to identify who's logging out.
     await logClientActivity("LOGOUT");
 
-    Cookies.remove("idToken");
+    await endSession();
     localStorage.removeItem("teacherId");
 
     router.push("/login");

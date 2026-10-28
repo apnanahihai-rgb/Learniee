@@ -9,12 +9,12 @@ import { ActivityActorRole } from "@prisma/client";
  *
  * The only two Activity Log events that originate client-side rather
  * than from an existing API route — there's no server-side "login"
- * request today (Cognito auth happens directly from the browser via
- * `amazon-cognito-identity-js`, see `useLogin.ts`), and "logout" is
- * just a client-side cookie removal. Both call this endpoint with the
- * `idToken` cookie still attached so `requireVerifiedCognitoAuth` can resolve
- * who's acting — for LOGOUT, callers must send this *before* removing
- * the cookie client-side.
+ * request that logs it (sign-in goes through `/api/auth/login`, which
+ * stays free of activity-log side effects, see `useLogin.ts`), and
+ * "logout" is `/api/auth/logout`. Both call this endpoint with the
+ * `idToken` cookie attached so `requireVerifiedCognitoAuth` can resolve
+ * who's acting — for LOGOUT, callers must send this *before*
+ * calling `endSession()`.
  *
  * Deliberately a tiny, fixed whitelist (not a generic "log anything"
  * endpoint) so this can't become a bad-actor logging channel.

@@ -1,8 +1,6 @@
 "use client";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CognitoUser } from "amazon-cognito-identity-js";
-import { userPool } from "@/lib/cognito";
 
 function ConfirmForm() {
   const email = useSearchParams().get("email") ?? "";
@@ -10,18 +8,27 @@ function ConfirmForm() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  function handleConfirm(e: React.FormEvent) {
+  async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    const user = new CognitoUser({ Username: email, Pool: userPool });
-    user.confirmRegistration(code, true, (err) => {
-      if (err) {
-        setError(err.message);
+    try {
+      const res = await fetch("/api/auth/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: code.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Could not confirm your email. Please try again.");
         return;
       }
+
       router.push("/login");
-    });
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    }
   }
 
   return (

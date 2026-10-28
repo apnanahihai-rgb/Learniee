@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CognitoUser } from "amazon-cognito-identity-js";
-
-import { userPool } from "@/lib/cognito";
 
 export type ForgotPasswordStep = "email" | "otp" | "password" | "success";
 
@@ -27,7 +24,25 @@ export function useForgotPassword() {
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
 
-  function handleSendOtp() {
+  /** POSTs JSON to one of our own `/api/auth/*` routes; returns an error message or null. */
+  async function postAuth(path: string, payload: Record<string, unknown>): Promise<string | null> {
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) return null;
+
+      const data = await res.json().catch(() => ({}));
+      return data.error || "Something went wrong. Please try again.";
+    } catch {
+      return "Network error. Please check your connection and try again.";
+    }
+  }
+
+  async function handleSendOtp() {
     setError("");
     setSuccessMessage("");
 
@@ -38,37 +53,17 @@ export function useForgotPassword() {
 
     setLoading(true);
 
-    const cognitoUser = new CognitoUser({
-      Username: email.trim(),
-      Pool: userPool,
-    });
+    const failure = await postAuth("/api/auth/forgot-password", { email: email.trim() });
 
-    cognitoUser.forgotPassword({
-      onSuccess: () => {
-        setLoading(false);
+    setLoading(false);
 
-        setStep("otp");
+    if (failure) {
+      setError(failure);
+      return;
+    }
 
-        setSuccessMessage(
-          "A verification code has been sent to your email."
-        );
-      },
-
-      onFailure: (err) => {
-        setLoading(false);
-        setError(err.message);
-      },
-
-      inputVerificationCode: () => {
-        setLoading(false);
-
-        setStep("otp");
-
-        setSuccessMessage(
-          "A verification code has been sent to your email."
-        );
-      },
-    });
+    setStep("otp");
+    setSuccessMessage("A verification code has been sent to your email.");
   }
 
   function handleVerifyOtp() {
@@ -83,7 +78,7 @@ export function useForgotPassword() {
     setStep("password");
   }
 
-  function handleResetPassword() {
+  async function handleResetPassword() {
     setError("");
     setSuccessMessage("");
 
@@ -125,66 +120,39 @@ export function useForgotPassword() {
 
     setLoading(true);
 
-    const cognitoUser = new CognitoUser({
-      Username: email.trim(),
-      Pool: userPool,
+    const failure = await postAuth("/api/auth/reset-password", {
+      email: email.trim(),
+      code: otp.trim(),
+      newPassword,
     });
 
-    cognitoUser.confirmPassword(
-      otp.trim(),
-      newPassword,
-      {
-        onSuccess: () => {
-          setLoading(false);
+    setLoading(false);
 
-          setStep("success");
+    if (failure) {
+      setError(failure);
+      return;
+    }
 
-          setSuccessMessage(
-            "Your password has been changed successfully."
-          );
-        },
-
-        onFailure: (err) => {
-          setLoading(false);
-          setError(err.message);
-        },
-      }
-    );
+    setStep("success");
+    setSuccessMessage("Your password has been changed successfully.");
   }
 
-  function handleResendOtp() {
+  async function handleResendOtp() {
     setError("");
     setSuccessMessage("");
 
     setLoading(true);
 
-    const cognitoUser = new CognitoUser({
-      Username: email.trim(),
-      Pool: userPool,
-    });
+    const failure = await postAuth("/api/auth/forgot-password", { email: email.trim() });
 
-    cognitoUser.forgotPassword({
-      onSuccess: () => {
-        setLoading(false);
+    setLoading(false);
 
-        setSuccessMessage(
-          "A new verification code has been sent."
-        );
-      },
+    if (failure) {
+      setError(failure);
+      return;
+    }
 
-      onFailure: (err) => {
-        setLoading(false);
-        setError(err.message);
-      },
-
-      inputVerificationCode: () => {
-        setLoading(false);
-
-        setSuccessMessage(
-          "A new verification code has been sent."
-        );
-      },
-    });
+    setSuccessMessage("A new verification code has been sent.");
   }
 
   function handleBackToLogin() {

@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CognitoUser, CognitoUserAttribute } from "amazon-cognito-identity-js";
 
-import { userPool } from "@/lib/cognito";
 import { SignupFormData, SignupFormErrors } from "@/features/auth/types/signup";
 import { isValidPhoneNumber } from "react-phone-number-input";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,10 +102,27 @@ export function useSignup() {
     return next;
   }
 
-  function handleSendOtp() {
+  /** POSTs JSON to one of our own `/api/auth/*` routes; returns an error message or null. */
+  async function postAuth(path: string, payload: Record<string, unknown>): Promise<string | null> {
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) return null;
+
+      const data = await res.json().catch(() => ({}));
+      return data.error || "Something went wrong. Please try again.";
+    } catch {
+      return "Network error. Please check your connection and try again.";
+    }
+  }
+
+  async function handleSendOtp() {
     setSubmitError("");
     setOtpError("");
-    const fullPhone = `+91${form.phone.trim()}`;
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -117,59 +132,39 @@ export function useSignup() {
 
     setSendingOtp(true);
 
-    const attributes = [
-      new CognitoUserAttribute({
-        Name: "given_name",
-        Value: form.firstName.trim(),
-      }),
-
-      new CognitoUserAttribute({
-        Name: "family_name",
-        Value: form.lastName.trim(),
-      }),
-
-      new CognitoUserAttribute({
-        Name: "phone_number",
-        Value: form.phone,
-      }),
-
-      new CognitoUserAttribute({
-        Name: "custom:role",
-        Value: form.role,
-      }),
-    ];
-
-    userPool.signUp(form.email.trim(), form.password, attributes, [], (err) => {
-      setSendingOtp(false);
-
-      if (err) {
-        setSubmitError(err.message);
-        return;
-      }
-
-      setOtpSent(true);
+    const error = await postAuth("/api/auth/signup", {
+      email: form.email.trim(),
+      password: form.password,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      phone: form.phone,
+      role: form.role,
     });
+
+    setSendingOtp(false);
+
+    if (error) {
+      setSubmitError(error);
+      return;
+    }
+
+    setOtpSent(true);
   }
 
-  function handleResendOtp() {
+  async function handleResendOtp() {
     setOtpError("");
     setSendingOtp(true);
 
-    const cognitoUser = new CognitoUser({
-      Username: form.email.trim(),
-      Pool: userPool,
-    });
+    const error = await postAuth("/api/auth/resend-code", { email: form.email.trim() });
 
-    cognitoUser.resendConfirmationCode((err) => {
-      setSendingOtp(false);
+    setSendingOtp(false);
 
-      if (err) {
-        setOtpError(err.message);
-      }
-    });
+    if (error) {
+      setOtpError(error);
+    }
   }
 
-  function handleVerifyOtp() {
+  async function handleVerifyOtp() {
     setOtpError("");
 
     if (!form.otp.trim()) {
@@ -179,21 +174,19 @@ export function useSignup() {
 
     setVerifying(true);
 
-    const cognitoUser = new CognitoUser({
-      Username: form.email.trim(),
-      Pool: userPool,
+    const error = await postAuth("/api/auth/confirm", {
+      email: form.email.trim(),
+      code: form.otp.trim(),
     });
 
-    cognitoUser.confirmRegistration(form.otp.trim(), true, (err) => {
-      setVerifying(false);
+    setVerifying(false);
 
-      if (err) {
-        setOtpError(err.message);
-        return;
-      }
+    if (error) {
+      setOtpError(error);
+      return;
+    }
 
-      setVerified(true);
-    });
+    setVerified(true);
   }
 
   function handleContinueToLogin(e: React.FormEvent) {
