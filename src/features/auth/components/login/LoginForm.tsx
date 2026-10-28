@@ -21,6 +21,7 @@ export default function LoginForm() {
     password,
     error,
     loading,
+    checkingSession,
 
     showPassword,
 
@@ -43,6 +44,14 @@ export default function LoginForm() {
   useEffect(() => {
     if (error) signalError();
   }, [error, signalError]);
+
+  if (checkingSession) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16 text-sm text-[#6f6a82]">
+        Checking your session...
+      </div>
+    );
+  }
 
   if (forcePasswordChange) {
     return (

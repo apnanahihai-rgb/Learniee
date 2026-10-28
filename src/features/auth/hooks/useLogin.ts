@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { clearLegacyCognitoStorage } from "@/features/auth/utils/clearLegacyCognitoStorage";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 /**
@@ -27,6 +28,8 @@ function readSafeParentNext(): string | null {
   return next;
 }
 
+const KNOWN_ROLES = ["parent", "teacher", "admin", "hr", "accounts", "it"];
+
 export function useLogin() {
   const router = useRouter();
 
@@ -35,6 +38,10 @@ export function useLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // True while we check whether the visitor is already logged in (the session
+  // cookies outlive the tab), so the form does not flash before the redirect.
+  const [checkingSession, setCheckingSession] = useState(true);
 
   // Set when `/api/auth/login` answers with a NEW_PASSWORD_REQUIRED
   // challenge — this happens on a user's first login after an admin
@@ -45,6 +52,43 @@ export function useLogin() {
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    clearLegacyCognitoStorage();
+
+    async function redirectIfLoggedIn() {
+      let loggedIn = false;
+
+      try {
+        const res = await fetch("/api/auth/session");
+
+        // Not logged in (or the session could not be renewed): show the form.
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        if (!KNOWN_ROLES.includes(data.role)) return;
+
+        // Redirecting: keep the "checking" screen up so the form never flashes.
+        await routeAfterLogin(data.role);
+        loggedIn = true;
+      } catch {
+        // Anything unexpected: fall back to the normal login form.
+      } finally {
+        if (!cancelled && !loggedIn) setCheckingSession(false);
+      }
+    }
+
+    redirectIfLoggedIn();
+
+    return () => {
+      cancelled = true;
+    };
+    // Runs once on mount; routeAfterLogin only uses stable setters / router.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function routeForRole(role: unknown) {
     if (role === "hr") {
@@ -277,6 +321,7 @@ export function useLogin() {
     password,
     error,
     loading,
+    checkingSession,
     showPassword,
 
     forcePasswordChange,
