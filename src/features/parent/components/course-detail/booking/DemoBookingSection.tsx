@@ -3,6 +3,7 @@
 import { CalendarCheck, Info, Loader2 } from "lucide-react";
 
 import BookingCalendar from "@/features/parent/components/course-detail/BookingCalendar";
+import type { AvailabilitySlot } from "@/features/shared/utils/availability";
 import type { useDemoBooking } from "./useDemoBooking";
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   studentCount: number;
   remainingFree: number;
   paidDemoPrice: number;
+  availability: AvailabilitySlot[];
+  availabilityLoading: boolean;
 }
 
 export default function DemoBookingSection({
@@ -19,6 +22,8 @@ export default function DemoBookingSection({
   studentCount,
   remainingFree,
   paidDemoPrice,
+  availability,
+  availabilityLoading,
 }: Props) {
   const {
     selectedDate,
@@ -43,6 +48,8 @@ export default function DemoBookingSection({
         selectedHour={selectedHour}
         onSelectDate={onSelectDate}
         onSelectHour={onSelectHour}
+        availability={availability}
+        availabilityLoading={availabilityLoading}
       />
 
       {selectionLabel && (

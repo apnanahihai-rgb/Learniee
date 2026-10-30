@@ -13,6 +13,10 @@ import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 import { prisma } from "@/lib/prisma";
 import {
+  AvailabilityError,
+  assertTeacherHasAvailability,
+} from "@/features/shared/server/teacherAvailability.service";
+import {
   ClassRequestError,
   assertCanListCourseForVacancy,
   attachCourseToVacancy,
@@ -99,6 +103,20 @@ export async function POST(req: Request) {
         { error: "Your teacher account is not approved.", code: "TEACHER_NOT_APPROVED" },
         { status: 403 },
       );
+    }
+
+    // A Teacher must have set their weekly availability (Calendar) before
+    // listing a course, so Parents can only book timings that exist.
+    try {
+      await assertTeacherHasAvailability(teacher.id);
+    } catch (err) {
+      if (err instanceof AvailabilityError) {
+        return NextResponse.json(
+          { error: err.message, code: err.code },
+          { status: err.status },
+        );
+      }
+      throw err;
     }
 
     const input: CourseFormInput = await req.json();

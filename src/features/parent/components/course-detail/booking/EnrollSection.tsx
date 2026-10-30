@@ -4,7 +4,11 @@ import { CheckCircle2, Info, Loader2, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import CustomDatePicker from "@/features/shared/components/CustomDatePicker";
-import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
+import {
+  availableWeekdays,
+  type AvailabilitySlot,
+} from "@/features/shared/utils/availability";
+import { WEEKDAY_LABELS, formatScheduleTime } from "@/features/shared/utils/weekdays";
 import { formatCycleSummary } from "@/features/shared/utils/cyclePlan";
 import type { useEnrollment } from "./useEnrollment";
 
@@ -12,9 +16,19 @@ interface Props {
   enroll: ReturnType<typeof useEnrollment>;
   studentsLoading: boolean;
   studentCount: number;
+  availability: AvailabilitySlot[];
+  availabilityLoading: boolean;
 }
 
-export default function EnrollSection({ enroll, studentsLoading, studentCount }: Props) {
+export default function EnrollSection({
+  enroll,
+  studentsLoading,
+  studentCount,
+  availability,
+  availabilityLoading,
+}: Props) {
+  const openWeekdays = availableWeekdays(availability);
+  const noAvailability = !availabilityLoading && openWeekdays.length === 0;
   const router = useRouter();
   const {
     scheduleMode,
@@ -57,6 +71,34 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
           + Admin, #2 still open) hasn't been built either, so a paid
           enrollment starts "Pending approval". */}
       <div>
+        {noAvailability ? (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
+            This teacher hasn&apos;t set their availability yet, so enrollment
+            isn&apos;t open right now. Please check back soon.
+          </p>
+        ) : (
+          openWeekdays.length > 0 && (
+            <div className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3">
+              <p className="font-bold text-gray-800 mb-1">Teacher is available (IST)</p>
+              {openWeekdays.map((day) => (
+                <p key={day}>
+                  <span className="font-semibold">{WEEKDAY_LABELS[day]}</span>{" "}
+                  {availability
+                    .filter((slot) => slot.dayOfWeek === day)
+                    .map(
+                      (slot) =>
+                        `${formatScheduleTime(slot.startTime)}–${formatScheduleTime(slot.endTime)}`,
+                    )
+                    .join(", ")}
+                </p>
+              ))}
+              <p className="mt-1 text-gray-500">
+                Class days and time must fall inside these timings.
+              </p>
+            </div>
+          )
+        )}
+
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
             How should classes repeat?
@@ -110,15 +152,21 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
             <div className="flex gap-1.5 flex-wrap">
               {WEEKDAY_LABELS.map((label, day) => {
                 const active = scheduleDays.includes(day);
+                const closed =
+                  !availabilityLoading && !openWeekdays.includes(day);
                 return (
                   <button
                     key={label}
                     type="button"
+                    disabled={closed}
+                    title={closed ? "Teacher isn't available on this day" : undefined}
                     onClick={() => toggleScheduleDay(day)}
                     className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
                       active
                         ? "bg-brand text-white border-brand"
-                        : "bg-white text-gray-500 border-violet-100 hover:border-brand/40"
+                        : closed
+                          ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed"
+                          : "bg-white text-gray-500 border-violet-100 hover:border-brand/40"
                     }`}
                   >
                     {label}
@@ -210,6 +258,7 @@ export default function EnrollSection({ enroll, studentsLoading, studentCount }:
           onClick={handleEnroll}
           disabled={
             enrolling ||
+            noAvailability ||
             studentsLoading ||
             studentCount === 0 ||
             !scheduleReady ||

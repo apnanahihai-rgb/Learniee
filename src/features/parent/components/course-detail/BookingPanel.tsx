@@ -8,6 +8,7 @@ import DemoBookingSection from "./booking/DemoBookingSection";
 import EnrollSection from "./booking/EnrollSection";
 import { useDemoBooking } from "./booking/useDemoBooking";
 import { useEnrollment } from "./booking/useEnrollment";
+import { useTeacherAvailabilityForBooking } from "@/features/parent/hooks/useTeacherAvailability";
 import { useStudents } from "@/features/parent/hooks/useStudents";
 import { useDemoCoupons } from "@/features/parent/hooks/useDemoCoupons";
 
@@ -71,6 +72,8 @@ export default function BookingPanel({
       setSelectedStudentId("");
     }
   }, [studentsLoading, students, selectedStudentId]);
+  const { slots: availability, loading: availabilityLoading } =
+    useTeacherAvailabilityForBooking(teacherId);
   const {
     balance,
     loading: balanceLoading,
@@ -186,6 +189,8 @@ export default function BookingPanel({
             studentCount={students.length}
             remainingFree={remainingFree}
             paidDemoPrice={paidDemoPrice}
+            availability={availability}
+            availabilityLoading={availabilityLoading}
           />
         </div>
       ) : (
@@ -207,6 +212,8 @@ export default function BookingPanel({
             enroll={enroll}
             studentsLoading={studentsLoading}
             studentCount={students.length}
+            availability={availability}
+            availabilityLoading={availabilityLoading}
           />
         </div>
       )}

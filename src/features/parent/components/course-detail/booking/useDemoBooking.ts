@@ -10,16 +10,25 @@ function formatSelection(date: Date | null, hour: number | null) {
     return null;
   }
 
-  const withTime = new Date(date);
-  withTime.setHours(hour, 0, 0, 0);
-
-  return withTime.toLocaleString(undefined, {
+  return `${date.toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  })}, ${istClockLabel(hour)} IST`;
+}
+
+function istClockLabel(hour: number) {
+  const period = hour >= 12 ? "PM" : "AM";
+  return `${hour % 12 === 0 ? 12 : hour % 12}:00 ${period}`;
+}
+
+/** The picked calendar date + hour, read as IST wall-clock (the platform timezone), as an ISO instant. */
+function toIstIso(date: Date, hour: number) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const h = String(hour).padStart(2, "0");
+  return new Date(`${y}-${m}-${d}T${h}:00:00+05:30`).toISOString();
 }
 
 interface Args {
@@ -70,9 +79,7 @@ export function useDemoBooking({
     setBookingSuccess(null);
 
     try {
-      const withTime = new Date(selectedDate);
-      withTime.setHours(selectedHour, 0, 0, 0);
-      const scheduledAt = withTime.toISOString();
+      const scheduledAt = toIstIso(selectedDate, selectedHour);
 
       const payload = {
         studentId: selectedStudentId,

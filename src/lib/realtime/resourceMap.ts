@@ -92,6 +92,10 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
   DemoCoupon: { scope: "owner", paths: ["/api/parent/demo-coupons", "/api/parent/invoices"] },
   DemoFeedback: { scope: "owner", paths: ["/api/parent/next-action", "/api/parent/demo-feedback"] },
   DemoCouponPurchase: { scope: "owner", paths: ["/api/parent/demo-coupons", "/api/parent/invoices"] },
+  TeacherAvailability: {
+    scope: "all",
+    paths: ["/api/teacher/availability", "/api/parent/teachers"],
+  },
   DemoBooking: {
     scope: "owner",
     paths: [

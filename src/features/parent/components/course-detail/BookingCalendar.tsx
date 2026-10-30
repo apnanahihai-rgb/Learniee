@@ -3,14 +3,13 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+import {
+  availableHours,
+  availableWeekdays,
+  type AvailabilitySlot,
+} from "@/features/shared/utils/availability";
 
-// A fixed set of hourly slots covering a typical teaching day.
-// There's no Teacher-side "availability" data yet (Enrollment /
-// ClassSession aren't modeled — see 03-DATA-MODEL.md), so this is
-// a representative fixed list rather than anything pulled from a
-// real schedule.
-const TIME_SLOT_HOURS = [9, 10, 11, 12, 14, 15, 16, 17, 18, 19];
+const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 function formatHour(hour: number) {
   const period = hour >= 12 ? "PM" : "AM";
@@ -37,6 +36,9 @@ interface Props {
   selectedHour: number | null;
   onSelectDate: (date: Date) => void;
   onSelectHour: (hour: number) => void;
+  /** The teacher's weekly availability (IST). Dates and times outside it can't be picked. */
+  availability: AvailabilitySlot[];
+  availabilityLoading?: boolean;
 }
 
 /**
@@ -58,16 +60,29 @@ export default function BookingCalendar({
   selectedHour,
   onSelectDate,
   onSelectHour,
+  availability,
+  availabilityLoading = false,
 }: Props) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
 
-  const localTimezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-    [],
-  );
+  const openWeekdays = useMemo(() => availableWeekdays(availability), [availability]);
+
+  // Hours offered on the selected date: inside the teacher's availability and,
+  // for today, still in the future (the platform timezone is IST, UTC+5:30).
+  const hours = useMemo(() => {
+    if (!selectedDate) return [];
+    const all = availableHours(availability, selectedDate.getDay(), 60);
+    const nowIst = new Date(Date.now() + 330 * 60_000);
+    const isToday =
+      nowIst.getUTCFullYear() === selectedDate.getFullYear() &&
+      nowIst.getUTCMonth() === selectedDate.getMonth() &&
+      nowIst.getUTCDate() === selectedDate.getDate();
+    const nowMinutes = nowIst.getUTCHours() * 60 + nowIst.getUTCMinutes();
+    return isToday ? all.filter((h) => h * 60 > nowMinutes) : all;
+  }, [availability, selectedDate]);
 
   const monthLabel = visibleMonth.toLocaleDateString(undefined, {
     month: "long",
@@ -157,18 +172,19 @@ export default function BookingCalendar({
           }
 
           const isPast = date < today;
+          const isClosed = !openWeekdays.includes(date.getDay());
           const isSelected = selectedDate && isSameDay(date, selectedDate);
 
           return (
             <button
               key={date.toISOString()}
               type="button"
-              disabled={isPast}
+              disabled={isPast || isClosed}
               onClick={() => onSelectDate(date)}
               className={`aspect-square rounded-xl text-xs font-semibold flex items-center justify-center transition-colors ${
                 isSelected
                   ? "bg-brand text-white shadow-sm"
-                  : isPast
+                  : isPast || isClosed
                     ? "text-gray-300 cursor-not-allowed"
                     : "text-gray-600 hover:bg-violet-50"
               }`}
@@ -185,32 +201,44 @@ export default function BookingCalendar({
           Available times
         </p>
 
-        <div className="grid grid-cols-2 gap-2">
-          {TIME_SLOT_HOURS.map((hour) => {
-            const isSelected = selectedHour === hour;
+        {availabilityLoading ? (
+          <p className="text-xs text-gray-400">Loading the teacher&apos;s timings…</p>
+        ) : openWeekdays.length === 0 ? (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
+            This teacher hasn&apos;t set their availability yet, so demos
+            can&apos;t be booked right now. Please check back soon.
+          </p>
+        ) : !selectedDate ? (
+          <p className="text-xs text-gray-400">Pick one of the open dates above.</p>
+        ) : hours.length === 0 ? (
+          <p className="text-xs text-gray-500">
+            No free times left on this date — pick another.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {hours.map((hour) => {
+              const isSelected = selectedHour === hour;
 
-            return (
-              <button
-                key={hour}
-                type="button"
-                disabled={!selectedDate}
-                onClick={() => onSelectHour(hour)}
-                className={`text-xs font-semibold px-3 py-2 rounded-xl border transition-colors ${
-                  isSelected
-                    ? "bg-brand text-white border-brand"
-                    : "bg-white text-gray-600 border-violet-100 hover:border-brand disabled:opacity-40 disabled:hover:border-violet-100"
-                }`}
-              >
-                {formatHour(hour)}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={hour}
+                  type="button"
+                  onClick={() => onSelectHour(hour)}
+                  className={`text-xs font-semibold px-3 py-2 rounded-xl border transition-colors ${
+                    isSelected
+                      ? "bg-brand text-white border-brand"
+                      : "bg-white text-gray-600 border-violet-100 hover:border-brand"
+                  }`}
+                >
+                  {formatHour(hour)}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
-          Times shown in your local timezone ({localTimezone}). Once teacher
-          availability and timezones are tracked, this will convert to the
-          teacher&apos;s local time automatically.
+          Times are in IST and follow the teacher&apos;s weekly availability.
         </p>
       </div>
     </div>

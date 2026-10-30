@@ -7,6 +7,12 @@ import {
 } from "@/lib/razorpay";
 import { DemoBookingStatus } from "@prisma/client";
 import { DemoBookingError, getOrCreateDemoCoupon, priceDemoBooking } from './shared';
+import { getTeacherAvailability } from "@/features/shared/server/teacherAvailability.service";
+import { fitsAvailability } from "@/features/shared/utils/availability";
+import { dateToCalendarDate, weekdayOf } from "@/lib/platformTime";
+
+/** Demo length used to check it fits inside the teacher's availability. */
+const DEMO_LENGTH_MINUTES = 60;
 
 export interface CreateDemoBookingInput {
   studentId: string;
@@ -35,6 +41,10 @@ interface ValidatedDemoBooking {
 export async function validateDemoBooking(
   parentId: string,
   input: CreateDemoBookingInput,
+  // Only when the booking is first made (free booking / order creation).
+  // The verify step must NOT re-check this: the parent has already paid,
+  // and a teacher editing their timings meanwhile must not strand the money.
+  options: { enforceAvailability?: boolean } = {},
 ): Promise<ValidatedDemoBooking> {
   const student = await prisma.student.findFirst({
     where: { id: input.studentId, parentId },
@@ -73,6 +83,30 @@ export async function validateDemoBooking(
     );
   }
 
+  if (options.enforceAvailability) {
+    const slots = await getTeacherAvailability(input.teacherId);
+
+    if (slots.length === 0) {
+      throw new DemoBookingError(
+        "This teacher hasn't set their availability yet — please check back soon.",
+        409,
+      );
+    }
+
+    // Weekday + wall-clock in the platform timezone (IST), never server time.
+    const istParts = new Date(scheduledDate.getTime() + 330 * 60_000);
+    const day = weekdayOf(dateToCalendarDate(istParts));
+    const hh = String(istParts.getUTCHours()).padStart(2, "0");
+    const mm = String(istParts.getUTCMinutes()).padStart(2, "0");
+
+    if (!fitsAvailability(slots, day, `${hh}:${mm}`, DEMO_LENGTH_MINUTES)) {
+      throw new DemoBookingError(
+        "That time is outside the teacher's available timings — pick one of the listed times.",
+        409,
+      );
+    }
+  }
+
   const subject = (input.subject ?? course.subject ?? "").trim();
 
   const existingBooking = await prisma.demoBooking.findUnique({
@@ -107,7 +141,9 @@ export async function createFreeDemoBooking(
   parentId: string,
   input: CreateDemoBookingInput,
 ) {
-  const validated = await validateDemoBooking(parentId, input);
+  const validated = await validateDemoBooking(parentId, input, {
+    enforceAvailability: true,
+  });
   const coupon = await getOrCreateDemoCoupon(parentId);
 
   if (coupon.usedCount >= coupon.totalIssued) {
@@ -155,7 +191,9 @@ export async function createDemoBookingOrder(
   input: CreateDemoBookingInput,
   paymentMethod: PaymentMethodChoice = "OTHER",
 ) {
-  const validated = await validateDemoBooking(parentId, input);
+  const validated = await validateDemoBooking(parentId, input, {
+    enforceAvailability: true,
+  });
   const coupon = await getOrCreateDemoCoupon(parentId);
 
   if (coupon.usedCount < coupon.totalIssued) {

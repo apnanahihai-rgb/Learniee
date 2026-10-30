@@ -66,6 +66,7 @@ export async function payEnrollmentWithWallet(
   const priced = await priceEnrollment(parentId, input, {
     model: "CYCLE_V1",
     enforceStartNotPast: true,
+    enforceAvailability: true,
   });
 
   const walletPriced = {

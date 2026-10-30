@@ -113,6 +113,8 @@ export interface PriceOptions {
   model: PricingModel;
   /** True only when the order is first created — verify/webhook must never reject an already-paid start date. */
   enforceStartNotPast: boolean;
+  /** True only when the order is first created: every class day/time must sit inside the teacher's weekly availability. Never on verify/webhook (money already taken). */
+  enforceAvailability?: boolean;
   /** Session length recorded in the order's notes, so a later course edit can't change what was booked. */
   lockedSessionLengthMinutes?: number | null;
 }

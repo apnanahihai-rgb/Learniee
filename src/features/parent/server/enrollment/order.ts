@@ -31,6 +31,7 @@ export async function createEnrollmentOrder(
   const priced = await priceEnrollment(parentId, input, {
     model: "CYCLE_V1",
     enforceStartNotPast: true,
+    enforceAvailability: true,
   });
 
   // Part payment (06 #44): the Wallet pays as much as it can and the card

@@ -7,6 +7,9 @@ import {
     priceForSessions,
     weekdaysOfDateKeys
 } from "@/features/shared/utils/cyclePlan";
+import { getTeacherAvailability } from "@/features/shared/server/teacherAvailability.service";
+import { fitsAvailability } from "@/features/shared/utils/availability";
+import { WEEKDAY_LABELS_FULL } from "@/features/shared/utils/weekdays";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import {
     isInternationalParent,
@@ -268,6 +271,33 @@ async function priceCycleEnrollment(
       "Course not found, or isn't open for enrollment yet.",
       404,
     );
+  }
+
+  if (options.enforceAvailability) {
+    const slots = await getTeacherAvailability(input.teacherId);
+
+    if (slots.length === 0) {
+      throw new EnrollmentError(
+        "This teacher hasn't set their availability yet — please check back soon.",
+        409,
+      );
+    }
+
+    const lengthMinutes =
+      options.lockedSessionLengthMinutes ??
+      sessionLengthForCourse(course.duration);
+
+    const outside = scheduleDays.filter(
+      (day) => !fitsAvailability(slots, day, input.scheduleTime, lengthMinutes),
+    );
+
+    if (outside.length > 0) {
+      const names = outside.map((d) => WEEKDAY_LABELS_FULL[d]).join(", ");
+      throw new EnrollmentError(
+        `The teacher isn't available at that time on ${names}. Pick a day and time inside their available timings.`,
+        409,
+      );
+    }
   }
 
   if (course.price == null) {

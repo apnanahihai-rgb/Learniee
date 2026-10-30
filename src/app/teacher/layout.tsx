@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import AvailabilityGate from "@/features/teacher/components/availability/AvailabilityGate";
 import TeacherNavbar from "@/features/teacher/components/layout/TeacherNavbar";
 import TeacherSidebar from "@/features/teacher/components/layout/TeacherSidebar";
 import { useTeacherAccessGuard } from "@/features/teacher/hooks/useTeacherAccessGuard";
@@ -75,6 +76,9 @@ export default function TeacherLayout({
       <main className="min-h-dvh pt-16 lg:pl-64 bg-gradient-to-b from-violet-50 via-white to-white">
         {children}
       </main>
+
+      {/* Approved teachers without weekly availability get a set-up popup */}
+      <AvailabilityGate />
     </div>
   );
 }

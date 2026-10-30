@@ -148,6 +148,7 @@ model Teacher {
   reapplyAvailableAt   DateTime?
   appealCount          Int                   @default(0)
   interviewMeeting     TeacherInterviewMeeting?
+  availability       TeacherAvailability[]
   chatRooms          ChatRoom[]
   classSessions      ClassSession[]
   courses            Course[]
@@ -2343,4 +2344,23 @@ enum DemoFeedbackOutcome {
   POSITIVE
   UNDECIDED
   NEGATIVE
+}
+
+/// Weekly availability (Oct 28, 2026). A Teacher lists the time windows they
+/// teach in; the same week repeats forever until they edit it. Times are
+/// platform-timezone (IST) wall-clock "HH:mm", `dayOfWeek` 0 = Sunday. No rows
+/// = the Teacher has not set availability yet: they cannot create courses and
+/// Parents cannot book a demo or enrollment with them.
+model TeacherAvailability {
+  id        String   @id @default(uuid())
+  teacherId String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, dayOfWeek])
 }
