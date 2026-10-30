@@ -30,7 +30,7 @@ const CHALLENGE_MAX_AGE_SECONDS = 180; // Cognito's challenge session lasts 3 mi
 
 function sessionMaxAgeSeconds(): number {
   const days = Number(process.env.AUTH_SESSION_DAYS);
-  return (Number.isFinite(days) && days > 0 ? days : 7) * 24 * 60 * 60;
+  return (Number.isFinite(days) && days > 0 ? days : 30) * 24 * 60 * 60;
 }
 
 function secureFlag(): boolean {
