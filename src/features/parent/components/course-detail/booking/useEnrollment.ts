@@ -309,6 +309,7 @@ export function useEnrollment({
     minStartDate,
     startInPast,
     scheduleDays,
+    effectiveScheduleDays,
     toggleScheduleDay,
     scheduleTime,
     setScheduleTime,

@@ -9,6 +9,7 @@ import EnrollSection from "./booking/EnrollSection";
 import { useDemoBooking } from "./booking/useDemoBooking";
 import { useEnrollment } from "./booking/useEnrollment";
 import { useTeacherAvailabilityForBooking } from "@/features/parent/hooks/useTeacherAvailability";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { useStudents } from "@/features/parent/hooks/useStudents";
 import { useDemoCoupons } from "@/features/parent/hooks/useDemoCoupons";
 
@@ -17,6 +18,8 @@ interface Props {
   teacherId: string;
   courseId: string;
   subject: string | null;
+  /** Course duration text (e.g. "1 Hour") — sets how long each class is. */
+  duration?: string | null;
 }
 
 /**
@@ -50,6 +53,7 @@ export default function BookingPanel({
   teacherId,
   courseId,
   subject,
+  duration,
 }: Props) {
   // Pre-fill from the post-demo survey: /parent/courses/<id>?mode=enroll
   // &studentId=<child>&from=demo-survey opens the Enroll tab with the child
@@ -214,6 +218,7 @@ export default function BookingPanel({
             studentCount={students.length}
             availability={availability}
             availabilityLoading={availabilityLoading}
+            sessionLengthMinutes={sessionLengthForCourse(duration ?? null)}
           />
         </div>
       )}

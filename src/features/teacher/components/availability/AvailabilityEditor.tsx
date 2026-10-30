@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Copy, Loader2, Plus, X } from "lucide-react";
 
+import TimeSelect from "@/features/shared/components/TimeSelect";
 import {
   MAX_SLOTS_PER_DAY,
   type AvailabilitySlot,
@@ -98,9 +99,6 @@ export default function AvailabilityEditor({
     onSave(slots);
   }
 
-  const inputClass =
-    "text-sm border border-violet-100 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30";
-
   return (
     <div>
       <p className="text-xs text-gray-500 mb-3">
@@ -133,30 +131,23 @@ export default function AvailabilityEditor({
                 {on ? (
                   ranges.map((r, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <input
-                        type="time"
+                      <TimeSelect
                         value={r.start}
-                        onChange={(e) =>
-                          update(
-                            day,
-                            ranges.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)),
-                          )
+                        max="23:00"
+                        ariaLabel={`${WEEKDAY_LABELS_FULL[day]} slot ${i + 1} start`}
+                        onChange={(v) =>
+                          update(day, ranges.map((x, j) => (j === i ? { ...x, start: v } : x)))
                         }
-                        className={inputClass}
-                        aria-label={`${WEEKDAY_LABELS_FULL[day]} slot ${i + 1} start`}
                       />
                       <span className="text-xs text-gray-400">to</span>
-                      <input
-                        type="time"
+                      <TimeSelect
                         value={r.end}
-                        onChange={(e) =>
-                          update(
-                            day,
-                            ranges.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)),
-                          )
+                        min="00:30"
+                        includeEndOfDay
+                        ariaLabel={`${WEEKDAY_LABELS_FULL[day]} slot ${i + 1} end`}
+                        onChange={(v) =>
+                          update(day, ranges.map((x, j) => (j === i ? { ...x, end: v } : x)))
                         }
-                        className={inputClass}
-                        aria-label={`${WEEKDAY_LABELS_FULL[day]} slot ${i + 1} end`}
                       />
                       <button
                         type="button"

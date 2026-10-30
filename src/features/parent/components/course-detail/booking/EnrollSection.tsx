@@ -1,14 +1,18 @@
 "use client";
 
+import { useEffect } from "react";
 import { CheckCircle2, Info, Loader2, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import CustomDatePicker from "@/features/shared/components/CustomDatePicker";
 import {
   availableWeekdays,
+  commonStartTimes,
+  formatSlotRange,
+  formatTime12,
   type AvailabilitySlot,
 } from "@/features/shared/utils/availability";
-import { WEEKDAY_LABELS, formatScheduleTime } from "@/features/shared/utils/weekdays";
+import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
 import { formatCycleSummary } from "@/features/shared/utils/cyclePlan";
 import type { useEnrollment } from "./useEnrollment";
 
@@ -18,6 +22,8 @@ interface Props {
   studentCount: number;
   availability: AvailabilitySlot[];
   availabilityLoading: boolean;
+  /** Session length in minutes (from the course) — a class must fit inside a slot. */
+  sessionLengthMinutes: number;
 }
 
 export default function EnrollSection({
@@ -26,9 +32,8 @@ export default function EnrollSection({
   studentCount,
   availability,
   availabilityLoading,
+  sessionLengthMinutes,
 }: Props) {
-  const openWeekdays = availableWeekdays(availability);
-  const noAvailability = !availabilityLoading && openWeekdays.length === 0;
   const router = useRouter();
   const {
     scheduleMode,
@@ -42,6 +47,7 @@ export default function EnrollSection({
     minStartDate,
     startInPast,
     scheduleDays,
+    effectiveScheduleDays,
     toggleScheduleDay,
     scheduleTime,
     setScheduleTime,
@@ -58,6 +64,30 @@ export default function EnrollSection({
     handleEnrollPartWallet,
     walletBalance,
   } = enroll;
+
+  const openWeekdays = availableWeekdays(availability);
+  const noAvailability = !availabilityLoading && openWeekdays.length === 0;
+
+  // Only times the teacher can teach on EVERY chosen day.
+  const validTimes = commonStartTimes(
+    availability,
+    effectiveScheduleDays,
+    sessionLengthMinutes,
+  );
+  const validTimesKey = validTimes.join(",");
+
+  // A chosen time that stops being valid (days changed) is cleared.
+  useEffect(() => {
+    if (scheduleTime && !validTimesKey.split(",").includes(scheduleTime)) {
+      setScheduleTime("");
+    }
+  }, [validTimesKey, scheduleTime, setScheduleTime]);
+
+  const timeGroups = [
+    { label: "Morning", times: validTimes.filter((t) => t < "12:00") },
+    { label: "Afternoon", times: validTimes.filter((t) => t >= "12:00" && t < "17:00") },
+    { label: "Evening", times: validTimes.filter((t) => t >= "17:00") },
+  ].filter((g) => g.times.length > 0);
 
   return (
     <>
@@ -76,28 +106,7 @@ export default function EnrollSection({
             This teacher hasn&apos;t set their availability yet, so enrollment
             isn&apos;t open right now. Please check back soon.
           </p>
-        ) : (
-          openWeekdays.length > 0 && (
-            <div className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3">
-              <p className="font-bold text-gray-800 mb-1">Teacher is available (IST)</p>
-              {openWeekdays.map((day) => (
-                <p key={day}>
-                  <span className="font-semibold">{WEEKDAY_LABELS[day]}</span>{" "}
-                  {availability
-                    .filter((slot) => slot.dayOfWeek === day)
-                    .map(
-                      (slot) =>
-                        `${formatScheduleTime(slot.startTime)}–${formatScheduleTime(slot.endTime)}`,
-                    )
-                    .join(", ")}
-                </p>
-              ))}
-              <p className="mt-1 text-gray-500">
-                Class days and time must fall inside these timings.
-              </p>
-            </div>
-          )
-        )}
+        ) : null}
 
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
@@ -154,6 +163,9 @@ export default function EnrollSection({
                 const active = scheduleDays.includes(day);
                 const closed =
                   !availabilityLoading && !openWeekdays.includes(day);
+                const ranges = availability
+                  .filter((slot) => slot.dayOfWeek === day)
+                  .map(formatSlotRange);
                 return (
                   <button
                     key={label}
@@ -161,15 +173,22 @@ export default function EnrollSection({
                     disabled={closed}
                     title={closed ? "Teacher isn't available on this day" : undefined}
                     onClick={() => toggleScheduleDay(day)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                    className={`flex flex-col items-center min-w-[4.25rem] px-2.5 py-1.5 rounded-xl border transition-colors ${
                       active
                         ? "bg-brand text-white border-brand"
                         : closed
                           ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed"
-                          : "bg-white text-gray-500 border-violet-100 hover:border-brand/40"
+                          : "bg-white text-gray-600 border-violet-100 hover:border-brand/40"
                     }`}
                   >
-                    {label}
+                    <span className="text-xs font-bold">{label}</span>
+                    <span
+                      className={`text-[10px] leading-tight mt-0.5 ${
+                        active ? "text-white/80" : closed ? "text-gray-300" : "text-gray-400"
+                      }`}
+                    >
+                      {closed ? "Off" : ranges.join(", ")}
+                    </span>
                   </button>
                 );
               })}
@@ -193,12 +212,47 @@ export default function EnrollSection({
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
             Class time (IST)
           </label>
-          <input
-            type="time"
-            value={scheduleTime}
-            onChange={(e) => setScheduleTime(e.target.value)}
-            className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
-          />
+
+          {!scheduleReady ? (
+            <p className="text-xs text-gray-400">
+              Pick your class days first — we&apos;ll show the times the teacher is free.
+            </p>
+          ) : availabilityLoading ? (
+            <p className="text-xs text-gray-400">Loading the teacher&apos;s timings…</p>
+          ) : validTimes.length === 0 ? (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
+              The teacher has no time that works on all the days you picked.
+              Remove a day, or choose days with overlapping hours.
+            </p>
+          ) : (
+            <div className="space-y-2.5">
+              {timeGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="text-[11px] font-semibold text-gray-400 mb-1">{group.label}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.times.map((t) => {
+                      const active = scheduleTime === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setScheduleTime(t)}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                            active
+                              ? "bg-brand text-white border-brand"
+                              : "bg-white text-gray-600 border-violet-100 hover:border-brand/50"
+                          }`}
+                        >
+                          {formatTime12(t)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {startInPast && (

@@ -107,6 +107,7 @@ export default function CourseDetailPage() {
               teacherId={course.teacherId}
               courseId={course.id}
               subject={course.subject}
+              duration={course.duration}
             />
           </Suspense>
         </div>

@@ -133,3 +133,58 @@ export function availableHours(
 export function availableWeekdays(slots: AvailabilitySlot[]): number[] {
   return [...new Set(slots.map((s) => s.dayOfWeek))].sort((a, b) => a - b);
 }
+
+function parts12(minutes: number) {
+  const h24 = Math.floor(minutes / 60) % 24;
+  return {
+    h: h24 % 12 === 0 ? 12 : h24 % 12,
+    m: minutes % 60,
+    period: h24 >= 12 ? "PM" : "AM",
+  };
+}
+
+/** "16:30" -> "4:30 PM" */
+export function formatTime12(time: string): string {
+  const mins = timeToMinutes(time);
+  if (mins == null) return time;
+  const { h, m, period } = parts12(mins);
+  return `${h}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/** 16:00–20:00 -> "4–8 PM"; 09:00–13:30 -> "9 AM–1:30 PM" */
+export function formatSlotRange(slot: { startTime: string; endTime: string }): string {
+  const a = timeToMinutes(slot.startTime);
+  const b = timeToMinutes(slot.endTime);
+  if (a == null || b == null) return "";
+  const x = parts12(a);
+  const y = parts12(b);
+  const fmt = (p: ReturnType<typeof parts12>) =>
+    p.m ? `${p.h}:${String(p.m).padStart(2, "0")}` : `${p.h}`;
+  return x.period === y.period
+    ? `${fmt(x)}–${fmt(y)} ${y.period}`
+    : `${fmt(x)} ${x.period}–${fmt(y)} ${y.period}`;
+}
+
+/**
+ * Start times (every 30 min, plus each slot's own start) at which a session of
+ * `lengthMinutes` fits inside the availability on EVERY given weekday.
+ */
+export function commonStartTimes(
+  slots: AvailabilitySlot[],
+  days: number[],
+  lengthMinutes: number,
+): string[] {
+  if (days.length === 0) return [];
+
+  const candidates = new Set<number>();
+  for (let m = 0; m < 24 * 60; m += 30) candidates.add(m);
+  for (const s of slots) {
+    const a = timeToMinutes(s.startTime);
+    if (a != null) candidates.add(a);
+  }
+
+  return [...candidates]
+    .sort((a, b) => a - b)
+    .map(minutesToTime)
+    .filter((t) => days.every((d) => fitsAvailability(slots, d, t, lengthMinutes)));
+}
