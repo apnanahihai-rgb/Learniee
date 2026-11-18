@@ -60,15 +60,19 @@ interface DemoJoinButtonProps {
   /**
    * "pd" = the Parent design: a small violet button with a one-line caption
    * under it (countdown / "Link not ready yet"). Default keeps the old look
-   * (used by the Teacher pages).
+   * (used by the Teacher pages). "hero" = the large gold button inside the
+   * Teacher Home "Up next" card.
    */
-  variant?: "default" | "pd";
+  variant?: "default" | "pd" | "hero";
   /** Caption text for the "pd" variant, e.g. "Tomorrow · 4:00 PM" or "Starts in 6 min". */
   countdownText?: string;
 }
 
 const PD_JOIN_BTN =
   "inline-flex h-[34px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-pd-brand px-3 text-[13px] font-semibold text-white transition-colors hover:bg-pd-brand-d active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-pd-b100 disabled:text-pd-brand-d disabled:opacity-75";
+
+const HERO_JOIN_BTN =
+  "inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-pd-gold px-4 text-[15px] font-bold text-pd-on-gold transition-colors hover:bg-pd-gold-d disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/85 @max-[620px]:w-full";
 
 function timeLabel(iso: string) {
   const d = new Date(iso);
@@ -107,7 +111,7 @@ export default function DemoJoinButton({
 
   const canOpen = state === "OPEN" && meetEnabled;
 
-  if (!meetEnabled && variant !== "pd") {
+  if (!meetEnabled && variant === "default") {
     return (
       <p className={`text-xs text-gray-400 ${className}`}>
         The video room isn&apos;t switched on yet — we&apos;ll let you know.
@@ -163,6 +167,46 @@ export default function DemoJoinButton({
     }
   }
 
+  if (variant === "hero") {
+    return (
+      <div className={`flex flex-col gap-1.5 sm:items-end ${className}`}>
+        <button
+          type="button"
+          onClick={handleJoin}
+          disabled={!canOpen || busy}
+          aria-disabled={!canOpen || busy}
+          className={HERO_JOIN_BTN}
+        >
+          {busy ? (
+            <Loader2 size={20} className="animate-spin" />
+          ) : canOpen ? (
+            <Video size={20} />
+          ) : (
+            <Lock size={18} />
+          )}
+          {idle}
+        </button>
+
+        {!meetEnabled && <p className="text-xs font-bold opacity-90">Link not ready yet</p>}
+        {error && <p className="max-w-[240px] text-xs font-semibold">{error}</p>}
+        {notice && <p className="max-w-[240px] text-xs font-semibold">{notice}</p>}
+        {openedUri && !error && (
+          <p className="max-w-[240px] text-xs opacity-90">
+            Didn&apos;t open?{" "}
+            <a
+              href={openedUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold underline"
+            >
+              Open the Meet link
+            </a>
+          </p>
+        )}
+      </div>
+    );
+  }
+
   if (variant === "pd") {
     const caption =
       state === "NOT_YET"
@@ -187,7 +231,7 @@ export default function DemoJoinButton({
           ) : (
             <Lock size={14} />
           )}
-          Join demo
+          {idle}
         </button>
 
         {caption && (

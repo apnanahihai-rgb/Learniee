@@ -38,7 +38,13 @@ export default function AttentionList({ items }: { items: AttentionItem[] }) {
               key={x.key}
               className={`flex flex-wrap items-center justify-between gap-3 ${
                 i > 0 ? "border-t border-pd-line" : ""
-              } ${hot ? "border-l-4 border-l-[#d97706] bg-[#fff6e0] p-4" : "px-4 py-3"}`}
+              } ${
+                hot
+                  ? x.tone === "violet"
+                    ? "border-l-4 border-l-pd-brand bg-[#faf8ff] p-4"
+                    : "border-l-4 border-l-[#d97706] bg-[#fff6e0] p-4"
+                  : "px-4 py-3"
+              }`}
             >
               <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-1">
                 <b

@@ -162,6 +162,7 @@ export function useTeacherEnrollments() {
     enrollments,
     loading,
     error,
+    reload: load,
     approve: (id: string) => act(id, { action: "APPROVE" }),
     reject: (id: string, reason?: string) => act(id, { action: "REJECT", reason }),
     revise: (

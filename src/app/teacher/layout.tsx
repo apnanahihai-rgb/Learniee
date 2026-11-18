@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import AvailabilityGate from "@/features/teacher/components/availability/AvailabilityGate";
-import TeacherNavbar from "@/features/teacher/components/layout/TeacherNavbar";
-import TeacherSidebar from "@/features/teacher/components/layout/TeacherSidebar";
+import TeacherChrome from "@/features/teacher/components/layout/TeacherChrome";
 import { useTeacherAccessGuard } from "@/features/teacher/hooks/useTeacherAccessGuard";
 
 export default function TeacherLayout({
@@ -14,7 +12,6 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
   // Onboarding and the "waiting for approval" page happen before the teacher
@@ -58,22 +55,12 @@ export default function TeacherLayout({
   }
 
   return (
-    <div className="min-h-dvh bg-violet-50/40">
-      {/* Fixed Navbar */}
-      <TeacherNavbar
-        onMenuClick={() =>
-          setSidebarOpen((prev) => !prev)
-        }
-      />
-
-      {/* Fixed Sidebar */}
-      <TeacherSidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+    <div className="min-h-dvh bg-pd-bg text-pd-ink print:bg-white">
+      {/* Top bar, side navigation (desktop) and bottom navigation (phone / tablet) */}
+      <TeacherChrome />
 
       {/* Page Content */}
-      <main className="min-h-dvh pt-16 lg:pl-64 bg-gradient-to-b from-violet-50 via-white to-white">
+      <main className="min-h-dvh pt-[60px] pb-16 lg:pl-60 lg:pb-0 print:p-0">
         {children}
       </main>
 

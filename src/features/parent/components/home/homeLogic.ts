@@ -111,6 +111,8 @@ export interface AttentionItem {
   button: string;
   href: string;
   primary?: boolean;
+  /** Colour of the highlighted first row (defaults to amber). */
+  tone?: "amber" | "violet";
 }
 
 export function attentionItems(data: HomeData, filter: LearnerFilter): AttentionItem[] {
