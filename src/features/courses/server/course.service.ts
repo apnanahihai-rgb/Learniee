@@ -1,3 +1,5 @@
+import { EnrollmentStatus } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
@@ -129,5 +131,33 @@ export async function getTeacherCourses(
       createdAt: "desc",
     },
   });
+}
+
+/**
+ * The teacher's courses plus how many students are learning each one right
+ * now (ACTIVE enrollments only). Used by the Courses page cards. Both queries
+ * are scoped by `teacherId` — that `where` is the access rule.
+ */
+export async function getTeacherCoursesWithActiveCounts(teacherId: string) {
+  const courses = await getTeacherCourses(teacherId);
+
+  if (courses.length === 0) return [];
+
+  const grouped = await prisma.enrollment.groupBy({
+    by: ["courseId"],
+    where: {
+      teacherId,
+      status: EnrollmentStatus.ACTIVE,
+      courseId: { in: courses.map((c) => c.id) },
+    },
+    _count: { _all: true },
+  });
+
+  const counts = new Map(grouped.map((g) => [g.courseId, g._count._all]));
+
+  return courses.map((course) => ({
+    ...course,
+    activeStudents: counts.get(course.id) ?? 0,
+  }));
 }
 

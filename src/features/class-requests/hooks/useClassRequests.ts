@@ -188,7 +188,7 @@ export function useTeacherVacancies() {
     }
   }
 
-  return { vacancies, loading, error, busyId, respond };
+  return { vacancies, loading, error, busyId, respond, reload: load };
 }
 
 /* ------------------------------- Admin ------------------------------ */

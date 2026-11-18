@@ -37,6 +37,9 @@ export interface Course {
 
   createdAt: string;
   updatedAt: string;
+
+  /** ACTIVE enrollments in this course (added by GET /api/teacher/course). */
+  activeStudents?: number;
 }
 
 export function useTeacherCourses() {

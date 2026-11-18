@@ -4,7 +4,7 @@ import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 
 import {
   createCourse,
-  getTeacherCourses,
+  getTeacherCoursesWithActiveCounts,
   type CourseFormInput,
 } from "@/features/courses/server/course.service";
 import { getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const courses = await getTeacherCourses(teacher.id);
+    const courses = await getTeacherCoursesWithActiveCounts(teacher.id);
 
     return NextResponse.json({
       success: true,
