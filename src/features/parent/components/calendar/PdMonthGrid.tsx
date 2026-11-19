@@ -30,6 +30,12 @@ interface Props {
   /** Learners to list in the legend; empty hides the legend. */
   legend: { id: string; first: string; color: string | null }[];
   busy?: boolean;
+  /** Text inside a day-cell chip. Default: the subject (Parent calendar). */
+  chipText?: (e: CalEvent) => string;
+  /** "letter" = S M T… (Parent), "short" = Sun Mon Tue… (Teacher). */
+  dayNames?: "letter" | "short";
+  /** Month title on the left with the arrows on the right (Teacher), instead of centred between them. */
+  splitHeader?: boolean;
   onSelect: (key: string) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -43,6 +49,9 @@ export default function PdMonthGrid({
   colorOf,
   legend,
   busy = false,
+  chipText,
+  dayNames = "letter",
+  splitHeader = false,
   onSelect,
   onPrev,
   onNext,
@@ -52,6 +61,7 @@ export default function PdMonthGrid({
   const m = first.getMonth();
   const days = new Date(y, m + 1, 0).getDate();
   const now = new Date();
+  const title = first.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   return (
     <div
@@ -61,21 +71,35 @@ export default function PdMonthGrid({
       }`}
     >
       <div className="mb-3 flex items-center justify-between">
-        <button type="button" className={ICON_BTN} onClick={onPrev} aria-label="Previous month">
-          <ChevronLeft size={20} />
-        </button>
-        <h2 className="font-heading text-lg font-semibold text-pd-ink">
-          {first.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-        </h2>
-        <button type="button" className={ICON_BTN} onClick={onNext} aria-label="Next month">
-          <ChevronRight size={20} />
-        </button>
+        {splitHeader ? (
+          <>
+            <h2 className="font-heading text-lg font-semibold text-pd-ink">{title}</h2>
+            <div className="flex">
+              <button type="button" className={ICON_BTN} onClick={onPrev} aria-label="Previous month">
+                <ChevronLeft size={20} />
+              </button>
+              <button type="button" className={ICON_BTN} onClick={onNext} aria-label="Next month">
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <button type="button" className={ICON_BTN} onClick={onPrev} aria-label="Previous month">
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="font-heading text-lg font-semibold text-pd-ink">{title}</h2>
+            <button type="button" className={ICON_BTN} onClick={onNext} aria-label="Next month">
+              <ChevronRight size={20} />
+            </button>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-7 gap-[3px] sm:gap-1.5">
         {DAY_NAMES.map((d) => (
           <div key={d} className="py-1 text-center text-[11px] font-semibold text-pd-ink3">
-            {d.slice(0, 1)}
+            {dayNames === "short" ? d : d.slice(0, 1)}
           </div>
         ))}
 
@@ -124,7 +148,7 @@ export default function PdMonthGrid({
                     <i className="whitespace-nowrap font-bold not-italic text-(--kc) max-sm:text-[9.5px] max-sm:tracking-[-0.02em]">
                       {e.hasTime ? shortTime(e.start) : "•"}
                     </i>
-                    <span className="truncate max-sm:hidden">{chipLabel(e, shortSubject)}</span>
+                    <span className="truncate max-sm:hidden">{chipText ? chipText(e) : chipLabel(e, shortSubject)}</span>
                   </span>
                 ))}
                 {list.length > 2 && (

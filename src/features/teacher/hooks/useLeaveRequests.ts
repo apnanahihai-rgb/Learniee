@@ -75,7 +75,7 @@ export function useTeacherLeaveRequests() {
     }
   }
 
-  async function cancel(requestId: string) {
+  async function cancel(requestId: string): Promise<boolean> {
     try {
       const res = await fetch(`/api/teacher/leave-requests/${requestId}`, {
         method: "PATCH",
@@ -92,9 +92,11 @@ export function useTeacherLeaveRequests() {
       setRequests((current) =>
         current.map((r) => (r.id === requestId ? { ...r, ...data.request } : r)),
       );
+      return true;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to withdraw leave request.");
+      return false;
     }
   }
 

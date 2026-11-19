@@ -2,20 +2,30 @@
 
 import { Suspense } from "react";
 
-import HubTabs from "@/features/shared/components/HubTabs";
-import CalendarView from "@/features/teacher/components/views/CalendarView";
+import PdHubTabs from "@/features/parent/components/PdHubTabs";
+import TeacherLeaveTab from "@/features/teacher/components/calendar/TeacherLeaveTab";
+import TeacherScheduleTab from "@/features/teacher/components/calendar/TeacherScheduleTab";
 import AvailabilityView from "@/features/teacher/components/views/AvailabilityView";
-import LeaveView from "@/features/teacher/components/views/LeaveView";
 
 export default function TeacherCalendarHubPage() {
   return (
     <Suspense fallback={null}>
-      <HubTabs
+      <PdHubTabs
+        title="Calendar"
+        subtitle="Your classes, demos and time off. All times are IST."
         defaultTab="schedule"
         tabs={[
-          { key: "schedule", label: "Schedule", content: <CalendarView /> },
-          { key: "availability", label: "Availability", content: <AvailabilityView /> },
-          { key: "leave", label: "Leave", content: <LeaveView /> },
+          { key: "schedule", label: "Schedule", content: <TeacherScheduleTab /> },
+          {
+            key: "availability",
+            label: "Availability",
+            content: (
+              <div className="mt-5 rounded-2xl border border-pd-line bg-white">
+                <AvailabilityView />
+              </div>
+            ),
+          },
+          { key: "leave", label: "Leave", content: <TeacherLeaveTab /> },
         ]}
       />
     </Suspense>

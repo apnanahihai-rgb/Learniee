@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { kcStyle } from "@/features/parent/components/home/HomeBits";
@@ -10,16 +11,26 @@ import type { CalEvent } from "@/features/parent/components/calendar/calendarLog
 interface Props {
   events: CalEvent[];
   colorOf: (e: CalEvent) => string | null;
+  /** Second line of a row. Default: "Teacher · Child" (Parent calendar). */
+  subtitle?: (e: CalEvent) => string;
+  /** Shown instead of the plain "No sessions" card when the day is empty. */
+  empty?: ReactNode;
+  /** No outer border/rounding, for use inside a card that has its own. */
+  bare?: boolean;
 }
 
 const ROW =
   "flex w-full items-center gap-3 border-t border-pd-line px-5 py-3 text-left first:border-t-0";
 
 /** Sessions of the selected day (a flush card of rows). */
-export default function PdDayList({ events, colorOf }: Props) {
+export default function PdDayList({ events, colorOf, subtitle, empty, bare = false }: Props) {
+  const frame = bare ? "" : "overflow-hidden rounded-2xl border border-pd-line bg-white";
+
   if (events.length === 0) {
+    if (empty) return <div className={frame}>{empty}</div>;
+
     return (
-      <div className="overflow-hidden rounded-2xl border border-pd-line bg-white">
+      <div className={frame}>
         <div className="flex flex-col items-center p-6 text-center">
           <p className="text-sm text-pd-ink3">No sessions on this day.</p>
         </div>
@@ -28,7 +39,7 @@ export default function PdDayList({ events, colorOf }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-pd-line bg-white">
+    <div className={frame}>
       {events.map((e) => {
         const [time, ap] = e.hasTime ? fmtTime(e.start).split(" ") : ["—", ""];
         const body = (
@@ -40,9 +51,15 @@ export default function PdDayList({ events, colorOf }: Props) {
             <div className="min-w-0 flex-1">
               <b className="block truncate text-sm font-medium">{e.title}</b>
               <small className="flex items-center gap-1.5 text-xs text-pd-ink3">
-                {e.teacherName} · {firstWord(e.studentName)}
-                {e.kind === "demo" ? " · Demo" : ""}
-                {e.state === "held" ? " · Held" : e.state === "missed" ? " · Missed" : ""}
+                {subtitle ? (
+                  subtitle(e)
+                ) : (
+                  <>
+                    {e.teacherName} · {firstWord(e.studentName)}
+                    {e.kind === "demo" ? " · Demo" : ""}
+                    {e.state === "held" ? " · Held" : e.state === "missed" ? " · Missed" : ""}
+                  </>
+                )}
               </small>
             </div>
           </>
