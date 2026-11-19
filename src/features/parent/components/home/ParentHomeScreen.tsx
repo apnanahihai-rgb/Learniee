@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useDashboard } from "@/features/parent/hooks/useDashboard";
+import { useServerNow } from "@/features/shared/hooks/useServerNow";
 
 import AttentionList from "./AttentionList";
 import DemoStrip from "./DemoStrip";
@@ -14,7 +15,13 @@ import SetupCard from "./SetupCard";
 import UpNextHero from "./UpNextHero";
 import WalletCard from "./WalletCard";
 import WeekAgenda from "./WeekAgenda";
-import { attentionItems, countdown, upcomingSessions, type LearnerFilter } from "./homeLogic";
+import {
+  attentionItems,
+  countdown,
+  greetingFor,
+  upcomingSessions,
+  type LearnerFilter,
+} from "./homeLogic";
 import { toHomeData } from "./homeAdapter";
 
 function HomeSkeleton() {
@@ -36,17 +43,9 @@ export default function ParentHomeScreen() {
   const { data: raw, loading, error, skewMs, reload } = useDashboard();
   const data = useMemo(() => (raw ? toHomeData(raw) : null), [raw]);
 
-  // Time-dependent UI renders only after mount (avoids server/client mismatch);
-  // it ticks every second for the live countdown and follows the server clock.
-  const [now, setNow] = useState<Date | null>(null);
+  // Time-dependent UI renders only after mount; follows the server clock.
+  const now = useServerNow(skewMs);
   const [selected, setSelected] = useState<LearnerFilter>("all");
-
-  useEffect(() => {
-    const tick = () => setNow(new Date(Date.now() + skewMs));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [skewMs]);
 
   if (error && !data) {
     return (
@@ -92,8 +91,7 @@ export default function ParentHomeScreen() {
   const heroOpen = !!hero && countdown(hero.start, now).open;
   const urgent = attention.length > 0;
 
-  const hour = now.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting = greetingFor(now);
 
   const heroBlock = (
     <>

@@ -5,7 +5,7 @@ import { BTN_PRI, BTN_TXT, Section } from "@/features/parent/components/home/Hom
 import { dayDiff, dayLabel, fmtTime, inr } from "@/features/parent/components/home/homeLogic";
 
 import { isSessionUpcoming, subjectStyle } from "./teacherHomeLogic";
-import type { TeacherHomeCourse, TeacherHomeSession } from "./teacherHomeTypes";
+import type { TeacherHomeCourse, TeacherHomeSession } from "@/features/teacher/types/home";
 
 /** Round "active students" ring on a course banner. */
 function MiniRing({ percent, color, label }: { percent: number; color: string; label: string }) {

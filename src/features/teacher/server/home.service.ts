@@ -1,9 +1,10 @@
 import { getTeacherCourses } from "@/features/courses/server/course.service";
 import type { AttentionItem } from "@/features/parent/components/home/homeLogic";
 import { getTeacherCertificateBoard } from "@/features/shared/server/certificate.service";
-import { getTeacherCalendarOccurrences } from "@/features/shared/server/scheduleOccurrences.service";
+import { getTeacherOccurrencesInRange } from "@/features/shared/server/scheduleOccurrences.service";
 import { getDemoJoinWindow } from "@/features/shared/utils/demoWindow";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
+import { ON_THE_WAY_PAYOUT_STATUSES } from "@/features/shared/utils/teacherEarnings";
 import type {
   TeacherHomeCourseDto,
   TeacherHomeDto,
@@ -11,6 +12,8 @@ import type {
 } from "@/features/teacher/types/home";
 import { isGoogleMeetEnabled } from "@/lib/googleMeet";
 import {
+  addDays,
+  calendarDateToDate,
   parseDateKey,
   platformWallClockToUtc,
   todayInPlatformTz,
@@ -44,14 +47,11 @@ const LISTED: EnrollmentStatus[] = [
   EnrollmentStatus.LAPSED,
   EnrollmentStatus.COMPLETED,
 ];
-const RUNNING: EnrollmentStatus[] = [EnrollmentStatus.ACTIVE, EnrollmentStatus.LAPSED];
+/** "Active" everywhere on the dashboard — the same definition the Courses page uses. */
+const RUNNING: EnrollmentStatus[] = [EnrollmentStatus.ACTIVE];
 
-/** Money the teacher has earned that has not reached the bank yet. */
-const OUTSTANDING: LedgerPayoutStatus[] = [
-  LedgerPayoutStatus.PROCESSING,
-  LedgerPayoutStatus.QUEUED_FOR_PAYMENT,
-  LedgerPayoutStatus.APPROVED,
-];
+/** Money the teacher has earned that has not reached the bank yet (one list, shared with the Earnings page). */
+const OUTSTANDING = [...ON_THE_WAY_PAYOUT_STATUSES] as LedgerPayoutStatus[];
 
 const EARNING_ROWS = 4;
 /** Fallback length for a class that has no real end instant (legacy rows). */
@@ -66,24 +66,22 @@ type NameParts = { firstName: string; visibleName: string | null };
 
 const nameOf = (s: NameParts) => s.visibleName || s.firstName;
 const first = (name: string) => name.split(" ")[0];
-const monthKeyOf = (year: number, month: number) =>
-  `${year}-${String(month).padStart(2, "0")}`;
 
 export async function getTeacherHome(
   teacherId: string,
   now: Date = new Date(),
 ): Promise<TeacherHomeDto> {
   const today = todayInPlatformTz(now);
-  const nextMonth = today.month === 12 ? { y: today.year + 1, m: 1 } : { y: today.year, m: today.month + 1 };
-  const months = [monthKeyOf(today.year, today.month), monthKeyOf(nextMonth.y, nextMonth.m)];
   const horizon = new Date(now.getTime() + SESSION_HORIZON_DAYS * 24 * 60 * 60_000);
+  // Stored class dates are UTC midnight of the IST calendar date: today .. horizon (+1 day, end exclusive).
+  const rangeFrom = calendarDateToDate(today);
+  const rangeTo = calendarDateToDate(addDays(today, SESSION_HORIZON_DAYS + 1));
 
   const [
     teacher,
     enrollments,
     courseRows,
-    occurrencesA,
-    occurrencesB,
+    occurrences,
     demoRows,
     reschedules,
     homeworkToReview,
@@ -118,8 +116,7 @@ export async function getTeacherHome(
       },
     }),
     getTeacherCourses(teacherId),
-    getTeacherCalendarOccurrences(teacherId, months[0]),
-    getTeacherCalendarOccurrences(teacherId, months[1]),
+    getTeacherOccurrencesInRange(teacherId, rangeFrom, rangeTo),
     prisma.demoBooking.findMany({
       where: {
         teacherId,
@@ -190,11 +187,9 @@ export async function getTeacherHome(
 
   /* ---- sessions: scheduled classes + confirmed demos, still to come ---- */
   const sessions: TeacherHomeSessionDto[] = [];
-  const seen = new Set<string>();
 
-  for (const o of [...occurrencesA, ...occurrencesB]) {
-    if (o.status !== "SCHEDULED" || seen.has(o.id)) continue;
-    seen.add(o.id);
+  for (const o of occurrences) {
+    if (o.status !== "SCHEDULED") continue;
 
     let start: Date;
     if (o.startsAt) {
@@ -262,6 +257,7 @@ export async function getTeacherHome(
   /* ---- courses ---- */
   const courses: TeacherHomeCourseDto[] = courseRows.map((c) => {
     const mine = running.filter((e) => e.courseId === c.id);
+    const activeStudents = new Set(mine.map((e) => e.student.id)).size;
     const progress = mine.length
       ? Math.round(
           (mine.reduce(
@@ -280,7 +276,7 @@ export async function getTeacherHome(
       grade: c.grade,
       price: c.price ? Number(c.price) : null,
       approved: c.status === "APPROVED",
-      activeStudents: mine.length,
+      activeStudents,
       progress: Math.min(100, progress),
     };
   });

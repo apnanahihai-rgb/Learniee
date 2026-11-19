@@ -193,3 +193,22 @@ export async function getTeacherCalendarOccurrences(
     end,
   );
 }
+
+/**
+ * A Teacher's classes between two stored dates (`from` inclusive, `to`
+ * exclusive — UTC midnight of an IST calendar date, see `platformTime.ts`).
+ * One pass over the enrollments, unlike calling the monthly read twice; the
+ * Teacher Home uses it for "the next N days".
+ */
+export async function getTeacherOccurrencesInRange(teacherId: string, from: Date, to: Date) {
+  return occurrencesFor(
+    {
+      where: {
+        teacherId,
+        status: { in: CALENDAR_STATUSES },
+      },
+    },
+    from,
+    to,
+  );
+}

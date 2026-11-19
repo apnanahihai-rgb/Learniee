@@ -63,3 +63,20 @@ export interface TeacherHomeDto {
   /** Null when every setup step is done. */
   setup: { href: string; done: number; total: number; nextLabel: string } | null;
 }
+
+/* ---- Client-side shapes: the same data with ISO strings turned into `Date`s ---- */
+
+/** A class or demo as the Home components use it (`start`/`end` are `Date`s). */
+export type TeacherHomeSession = Omit<TeacherHomeSessionDto, "startsAt" | "endsAt"> & {
+  start: Date;
+  end: Date;
+};
+
+export type TeacherHomeCourse = TeacherHomeCourseDto;
+export type TeacherHomeEarnings = TeacherHomeDto["earnings"];
+export type TeacherHomeSetup = NonNullable<TeacherHomeDto["setup"]>;
+
+/** What `useTeacherHome` hands to the components. */
+export type TeacherHomeData = Omit<TeacherHomeDto, "serverNow" | "sessions"> & {
+  sessions: TeacherHomeSession[];
+};

@@ -7,7 +7,7 @@ import DemoJoinButton from "@/features/shared/components/DemoJoinButton";
 import { BTN_PRI } from "@/features/parent/components/home/HomeBits";
 import { countdown, fmtTime } from "@/features/parent/components/home/homeLogic";
 
-import type { TeacherHomeSession } from "./teacherHomeTypes";
+import type { TeacherHomeSession } from "@/features/teacher/types/home";
 
 interface Props {
   session: TeacherHomeSession | undefined;

@@ -60,6 +60,12 @@ export function dayLabel(d: Date, now: Date): string {
   return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 }
 
+/** "Good morning" / "Good afternoon" / "Good evening" — shared by both Home screens. */
+export const greetingFor = (now: Date) => {
+  const hour = now.getHours();
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+};
+
 export const whenLabel = (d: Date, now: Date) => `${dayLabel(d, now)}, ${fmtTime(d)}`;
 
 export const inKid = (filter: LearnerFilter, kidId: string) =>

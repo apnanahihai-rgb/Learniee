@@ -3,6 +3,8 @@ import type {
   PayoutRecordStatusView,
   TeacherEarningsLedgerEntry,
 } from "@/features/teacher/hooks/useTeacherEarnings";
+// "On the way" is defined once, shared with the Home earnings card.
+import { isOnTheWayStatus } from "@/features/shared/utils/teacherEarnings";
 
 export type EarningsTone = "amber" | "green" | "violet" | "red" | "gray";
 
@@ -25,16 +27,13 @@ export const RECORD_STATUS: Record<PayoutRecordStatusView, { label: string; tone
   FAILED: { label: "Failed", tone: "red" },
 };
 
-/** Same definition of "on the way" the Teacher Home earnings card uses, so the two screens agree. */
-const ON_THE_WAY: LedgerPayoutStatusView[] = ["PROCESSING", "QUEUED_FOR_PAYMENT", "APPROVED"];
-
 export function summariseEarnings(entries: TeacherEarningsLedgerEntry[]) {
   let paid = 0;
   let onTheWay = 0;
 
   for (const e of entries) {
     if (e.payoutStatus === "PAID") paid += e.monthlyTeacherPay;
-    else if (ON_THE_WAY.includes(e.payoutStatus)) onTheWay += e.monthlyTeacherPay;
+    else if (isOnTheWayStatus(e.payoutStatus)) onTheWay += e.monthlyTeacherPay;
   }
 
   return { paid, onTheWay };

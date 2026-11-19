@@ -1,4 +1,4 @@
-import type { TeacherHomeSession } from "./teacherHomeTypes";
+import type { TeacherHomeSession } from "@/features/teacher/types/home";
 import { KID_PALETTE, SUBJECT_COLOR } from "@/features/parent/components/home/homeLogic";
 
 /** One colour per student — the only categorical colour on the page (same palette as the Parent Home). */
@@ -24,17 +24,6 @@ export function subjectStyle(subject: string | null): { color: string; glyph: st
   return { color, glyph: SUBJECT_GLYPH[s] ?? (s[0]?.toUpperCase() || "?") };
 }
 
-/** A session is "live" until it ends (class length falls back to 45 min when unknown). */
+/** A session is "live" until it ends. */
 export const isSessionUpcoming = (s: TeacherHomeSession, now: Date) =>
   s.end.getTime() > now.getTime();
-
-const DEFAULT_CLASS_MINUTES = 45;
-
-/** "YYYY-MM-DD" + "HH:mm" (legacy sessions without real instants) → local Date. */
-export function parseLocalSlot(date: string, time: string | null): Date {
-  const [y, m, d] = date.split("-").map(Number);
-  const [hh, mm] = (time ?? "00:00").split(":").map(Number);
-  return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0, 0);
-}
-
-export const defaultEnd = (start: Date) => new Date(start.getTime() + DEFAULT_CLASS_MINUTES * 60_000);

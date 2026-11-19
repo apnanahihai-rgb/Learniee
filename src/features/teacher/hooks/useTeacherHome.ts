@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   TeacherHomeData,
+  TeacherHomeDto,
   TeacherHomeSession,
-} from "@/features/teacher/components/home/teacherHomeTypes";
-import type { TeacherHomeDto } from "@/features/teacher/types/home";
+} from "@/features/teacher/types/home";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
 
@@ -25,31 +25,15 @@ const EMPTY: TeacherHomeData = {
 
 /** API shape (ISO strings) → what the Home components use (`Date`s). */
 function toHomeData(dto: TeacherHomeDto): TeacherHomeData {
-  const sessions: TeacherHomeSession[] = dto.sessions.map((s) => ({
-    id: s.id,
-    kind: s.kind,
-    title: s.title,
-    studentName: s.studentName,
-    courseId: s.courseId,
-    subject: s.subject,
-    start: new Date(s.startsAt),
-    end: new Date(s.endsAt),
-    href: s.href,
-    demo: s.demo,
+  const { sessions: rawSessions, ...rest } = dto;
+
+  const sessions: TeacherHomeSession[] = rawSessions.map(({ startsAt, endsAt, ...s }) => ({
+    ...s,
+    start: new Date(startsAt),
+    end: new Date(endsAt),
   }));
 
-  return {
-    firstName: dto.firstName,
-    sessions,
-    courses: dto.courses,
-    studentNames: dto.studentNames,
-    activeStudentCount: dto.activeStudentCount,
-    reviewCount: dto.reviewCount,
-    attention: dto.attention,
-    earnings: dto.earnings,
-    setup: dto.setup,
-    meetEnabled: dto.meetEnabled,
-  };
+  return { ...rest, sessions };
 }
 
 /**
@@ -116,5 +100,5 @@ export function useTeacherHome() {
 
   const data = useMemo(() => (dto ? toHomeData(dto) : EMPTY), [dto]);
 
-  return { data, loading, error, skewMs, reload };
+  return { data, hasData: dto !== null, loading, error, skewMs, reload };
 }

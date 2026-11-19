@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Lock, Video } from "lucide-react";
+import { Video } from "lucide-react";
+
+import DemoStripRow, { LockedDemoButton } from "@/features/shared/components/home/DemoStripRow";
 
 import { BTN_PRI } from "./HomeBits";
 import { countdown, inKid, isLive, whenLabel, type LearnerFilter } from "./homeLogic";
@@ -28,42 +30,26 @@ export default function DemoStrip({ data, filter, now, heroSession }: Props) {
   const canJoin = cd.open && next.hasLink;
 
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-xl border border-pd-line bg-white px-3.5 py-2.5 transition-colors hover:border-pd-line2">
-      <Link
-        href="/parent/my-classes?tab=demos"
-        aria-label="Open demos"
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-      >
-        <span className="grid size-[34px] shrink-0 place-items-center rounded-full bg-pd-b50 text-pd-brand">
-          <Video size={18} />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <b className="truncate text-sm font-medium">Demo: {next.title}</b>
-          <small className="truncate text-xs font-bold text-pd-ink2">
-            {kid?.first} ·{" "}
-            {cd.open ? (next.hasLink ? cd.text : "Link not ready yet") : whenLabel(next.start, now)}
-            {more > 0 ? ` · +${more} more` : ""}
-          </small>
-        </span>
-      </Link>
-
-      {canJoin ? (
-        <Link href={next.href} className={`${BTN_PRI} shrink-0`}>
-          <Video size={16} />
-          Join demo
-        </Link>
-      ) : (
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          title="Opens 10 minutes before the demo"
-          className={`${BTN_PRI} shrink-0 !bg-pd-b100 !text-pd-brand-d !opacity-75`}
-        >
-          <Lock size={14} />
-          Join demo
-        </button>
-      )}
-    </div>
+    <DemoStripRow
+      href="/parent/my-classes?tab=demos"
+      title={`Demo: ${next.title}`}
+      subtitle={
+        <>
+          {kid?.first} ·{" "}
+          {cd.open ? (next.hasLink ? cd.text : "Link not ready yet") : whenLabel(next.start, now)}
+          {more > 0 ? ` · +${more} more` : ""}
+        </>
+      }
+      action={
+        canJoin ? (
+          <Link href={next.href} className={`${BTN_PRI} shrink-0`}>
+            <Video size={16} />
+            Join demo
+          </Link>
+        ) : (
+          <LockedDemoButton label="Join demo" />
+        )
+      }
+    />
   );
 }

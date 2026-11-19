@@ -5,7 +5,7 @@ import { inr } from "@/features/parent/components/home/homeLogic";
 import { TEACHER_SHARE } from "@/features/shared/utils/teacherRateShare";
 
 import { studentColor } from "./teacherHomeLogic";
-import type { TeacherHomeEarnings } from "./teacherHomeTypes";
+import type { TeacherHomeEarnings } from "@/features/teacher/types/home";
 
 export default function TeacherEarningsCard({
   earnings,

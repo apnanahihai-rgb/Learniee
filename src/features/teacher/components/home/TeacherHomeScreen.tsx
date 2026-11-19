@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, RotateCw, TriangleAlert } from "lucide-react";
 
 import AttentionList from "@/features/parent/components/home/AttentionList";
 import { BTN_PRI } from "@/features/parent/components/home/HomeBits";
 import { SetupProgressCard } from "@/features/parent/components/home/SetupCard";
-import { dayDiff } from "@/features/parent/components/home/homeLogic";
+import { dayDiff, greetingFor } from "@/features/parent/components/home/homeLogic";
+import { useServerNow } from "@/features/shared/hooks/useServerNow";
 import { useTeacherHome } from "@/features/teacher/hooks/useTeacherHome";
 
 import TeacherCourseTiles from "./TeacherCourseTiles";
@@ -43,20 +43,13 @@ function HomeSkeleton() {
 }
 
 export default function TeacherHomeScreen() {
-  const { data, loading, error, skewMs, reload } = useTeacherHome();
+  const { data, hasData, loading, error, skewMs, reload } = useTeacherHome();
 
-  // Time-dependent UI renders only after mount (avoids a server/client mismatch);
-  // it ticks every second for the live countdown and follows the server clock.
-  const [now, setNow] = useState<Date | null>(null);
+  // Time-dependent UI renders only after mount; follows the server clock.
+  const now = useServerNow(skewMs);
 
-  useEffect(() => {
-    const tick = () => setNow(new Date(Date.now() + skewMs));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [skewMs]);
-
-  if (error && loading === false && data.courses.length === 0 && data.sessions.length === 0) {
+  // Only a failed first load is an error screen — a failed background refresh keeps the last data.
+  if (error && !hasData && !loading) {
     return (
       <div className={PAGE}>
         <div className="rounded-2xl border border-pd-line bg-white p-5">
@@ -90,8 +83,7 @@ export default function TeacherHomeScreen() {
   const hero = upcoming[0];
   const todayCount = upcoming.filter((s) => dayDiff(s.start, now) === 0).length;
 
-  const hour = now.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting = greetingFor(now);
 
   return (
     <div className={PAGE}>
