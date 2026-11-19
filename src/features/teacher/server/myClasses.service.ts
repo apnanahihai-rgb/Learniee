@@ -221,12 +221,19 @@ export async function getTeacherClasses(
     let activeStudentCount = 0;
     let liveNowCount = 0;
     let nextSessionAt: number | null = null;
+    let progressSum = 0;
+    let progressCount = 0;
 
     for (const enrollment of courseEnrollments) {
       if (enrollment.status === "ACTIVE") activeStudentCount += 1;
 
       const summary = summaries.get(enrollment.id);
       if (!summary) continue;
+
+      if (enrollment.status === "ACTIVE" && summary.progress && summary.progress.sessionCount > 0) {
+        progressSum += summary.progress.countedSessions / summary.progress.sessionCount;
+        progressCount += 1;
+      }
 
       if (isLiveNow(summary, now)) liveNowCount += 1;
 
@@ -244,6 +251,7 @@ export async function getTeacherClasses(
       activeStudentCount,
       liveNowCount,
       nextSessionAt: nextSessionAt !== null ? new Date(nextSessionAt).toISOString() : null,
+      averageProgressPercent: progressCount > 0 ? Math.round((progressSum / progressCount) * 100) : 0,
     });
   }
 

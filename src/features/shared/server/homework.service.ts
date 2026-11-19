@@ -105,6 +105,26 @@ export async function listHomeworkForParentEnrollment(
   return listHomeworkForEnrollment(enrollmentId);
 }
 
+/**
+ * Every homework the teacher has assigned, across all their enrollments,
+ * newest first — one row per assignment (each is per student), with the
+ * course and student it belongs to. Powers the My classes > Homework tab.
+ */
+export function listHomeworkOverviewForTeacher(teacherId: string) {
+  return prisma.homework.findMany({
+    where: { teacherId },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    include: {
+      submission: true,
+      student: { select: { firstName: true, lastName: true, visibleName: true } },
+      enrollment: {
+        select: { course: { select: { id: true, courseTitle: true, subject: true } } },
+      },
+    },
+  });
+}
+
 export interface CreateHomeworkInput {
   enrollmentId: string;
   title: string;

@@ -121,6 +121,24 @@ export function listResourcesForParent(parentId: string) {
   });
 }
 
+/**
+ * Every resource the teacher has shared, across all their enrollments,
+ * newest first, with course and student. Powers My classes > Resources.
+ */
+export function listResourcesOverviewForTeacher(teacherId: string) {
+  return prisma.resource.findMany({
+    where: { teacherId },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    include: {
+      student: { select: { firstName: true, lastName: true, visibleName: true } },
+      enrollment: {
+        select: { course: { select: { id: true, courseTitle: true, subject: true } } },
+      },
+    },
+  });
+}
+
 export interface CreateResourceInput {
   enrollmentId: string;
   title: string;

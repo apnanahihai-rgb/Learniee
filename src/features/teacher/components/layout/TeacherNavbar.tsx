@@ -85,7 +85,7 @@ export default function TeacherNavbar({ onLogout }: TeacherNavbarProps) {
         <BrandLogo className="h-8 w-auto" priority />
       </button>
 
-      {/* Search — Enter jumps to the Students tab (not wired to a backend search yet) */}
+      {/* Search — Enter filters the Students tab by name */}
       <div className="relative hidden max-w-[400px] flex-1 md:block">
         <Search
           size={18}
@@ -96,7 +96,10 @@ export default function TeacherNavbar({ onLogout }: TeacherNavbarProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") router.push("/teacher/my-classes?tab=students");
+            if (e.key === "Enter") {
+              const q = search.trim();
+              router.push(`/teacher/my-classes?tab=students${q ? `&q=${encodeURIComponent(q)}` : ""}`);
+            }
           }}
           placeholder="Find a student…"
           aria-label="Find a student"

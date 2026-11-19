@@ -15,6 +15,8 @@ export interface TeacherClassSummary {
   liveNowCount: number;
   /** Soonest upcoming class across the course, if any. */
   nextSessionAt: string | null;
+  /** Average cycle progress (0–100) across the course's ACTIVE students. */
+  averageProgressPercent: number;
 }
 
 /** One row in a course's student roster ("Class live" page). */
