@@ -93,8 +93,9 @@ export function useTeacherEnrollments() {
           scheduleTime?: string;
           customDates?: string[];
         },
-  ) {
+  ): Promise<boolean> {
     try {
+      setError("");
       const res = await fetch(`/api/teacher/enrollments/${enrollmentId}/approval`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -110,9 +111,13 @@ export function useTeacherEnrollments() {
       setEnrollments((current) =>
         current.map((e) => (e.id === enrollmentId ? { ...e, ...data.enrollment } : e)),
       );
+
+      return true;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to update enrollment.");
+
+      return false;
     }
   }
 
