@@ -2,20 +2,23 @@
 
 import { Suspense } from "react";
 
-import HubTabs from "@/features/shared/components/HubTabs";
-import EarningsView from "@/features/teacher/components/views/EarningsView";
-import BankAccountView from "@/features/teacher/components/views/BankAccountView";
-import RateCalculatorView from "@/features/teacher/components/views/RateCalculatorView";
+import PdHubTabs from "@/features/parent/components/PdHubTabs";
+import TeacherBankTab from "@/features/teacher/components/earnings/TeacherBankTab";
+import TeacherCalculatorTab from "@/features/teacher/components/earnings/TeacherCalculatorTab";
+import TeacherEarningsTab from "@/features/teacher/components/earnings/TeacherEarningsTab";
 
+/** What you've earned, when it's paid, and where it goes. */
 export default function TeacherEarningsHubPage() {
   return (
     <Suspense fallback={null}>
-      <HubTabs
+      <PdHubTabs
+        title="Earnings"
+        subtitle="What you’ve earned, when it’s paid, and where it goes."
         defaultTab="earnings"
         tabs={[
-          { key: "earnings", label: "Earnings", content: <EarningsView /> },
-          { key: "bank", label: "Bank account", content: <BankAccountView /> },
-          { key: "calculator", label: "Rate calculator", content: <RateCalculatorView /> },
+          { key: "earnings", label: "Earnings", content: <TeacherEarningsTab /> },
+          { key: "bank", label: "Bank account", content: <TeacherBankTab /> },
+          { key: "calculator", label: "Rate calculator", content: <TeacherCalculatorTab /> },
         ]}
       />
     </Suspense>

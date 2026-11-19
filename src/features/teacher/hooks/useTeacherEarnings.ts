@@ -22,6 +22,8 @@ export interface TeacherEarningsLedgerEntry {
   childName: string;
   subject: string;
   monthlyTeacherPay: number;
+  /** Counted sessions in this cycle (the ledger's `sessionsCompleted`). */
+  sessionsCompleted: number;
   payoutStatus: LedgerPayoutStatusView;
   isOverdue: boolean;
   holdReason: string | null;
