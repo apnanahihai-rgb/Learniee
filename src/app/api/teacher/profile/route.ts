@@ -3,6 +3,40 @@ import { prisma } from "@/lib/prisma";
 import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { getTeacherRatingSummary } from "@/features/shared/server/review.service";
 
+const PROFILE_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  visibleName: true,
+  email: true,
+  phone: true,
+  whatsapp: true,
+  address: true,
+  city: true,
+  country: true,
+  pincode: true,
+  aboutMe: true,
+  approvalStatus: true,
+  isIITian: true,
+  createdAt: true,
+  // Qualification / experience live on the onboarding "professional" row.
+  professionalInfo: {
+    select: { qualifications: true, overallExperience: true },
+  },
+} as const;
+
+/** Flattens the professional row so the client gets plain fields. */
+function shapeTeacher<T extends { professionalInfo: { qualifications: string | null; overallExperience: string | null } | null }>(
+  teacher: T,
+) {
+  const { professionalInfo, ...rest } = teacher;
+  return {
+    ...rest,
+    qualifications: professionalInfo?.qualifications ?? null,
+    overallExperience: professionalInfo?.overallExperience ?? null,
+  };
+}
+
 /**
  * GET
  *
@@ -22,23 +56,7 @@ export async function GET(req: Request) {
       where: {
         cognitoId: auth.payload.sub,
       },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        visibleName: true,
-        email: true,
-        phone: true,
-        whatsapp: true,
-        address: true,
-        city: true,
-        country: true,
-        pincode: true,
-        aboutMe: true,
-        approvalStatus: true,
-        isIITian: true,
-        createdAt: true,
-      },
+      select: PROFILE_SELECT,
     });
 
     if (!teacher) {
@@ -52,7 +70,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       teacher: {
-        ...teacher,
+        ...shapeTeacher(teacher),
         averageRating: rating.averageRating,
         reviewCount: rating.totalReviews,
       },
@@ -97,7 +115,10 @@ const EDITABLE_FIELDS = [
 ] as const;
 
 type EditableField = (typeof EDITABLE_FIELDS)[number];
-type ProfileUpdateBody = Partial<Record<EditableField, string>>;
+// Stored on TeacherProfessional (set at onboarding), editable from Account > Profile.
+const PROFESSIONAL_FIELDS = ["qualifications", "overallExperience"] as const;
+type ProfessionalField = (typeof PROFESSIONAL_FIELDS)[number];
+type ProfileUpdateBody = Partial<Record<EditableField | ProfessionalField, string>>;
 
 export async function PATCH(req: Request) {
   try {
@@ -109,10 +130,17 @@ export async function PATCH(req: Request) {
 
     const body = (await req.json()) as ProfileUpdateBody;
 
-    const data: ProfileUpdateBody = {};
+    const data: Partial<Record<EditableField, string>> = {};
     for (const field of EDITABLE_FIELDS) {
       if (typeof body[field] === "string") {
         data[field] = body[field]!.trim();
+      }
+    }
+
+    const professional: Partial<Record<ProfessionalField, string>> = {};
+    for (const field of PROFESSIONAL_FIELDS) {
+      if (typeof body[field] === "string") {
+        professional[field] = body[field]!.trim().slice(0, 300);
       }
     }
 
@@ -123,28 +151,28 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const teacher = await prisma.teacher.update({
-      where: { cognitoId: auth.payload.sub },
-      data,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        visibleName: true,
-        email: true,
-        phone: true,
-        whatsapp: true,
-        address: true,
-        city: true,
-        country: true,
-        pincode: true,
-        aboutMe: true,
-        approvalStatus: true,
-        createdAt: true,
-      },
+    const teacher = await prisma.$transaction(async (tx) => {
+      const updated = await tx.teacher.update({
+        where: { cognitoId: auth.payload.sub },
+        data,
+        select: { id: true },
+      });
+
+      if (Object.keys(professional).length > 0) {
+        await tx.teacherProfessional.upsert({
+          where: { teacherId: updated.id },
+          create: { teacherId: updated.id, ...professional },
+          update: professional,
+        });
+      }
+
+      return tx.teacher.findUniqueOrThrow({
+        where: { id: updated.id },
+        select: PROFILE_SELECT,
+      });
     });
 
-    return NextResponse.json({ teacher });
+    return NextResponse.json({ teacher: shapeTeacher(teacher) });
   } catch (error) {
     console.error("Teacher profile update error:", error);
 

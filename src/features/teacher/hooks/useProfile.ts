@@ -15,6 +15,9 @@ export interface TeacherProfileData {
   country: string | null;
   pincode: string | null;
   aboutMe: string | null;
+  /** From the onboarding professional row; editable on Account > Profile. */
+  qualifications: string | null;
+  overallExperience: string | null;
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
   /** Self-declared at onboarding, no approval gate — see schema.prisma. */
   isIITian: boolean;
@@ -36,6 +39,8 @@ export type TeacherProfileFormFields = Pick<
   | "country"
   | "pincode"
   | "aboutMe"
+  | "qualifications"
+  | "overallExperience"
 >;
 
 /**
@@ -90,14 +95,12 @@ export function useProfile() {
         throw new Error(data.error || "Failed to update your profile.");
       }
 
-      // PATCH only returns the editable "contact card" fields — carry the
-      // rating and IITian flag over from what GET last loaded rather than
-      // dropping them.
+      // PATCH does not return the rating — carry it over from what GET last
+      // loaded rather than dropping it.
       setProfile((prev) => ({
         ...data.teacher,
         averageRating: prev?.averageRating ?? null,
         reviewCount: prev?.reviewCount ?? 0,
-        isIITian: prev?.isIITian ?? false,
       }));
       return true;
     } catch (err) {

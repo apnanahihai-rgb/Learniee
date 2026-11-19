@@ -2,14 +2,17 @@
 
 import { Suspense } from "react";
 
-import HubTabs from "@/features/shared/components/HubTabs";
+import PdHubTabs from "@/features/parent/components/PdHubTabs";
 import ProfileView from "@/features/teacher/components/views/ProfileView";
 import SettingsView from "@/features/teacher/components/views/SettingsView";
 
+/** Your profile and settings. */
 export default function TeacherAccountHubPage() {
   return (
     <Suspense fallback={null}>
-      <HubTabs
+      <PdHubTabs
+        title="Account"
+        subtitle="Your profile and settings."
         defaultTab="profile"
         tabs={[
           { key: "profile", label: "Profile", content: <ProfileView /> },
