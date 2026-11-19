@@ -1,16 +1,18 @@
 "use client";
 
-import { useTeacherComplaints } from "@/features/teacher/hooks/useComplaints";
-import ComplaintsView from "@/features/shared/components/ComplaintsView";
+import PdPageHead from "@/features/shared/components/PdPageHead";
+import TeacherHelpView from "@/features/teacher/components/help/TeacherHelpView";
 
 /**
- * "Complain" sidebar entry. A Teacher picks a department (Accounts / HR / IT),
- * writes a subject + description; it's OPEN until Admin responds
- * (`/admin/complaints`). UI lives in the shared `ComplaintsView`. See
- * `complaint.service.ts`.
+ * Teacher "Help" sidebar entry (`/teacher/complain`). Pick a department
+ * (Accounts / HR / IT), write a subject + description; it stays OPEN until
+ * Admin/staff respond. Backend: `/api/teacher/complaints` + `complaint.service.ts`.
  */
 export default function TeacherComplainPage() {
-  const complaints = useTeacherComplaints();
-
-  return <ComplaintsView eyebrow="Support" {...complaints} />;
+  return (
+    <div className="mx-auto max-w-[1160px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
+      <PdPageHead title="Help & support" subtitle="Send your issue to the right team." />
+      <TeacherHelpView />
+    </div>
+  );
 }
