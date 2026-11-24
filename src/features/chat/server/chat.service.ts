@@ -111,11 +111,13 @@ export async function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
   });
 
   if (rooms.length === 0) {
-    return [] as Array<(typeof rooms)[number] & { hasFlaggedMessages: boolean }>;
+    return [] as Array<
+      (typeof rooms)[number] & { hasFlaggedMessages: boolean; lastMessagePreview: string | null }
+    >;
   }
 
   const roomIds = rooms.map((room) => room.id);
-  const [flagged, safetyFlagged] = await Promise.all([
+  const [flagged, safetyFlagged, latest] = await Promise.all([
     prisma.chatMessage.findMany({
       where: { chatRoomId: { in: roomIds }, containsPhoneNumber: true },
       select: { chatRoomId: true },
@@ -126,7 +128,16 @@ export async function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
       select: { chatRoomId: true },
       distinct: ["chatRoomId"],
     }),
+    // Newest message per room, for the list preview. Uses the already
+    // masked `body` (never `originalBody`), so a phone number can't leak.
+    prisma.chatMessage.findMany({
+      where: { chatRoomId: { in: roomIds } },
+      select: { chatRoomId: true, body: true },
+      orderBy: { createdAt: "desc" },
+      distinct: ["chatRoomId"],
+    }),
   ]);
+  const previewByRoom = new Map(latest.map((row) => [row.chatRoomId, row.body]));
   const flaggedRoomIds = new Set([
     ...flagged.map((row) => row.chatRoomId),
     ...safetyFlagged.map((row) => row.chatRoomId),
@@ -135,6 +146,7 @@ export async function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
   return rooms.map((room) => ({
     ...room,
     hasFlaggedMessages: flaggedRoomIds.has(room.id),
+    lastMessagePreview: (previewByRoom.get(room.id) ?? "").slice(0, 140) || null,
   }));
 }
 

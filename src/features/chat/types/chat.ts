@@ -19,6 +19,8 @@ export interface ChatRoomSummary {
   _count: { messages: number };
   /** Admin listing only (06 #31) — undefined on Parent/Teacher rooms. */
   hasFlaggedMessages?: boolean;
+  /** Admin listing only — start of the newest (masked) message. */
+  lastMessagePreview?: string | null;
 }
 
 export interface ChatMessage {

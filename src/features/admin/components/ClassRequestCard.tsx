@@ -3,9 +3,10 @@
 import { useState, type ReactNode } from "react";
 
 import { ADMIN_CONTROL, adminBtn, adminTag, type AdminTagColor } from "@/features/admin/components/ui/adminStyles";
-import { AdminField, AdminGroup } from "@/features/admin/components/ui/design";
+import { AdminField } from "@/features/admin/components/ui/design";
 import {
   AdminDecisionBar,
+  AdminGroup,
   AdminProps,
   AdminReviewCard,
   AdminText,
