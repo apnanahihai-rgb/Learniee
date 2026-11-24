@@ -11,6 +11,8 @@ interface PdDialogProps {
   children: ReactNode;
   /** Buttons, right-aligned (design `.df.inline`). */
   footer?: ReactNode;
+  /** Wider panel (760px) for reading content such as an article. */
+  wide?: boolean;
 }
 
 /**
@@ -19,13 +21,13 @@ interface PdDialogProps {
  * scroll lock. On phones it sits at the bottom of the screen as a sheet.
  * Mount it only while open: `{open && <PdDialog …>}`.
  */
-export default function PdDialog({ title, onClose, children, footer }: PdDialogProps) {
+export default function PdDialog({ title, onClose, children, footer, wide = false }: PdDialogProps) {
   return (
     <Modal
       onClose={onClose}
       label={title}
       backdropClassName="bg-[rgba(28,24,51,0.5)]"
-      panelClassName="max-w-[480px] rounded-2xl bg-white text-pd-ink shadow-[0_16px_40px_-12px_rgba(23,23,43,0.28)] max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none"
+      panelClassName={`${wide ? "max-w-[760px]" : "max-w-[480px]"} rounded-2xl bg-white text-pd-ink shadow-[0_16px_40px_-12px_rgba(23,23,43,0.28)] max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none`}
     >
       <div className="flex items-start justify-between gap-3 px-6 pb-3 pt-6">
         <h2 className="font-heading text-xl font-semibold leading-tight">{title}</h2>
