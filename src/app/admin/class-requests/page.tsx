@@ -2,257 +2,140 @@
 
 import { useState } from "react";
 
-import { formatSchedule } from "@/features/shared/utils/weekdays";
+import ClassRequestCard from "@/features/admin/components/ClassRequestCard";
+import AdminReasonDialog from "@/features/admin/components/ui/AdminReasonDialog";
+import {
+  AdminEmptyState,
+  AdminErrorNote,
+  AdminHead,
+  AdminLoadingState,
+  AdminPillTabs,
+  AdminStack,
+} from "@/features/admin/components/ui/design";
+import { AdminQueue, type AdminQueueItem } from "@/features/admin/components/ui/queue";
 import {
   useAdminClassRequests,
   type AdminClassRequest,
 } from "@/features/class-requests/hooks/useClassRequests";
-import {
-  AdminDialog,
-  AdminEmpty,
-  AdminError,
-  AdminLoading,
-  AdminPage,
-  AdminPageHeader,
-  AdminPanel,
-  AdminPill,
-  AdminTabs,
-  adminButtonClass,
-  adminLabelClass,
-  adminTextareaClass,
-  type PillTone,
-} from "@/features/admin/components/ui/primitives";
-import {
-  CLASS_REQUEST_STATUS_LABELS,
-  formatClassRequestDate,
-} from "@/features/shared/utils/classRequestStatus";
+import { usePdToast } from "@/features/parent/components/courses/usePdToast";
+import { formatClassRequestDate } from "@/features/shared/utils/classRequestStatus";
 
-/**
- * Admin "Class requests" screen. Vets parents' custom class requests:
- * Approve circulates it to every approved teacher as a vacancy; Reject needs a
- * reason the parent sees; Close ends an open vacancy. Also shows who accepted
- * and whether they've listed a course. See `classRequest.service.ts`.
- */
+type Tab = "review" | "open" | "done";
 
-type Tab = "PENDING_REVIEW" | "OPEN" | "DONE";
-
-const TABS: { value: Tab; label: string }[] = [
-  { value: "PENDING_REVIEW", label: "To review" },
-  { value: "OPEN", label: "Open vacancies" },
-  { value: "DONE", label: "Rejected / closed" },
-];
-
-const STATUS_TONE: Record<string, PillTone> = {
-  PENDING_REVIEW: "warn",
-  OPEN: "brand",
-  REJECTED: "dark",
-  CLOSED: "neutral",
+const EMPTY: Record<Tab, string> = {
+  review: "No class requests are waiting for review.",
+  open: "No open vacancies right now.",
+  done: "No rejected or closed requests yet.",
 };
 
-function teacherName(t: { firstName: string; lastName: string; visibleName: string | null }) {
-  return t.visibleName || `${t.firstName} ${t.lastName}`.trim();
-}
-
 export default function AdminClassRequestsPage() {
+  // Data: GET /api/admin/class-requests, decisions: PATCH
+  // /api/admin/class-requests/[requestId] (verified Admin auth, live refresh).
+  // Approve circulates the request to every approved teacher as a vacancy;
+  // Reject needs a reason the parent sees; Close ends an open vacancy.
   const { requests, loading, error, busyId, act } = useAdminClassRequests();
-  const [tab, setTab] = useState<Tab>("PENDING_REVIEW");
-  const [pending, setPending] = useState<{
-    request: AdminClassRequest;
-    action: "REJECT" | "CLOSE";
-  } | null>(null);
-  const [note, setNote] = useState("");
+  const [tab, setTab] = useState<Tab>("review");
+  const [rejecting, setRejecting] = useState<AdminClassRequest | null>(null);
+  const { toast, toastNode } = usePdToast();
 
-  const counts = {
-    PENDING_REVIEW: requests.filter((r) => r.status === "PENDING_REVIEW").length,
-    OPEN: requests.filter((r) => r.status === "OPEN").length,
-    DONE: requests.filter((r) => r.status === "REJECTED" || r.status === "CLOSED").length,
+  const lists: Record<Tab, AdminClassRequest[]> = {
+    review: requests.filter((r) => r.status === "PENDING_REVIEW"),
+    open: requests.filter((r) => r.status === "OPEN"),
+    done: requests.filter((r) => r.status === "REJECTED" || r.status === "CLOSED"),
   };
 
-  const visible = requests.filter((r) =>
-    tab === "DONE" ? r.status === "REJECTED" || r.status === "CLOSED" : r.status === tab,
-  );
-
-  function closeDialog() {
-    setPending(null);
-    setNote("");
+  async function approve(id: string) {
+    if (await act(id, "APPROVE")) toast("Shared with teachers as a vacancy");
   }
 
-  async function confirm() {
-    if (!pending) return;
-
-    if (pending.action === "REJECT" && !note.trim()) return;
-
-    if (await act(pending.request.id, pending.action, note.trim() || undefined)) {
-      closeDialog();
-    }
+  async function closeVacancy(id: string, note?: string) {
+    if (await act(id, "CLOSE", note)) toast("Vacancy closed");
   }
+
+  const items: AdminQueueItem[] = lists[tab].map((request) => ({
+    id: request.id,
+    group: tab === "review" ? request.subject : null,
+    date: tab === "open" ? (request.circulatedAt ?? request.createdAt) : request.createdAt,
+    searchText: [
+      request.title,
+      request.subject,
+      request.parentName,
+      request.parentEmail,
+      request.studentName ?? "",
+      formatClassRequestDate(request.createdAt),
+    ].join(" "),
+    render: ({ open, onToggle, waitingTag }) => (
+      <ClassRequestCard
+        request={request}
+        open={open}
+        onToggle={onToggle}
+        waitingTag={waitingTag}
+        busy={busyId === request.id}
+        onApprove={(id) => void approve(id)}
+        onReject={setRejecting}
+        onClose={(id, note) => void closeVacancy(id, note)}
+      />
+    ),
+  }));
 
   return (
-    <AdminPage>
-      <AdminPageHeader
+    <AdminStack>
+      <AdminHead
         crumbs={[{ label: "Overview", href: "/admin" }, { label: "Classes and safety" }]}
         title="Class requests"
         description="Custom classes parents asked for. Approve to share with teachers as a vacancy."
       />
 
-      <div>
-        <AdminTabs
-          label="Request status"
-          value={tab}
-          onChange={setTab}
-          tabs={TABS.map((t) => ({ ...t, count: counts[t.value] }))}
-        />
-      </div>
+      <AdminPillTabs
+        label="Request status"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: "review", label: "To review", count: lists.review.length },
+          { value: "open", label: "Open vacancies" },
+          { value: "done", label: "Rejected / closed" },
+        ]}
+      />
 
-      <AdminError>{error}</AdminError>
+      <AdminErrorNote>{error}</AdminErrorNote>
 
       {loading ? (
-        <AdminLoading />
-      ) : visible.length === 0 ? (
-        <AdminEmpty message="Nothing here." />
+        <AdminLoadingState message="Loading class requests…" />
+      ) : items.length === 0 ? (
+        <AdminEmptyState message={EMPTY[tab]} />
       ) : (
-        <div className="flex flex-col gap-4">
-          {visible.map((r) => {
-            const busy = busyId === r.id;
-            const accepted = r.responses.filter((x) => x.status === "ACCEPTED");
-            const declined = r.responses.length - accepted.length;
-            const tags = [r.subject, r.grade, r.board, r.language].filter(Boolean) as string[];
-            const facts = [
-              r.sessionsPerWeek ? `${r.sessionsPerWeek} class(es)/week` : null,
-              r.preferredDays.length > 0
-                ? `Schedule: ${formatSchedule(r.preferredDays, r.preferredTime)} (IST)`
-                : r.preferredSchedule
-                  ? `Timings: ${r.preferredSchedule}`
-                  : null,
-              r.pricePerSession ? `Fixed price ₹${r.pricePerSession}/hour` : null,
-            ].filter(Boolean) as string[];
-
-            return (
-              <AdminPanel key={r.id} padded>
-                <article className="flex flex-col gap-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <h2 className="font-heading text-xl font-bold">{r.title}</h2>
-                    <AdminPill tone={STATUS_TONE[r.status] ?? "neutral"}>
-                      {CLASS_REQUEST_STATUS_LABELS[r.status] ?? r.status}
-                    </AdminPill>
-                  </div>
-
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <AdminPill key={tag}>{tag}</AdminPill>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="text-[15px] text-admin-muted">
-                    By {r.parentName} ({r.parentEmail})
-                    {r.studentName ? ` for ${r.studentName}` : ""},{" "}
-                    {formatClassRequestDate(r.createdAt)}
-                  </p>
-
-                  <p className="whitespace-pre-line text-base">{r.description}</p>
-
-                  {facts.length > 0 && (
-                    <p className="text-[15px] font-bold">{facts.join(" · ")}</p>
-                  )}
-
-                  {r.adminNote && <p className="text-[15px] text-admin-muted">Note: {r.adminNote}</p>}
-
-                  {r.status !== "PENDING_REVIEW" && r.responses.length > 0 && (
-                    <div className="flex flex-col gap-1 border-t border-admin-line-soft pt-3 text-[15px]">
-                      <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
-                        Teacher responses: {accepted.length} accepted, {declined} declined
-                      </span>
-                      {accepted.map((x) => (
-                        <p key={x.id}>
-                          {teacherName(x.teacher)} accepted,{" "}
-                          {x.course
-                            ? `listing "${x.course.courseTitle}" (${x.course.status === "APPROVED" ? "live" : x.course.status.toLowerCase().replace("_", " ")})`
-                            : "listing not created yet"}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-
-                  {(r.status === "PENDING_REVIEW" || r.status === "OPEN") && (
-                    <div className="flex flex-wrap gap-2 border-t border-admin-line-soft pt-4">
-                      {r.status === "PENDING_REVIEW" && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => act(r.id, "APPROVE")}
-                            className={adminButtonClass("primary")}
-                          >
-                            {busy ? "Working…" : "Approve and share with teachers"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => setPending({ request: r, action: "REJECT" })}
-                            className={adminButtonClass("secondary", "text-red-700")}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {r.status === "OPEN" && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => setPending({ request: r, action: "CLOSE" })}
-                          className={adminButtonClass("secondary")}
-                        >
-                          Close vacancy
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </article>
-              </AdminPanel>
-            );
-          })}
-        </div>
+        <AdminQueue
+          key={tab}
+          items={items}
+          searchPlaceholder="Filter by title, subject or parent"
+          countLabel={tab === "review" ? "waiting" : tab === "open" ? "open" : "closed"}
+          showWaiting={tab === "review"}
+        />
       )}
 
-      {pending && (
-        <AdminDialog
-          title={pending.action === "REJECT" ? "Reject request" : "Close vacancy"}
-          subtitle={`“${pending.request.title}”`}
-          onClose={closeDialog}
-          footer={
-            <>
-              <button type="button" onClick={closeDialog} className={adminButtonClass("secondary")}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirm}
-                disabled={pending.action === "REJECT" && !note.trim()}
-                className={adminButtonClass("primary")}
-              >
-                Confirm
-              </button>
-            </>
-          }
-        >
-          <label htmlFor="class-request-note" className={adminLabelClass}>
-            {pending.action === "REJECT"
-              ? "Reason for the parent (required)"
-              : "Note for the parent (optional)"}
-          </label>
-          <textarea
-            id="class-request-note"
-            autoFocus
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            maxLength={500}
-            className={adminTextareaClass}
-          />
-        </AdminDialog>
+      {rejecting && (
+        <AdminReasonDialog
+          title="Reject request"
+          description={`“${rejecting.title}” will not be shared with teachers. The parent sees your reason.`}
+          label="Reason for the parent"
+          hint="Required, 5 to 500 characters. The parent can read it."
+          confirmLabel="Reject request"
+          danger
+          onCancel={() => setRejecting(null)}
+          onSubmit={async (reason) => {
+            const ok = await act(rejecting.id, "REJECT", reason);
+
+            if (!ok) return "Could not reject this request. Please try again.";
+
+            setRejecting(null);
+            toast("Request rejected");
+
+            return null;
+          }}
+        />
       )}
-    </AdminPage>
+
+      {toastNode}
+    </AdminStack>
   );
 }
