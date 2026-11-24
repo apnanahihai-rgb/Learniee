@@ -69,6 +69,22 @@ export function AdminStack({ children }: { children: ReactNode }) {
   return <div className="flex flex-col gap-6">{children}</div>;
 }
 
+/* ---------------------------------- Stats ---------------------------------- */
+
+/** Row of small number cards (the design's `.stats`): 2 across on phones, 4 from 640px. */
+export function AdminStats({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-2xl border border-pd-line bg-white p-4">
+          <b className="block font-heading text-[28px] font-semibold leading-tight">{item.value}</b>
+          <small className="text-[13px] text-pd-ink3">{item.label}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------------------------------- Tabs ---------------------------------- */
 
 /** Pill tab bar with a waiting-count badge on each tab. */
