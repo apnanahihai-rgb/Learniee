@@ -4,17 +4,13 @@ import Link from "next/link";
 
 import type { AdminTeacherSummary } from "@/features/admin/types/teacher";
 import { getCompleteness } from "@/features/admin/utils/teacherCompleteness";
+import { adminBtn, adminTag } from "@/features/admin/components/ui/adminStyles";
 import {
-  AdminAvatar,
-  AdminPill,
-  AdminTableCard,
-  adminButtonClass,
-  adminRowClass,
-  adminTableClass,
-  adminTdClass,
-  adminThClass,
-  formatAdminDate,
-} from "@/features/admin/components/ui/primitives";
+  AdminDataTable,
+  AdminPerson,
+  type AdminColumn,
+} from "@/features/admin/components/ui/design";
+import { formatAdminDate } from "@/features/admin/components/ui/primitives";
 
 interface Props {
   teachers: AdminTeacherSummary[];
@@ -22,80 +18,72 @@ interface Props {
   dateLabel: string;
 }
 
+function fullName(teacher: AdminTeacherSummary) {
+  return `${teacher.firstName ?? ""} ${teacher.lastName ?? ""}`.trim();
+}
+
 export default function TeacherApplicationsTable({ teachers, dateLabel }: Props) {
-  return (
-    <AdminTableCard>
-      <table className={`${adminTableClass} min-w-[820px]`}>
-        <thead>
-          <tr>
-            <th className={adminThClass}>Teacher</th>
-            <th className={adminThClass}>Location</th>
-            <th className={adminThClass}>Experience</th>
-            <th className={adminThClass}>Documents</th>
-            <th className={adminThClass}>{dateLabel}</th>
-            <th className={`${adminThClass} text-right`}>Action</th>
-          </tr>
-        </thead>
+  const columns: Array<AdminColumn<AdminTeacherSummary>> = [
+    {
+      label: "Teacher",
+      block: true,
+      render: (teacher) => <AdminPerson name={fullName(teacher)} meta={teacher.email} />,
+    },
+    {
+      label: "Location",
+      render: (teacher) => [teacher.city, teacher.country].filter(Boolean).join(", ") || "—",
+    },
+    {
+      label: "Experience",
+      render: (teacher) => (
+        <>
+          {teacher.qualifications || "—"}
+          {teacher.overallExperience && (
+            <small className="block text-xs text-pd-ink3">{teacher.overallExperience} yrs</small>
+          )}
+        </>
+      ),
+    },
+    {
+      label: "Documents",
+      render: (teacher) => {
+        const { missingRequired } = getCompleteness(teacher.fileTypes, teacher.hasPan);
 
-        <tbody>
-          {teachers.map((teacher) => {
-            const { missingRequired } = getCompleteness(teacher.fileTypes, teacher.hasPan);
-            const location = [teacher.city, teacher.country].filter(Boolean).join(", ");
-            const name = `${teacher.firstName ?? ""} ${teacher.lastName ?? ""}`.trim();
+        return (
+          <>
+            <span className={adminTag(missingRequired === 0 ? "violet" : "amber")}>
+              {missingRequired === 0 ? "Complete" : `${missingRequired} missing`}
+            </span>
+            {teacher.approvalStatus === "PENDING" && teacher.interviewScheduledAt && (
+              <small className="block text-xs font-semibold text-pd-brand-d">
+                Interview {formatAdminDate(teacher.interviewScheduledAt)}
+              </small>
+            )}
+            {teacher.appealCount > 0 && (
+              <small className="block text-xs font-semibold text-pd-brand-d">
+                Appeal #{teacher.appealCount}
+              </small>
+            )}
+          </>
+        );
+      },
+    },
+    {
+      label: dateLabel,
+      nowrap: true,
+      render: (teacher) => formatAdminDate(teacher.updatedAt),
+    },
+    {
+      label: "Action",
+      right: true,
+      block: true,
+      render: (teacher) => (
+        <Link href={`/admin/teachers/${teacher.id}`} className={adminBtn("pri", "sm")}>
+          Review
+        </Link>
+      ),
+    },
+  ];
 
-            return (
-              <tr key={teacher.id} className={adminRowClass}>
-                <td className={adminTdClass}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <AdminAvatar name={name} />
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-extrabold">{name}</p>
-                      <p className="truncate text-sm text-admin-muted">{teacher.email}</p>
-                    </div>
-                  </div>
-                </td>
-
-                <td className={adminTdClass}>{location || "—"}</td>
-
-                <td className={adminTdClass}>
-                  <p>{teacher.qualifications || "—"}</p>
-                  {teacher.overallExperience && (
-                    <p className="text-sm text-admin-muted">{teacher.overallExperience} yrs</p>
-                  )}
-                </td>
-
-                <td className={adminTdClass}>
-                  <div className="flex flex-col items-start gap-1">
-                    <AdminPill tone={missingRequired === 0 ? "brand" : "warn"}>
-                      {missingRequired === 0 ? "Complete" : `${missingRequired} missing`}
-                    </AdminPill>
-                    {teacher.approvalStatus === "PENDING" && teacher.interviewScheduledAt && (
-                      <span className="text-[13px] font-bold text-brand-dark">
-                        Interview {formatAdminDate(teacher.interviewScheduledAt)}
-                      </span>
-                    )}
-                    {teacher.appealCount > 0 && (
-                      <span className="text-[13px] font-bold text-brand-dark">
-                        Appeal #{teacher.appealCount}
-                      </span>
-                    )}
-                  </div>
-                </td>
-
-                <td className={`${adminTdClass} whitespace-nowrap`}>
-                  {formatAdminDate(teacher.updatedAt)}
-                </td>
-
-                <td className={`${adminTdClass} text-right`}>
-                  <Link href={`/admin/teachers/${teacher.id}`} className={adminButtonClass("primary")}>
-                    Review
-                  </Link>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </AdminTableCard>
-  );
+  return <AdminDataTable columns={columns} rows={teachers} rowKey={(teacher) => teacher.id} />;
 }
