@@ -5,10 +5,12 @@ import { useState } from "react";
 
 import AdminBottomNav from "@/features/admin/components/ui/AdminBottomNav";
 import { AdminCountsContext } from "@/features/admin/components/ui/AdminCountsContext";
+import { AdminIdentityContext } from "@/features/admin/components/ui/AdminIdentityContext";
 import AdminMoreSheet from "@/features/admin/components/ui/AdminMoreSheet";
 import AdminNav from "@/features/admin/components/ui/AdminNav";
 import AdminTopBar from "@/features/admin/components/ui/AdminTopBar";
 import { adminGroupOf } from "@/features/admin/config/adminNav";
+import { useAdminIdentityLoader } from "@/features/admin/hooks/useAdminIdentity";
 import { useAdminQueueCounts } from "@/features/admin/hooks/useAdminQueueCounts";
 
 /**
@@ -19,6 +21,7 @@ import { useAdminQueueCounts } from "@/features/admin/hooks/useAdminQueueCounts"
  */
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const queue = useAdminQueueCounts();
+  const identity = useAdminIdentityLoader();
   const pathname = usePathname();
 
   const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(() => {
@@ -52,6 +55,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <AdminCountsContext.Provider value={queue}>
+      <AdminIdentityContext.Provider value={identity}>
       <div className="min-h-dvh bg-pd-bg font-sans text-[14px] leading-[1.55] text-pd-ink antialiased">
         <a
           href="#view"
@@ -95,6 +99,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </main>
       </div>
+      </AdminIdentityContext.Provider>
     </AdminCountsContext.Provider>
   );
 }

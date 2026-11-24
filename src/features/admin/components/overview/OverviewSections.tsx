@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
+import { useAdminIdentity } from "@/features/admin/components/ui/AdminIdentityContext";
 import {
   ADMIN_CARD_FLUSH,
   ADMIN_SECTION_H2,
@@ -31,6 +32,8 @@ export function waitingTotal(counts: AdminQueueCounts | null) {
 
 export function OverviewHeading({ counts }: CountsProps) {
   const total = waitingTotal(counts);
+  const identity = useAdminIdentity();
+  const firstName = identity?.firstName.trim();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
@@ -38,7 +41,7 @@ export function OverviewHeading({ counts }: CountsProps) {
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="font-heading text-[28px] font-semibold leading-tight text-balance outline-none sm:text-[32px]">
-          <span suppressHydrationWarning>{greeting}</span>, Admin
+          <span suppressHydrationWarning>{greeting}</span>, {firstName || "Admin"}
         </h1>
         <p className="mt-0.5 max-w-[62ch] text-[14px] text-pd-ink3">
           {total === null
@@ -52,6 +55,9 @@ export function OverviewHeading({ counts }: CountsProps) {
 
 export function OverviewHero({ counts }: CountsProps) {
   const total = waitingTotal(counts);
+  // Send Admin to the first big queue that actually has something in it.
+  const firstBusy = counts ? PRIORITY_QUEUES.find((queue) => counts[queue.countKey] > 0) : undefined;
+  const target = navItemForQueue((firstBusy ?? PRIORITY_QUEUES[0]).countKey);
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl bg-pd-brand p-7 text-white sm:flex-row sm:items-center sm:justify-between">
@@ -69,8 +75,8 @@ export function OverviewHero({ counts }: CountsProps) {
       </div>
 
       <div className="flex flex-col gap-2 sm:items-end">
-        <Link href="/admin/teachers" className={adminBtn("go")}>
-          Start with teacher applications
+        <Link href={target.href} className={adminBtn("go")}>
+          Start with {target.label.toLowerCase()}
         </Link>
         <Link href="/admin/activity-logs" className={adminBtn("alt")}>
           Open activity log

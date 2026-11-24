@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 
+import { adminInitials, useAdminIdentity } from "@/features/admin/components/ui/AdminIdentityContext";
 import AdminJumpSearch from "@/features/admin/components/ui/AdminJumpSearch";
 import { ADMIN_FOCUS, cx } from "@/features/admin/components/ui/adminStyles";
 import NotificationBell from "@/features/shared/components/NotificationBell";
 
 /** Fixed 60px top bar: logo + role pill, jump search, bell, Profile. */
 export default function AdminTopBar() {
+  const identity = useAdminIdentity();
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 flex h-[60px] items-center gap-3 border-b border-pd-line bg-white px-4">
       <Link
@@ -42,7 +45,7 @@ export default function AdminTopBar() {
           )}
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-pd-b100 font-bold text-pd-brand-d">
-            A
+            {adminInitials(identity)}
           </span>
           <span className="hidden font-semibold sm:block">Profile</span>
         </Link>
