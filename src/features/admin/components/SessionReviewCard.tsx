@@ -1,129 +1,156 @@
+"use client";
+
+import type { ReactNode } from "react";
+
 import { formatPlatformTime } from "@/lib/platformTime";
-import {
-  SESSION_STATUS_LABEL,
-  SESSION_STATUS_STYLE,
-} from "@/features/shared/utils/sessionOutcome";
+import { SESSION_STATUS_LABEL } from "@/features/shared/utils/sessionOutcome";
 import type { SessionReviewItem } from "@/features/shared/types/sessionReview";
+import { adminBtn, adminTag, type AdminTagColor } from "@/features/admin/components/ui/adminStyles";
 import {
-  AdminFact,
-  AdminPanel,
-  adminButtonClass,
-} from "@/features/admin/components/ui/primitives";
+  AdminDecisionBar,
+  AdminGoldNote,
+  AdminGroup,
+  AdminProps,
+  AdminQuote,
+  AdminReviewCard,
+  AdminText,
+  AdminTwoCols,
+} from "@/features/admin/components/ui/queue";
 
 function at(iso: string | null) {
   return iso ? formatPlatformTime(new Date(iso), true) : "—";
 }
 
-const REASON_LABEL = {
-  NEEDS_REVIEW: "Needs review",
-  REPORTED: "Parent reported",
-  DECIDED: "Decided",
-} as const;
+/** Minutes both people were in the class, from the stored share of the class. */
+export function minutesTogether(item: SessionReviewItem): number | null {
+  if (item.overlapPercent === null || !item.startsAt || !item.endsAt) return null;
 
-function Callout({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-[14px] bg-admin-surface px-4 py-3">
-      <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
-        {label}
-      </span>
-      <span className="whitespace-pre-wrap text-[15px]">{children}</span>
-    </div>
-  );
+  const length = (new Date(item.endsAt).getTime() - new Date(item.startsAt).getTime()) / 60_000;
+
+  return Math.max(0, Math.round((length * item.overlapPercent) / 100));
 }
 
+/** When the item entered the queue — drives "Waiting N days". */
+export function reviewWaitingSince(item: SessionReviewItem): string | null {
+  return item.reportedAt ?? item.endsAt ?? item.startsAt;
+}
+
+const STATUS_COLOR: Partial<Record<SessionReviewItem["status"], AdminTagColor>> = {
+  NEEDS_REVIEW: "red",
+  COMPLETED: "green",
+};
+
+/** One class waiting for (or already given) an Admin decision, as a review card (Admin design 07). */
 export default function SessionReviewCard({
   item,
+  open,
+  onToggle,
+  waitingTag,
   onDecide,
 }: {
   item: SessionReviewItem;
+  open: boolean;
+  onToggle: () => void;
+  /** "Waiting N days" tag from the queue. */
+  waitingTag?: ReactNode;
   onDecide: () => void;
 }) {
+  const together = minutesTogether(item);
+  const title = `${item.courseTitle ?? "Class"}${item.sessionNumber !== null ? ` · Class ${item.sessionNumber}` : ""}`;
+  const isOverride = item.kind === "OVERRIDE";
+  const cancelled = item.status === "CANCELLED" || item.status === "CANCELLED_LATE";
+
   return (
-    <AdminPanel padded>
-      <article className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-brand-dark">
-              {REASON_LABEL[item.reason]}
-              {item.sessionNumber !== null && ` · Session ${item.sessionNumber}`}
-              {item.cycle && ` · Cycle ${item.cycle.cycleNumber} (${item.cycle.status.toLowerCase()})`}
-            </span>
-            <span className="text-lg font-extrabold">
-              {item.courseTitle ?? "Class"} — {item.studentName}
-            </span>
-            <span className="text-[15px] text-admin-muted">
-              Teacher {item.teacherName} · Parent {item.parentName}
-            </span>
-            <span className="text-[15px] text-admin-muted">
-              {at(item.startsAt)} – {at(item.endsAt)}
-            </span>
-          </div>
+    <AdminReviewCard
+      id={`review-${item.id}`}
+      open={open}
+      onToggle={onToggle}
+      title={title}
+      meta={`Teacher: ${item.teacherName} · Student: ${item.studentName} · ${at(item.startsAt)}`}
+      keyLabel="Time together"
+      keyValue={together !== null ? `${together} min` : "—"}
+      tags={
+        <>
+          {waitingTag}
+          {item.reason === "REPORTED" && <span className={adminTag("violet")}>Parent reported</span>}
+          {item.reason === "DECIDED" && <span className={adminTag("green")}>Decided</span>}
+          <span className={adminTag(STATUS_COLOR[item.status] ?? "gray")}>
+            {SESSION_STATUS_LABEL[item.status]}
+          </span>
+        </>
+      }
+      footer={
+        <AdminDecisionBar>
+          <button
+            type="button"
+            onClick={onDecide}
+            aria-label={`${isOverride ? "Override" : "Decide"} ${item.courseTitle ?? "class"} for ${item.studentName}`}
+            className={adminBtn("pri")}
+          >
+            {isOverride ? "Override" : "Decide"}
+          </button>
+        </AdminDecisionBar>
+      }
+    >
+      <AdminGroup title="Class timeline">
+        <AdminProps
+          items={[
+            { label: "Teacher started", value: at(item.teacherStartedAt) },
+            { label: "Student joined", value: at(item.studentJoinedAt) },
+            { label: "Teacher ended", value: at(item.teacherEndedAt) },
+            {
+              label: "Time together",
+              value: together !== null ? `${together} min` : "—",
+              highlight: true,
+            },
+          ]}
+        />
+      </AdminGroup>
 
-          <div className="flex flex-col items-end gap-3">
-            <span
-              className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-extrabold ${SESSION_STATUS_STYLE[item.status]}`}
-            >
-              {SESSION_STATUS_LABEL[item.status]}
-            </span>
-            <button
-              type="button"
-              onClick={onDecide}
-              aria-label={`${item.kind === "OVERRIDE" ? "Override" : "Decide"} ${item.courseTitle ?? "class"} for ${item.studentName}`}
-              className={adminButtonClass("primary")}
-            >
-              {item.kind === "OVERRIDE" ? "Override" : "Decide"}
-            </button>
-          </div>
-        </div>
+      {(item.reportNote || item.teacherSummary) && (
+        <AdminTwoCols>
+          {item.reportNote ? (
+            <AdminQuote title={`Parent’s report · ${at(item.reportedAt)}`}>{item.reportNote}</AdminQuote>
+          ) : (
+            <span />
+          )}
+          {item.teacherSummary && (
+            <AdminQuote title="Teacher’s summary">{item.teacherSummary}</AdminQuote>
+          )}
+        </AdminTwoCols>
+      )}
 
-        <div className="grid grid-cols-2 gap-4 border-y border-admin-line-soft py-4 md:grid-cols-4">
-          <AdminFact label="Teacher started">{at(item.teacherStartedAt)}</AdminFact>
-          <AdminFact label="Student joined">{at(item.studentJoinedAt)}</AdminFact>
-          <AdminFact label="Teacher ended">{at(item.teacherEndedAt)}</AdminFact>
-          <AdminFact label="Time together">
-            {item.overlapPercent !== null ? `${item.overlapPercent}% of the class` : "—"}
-          </AdminFact>
-        </div>
+      {cancelled && (
+        <AdminText title="Cancellation">
+          Cancelled by {item.cancelledByRole?.toLowerCase() ?? "unknown"}
+          {item.cancelReason ? `: ${item.cancelReason}` : "."}
+        </AdminText>
+      )}
 
-        {(item.status === "CANCELLED" || item.status === "CANCELLED_LATE") && (
-          <p className="text-[15px] text-admin-muted">
-            Cancelled by {item.cancelledByRole?.toLowerCase() ?? "unknown"}
-            {item.cancelReason ? `: ${item.cancelReason}` : "."}
-          </p>
-        )}
+      {item.cycle?.status === "CLOSED" && (
+        <AdminGoldNote title="Cycle already closed">
+          Cycle {item.cycle.cycleNumber} has closed ({item.cycle.countedSessionCount ?? 0} counted,{" "}
+          {item.cycle.forfeitedSessionCount ?? 0} forfeited
+          {(item.cycle.excusedSessionCount ?? 0) > 0
+            ? `, ${item.cycle.excusedSessionCount} excused with no make-up`
+            : ""}
+          ). A decision here re-counts it.
+        </AdminGoldNote>
+      )}
 
-        {item.reportNote && (
-          <Callout label={`Parent's report · ${at(item.reportedAt)}`}>{item.reportNote}</Callout>
-        )}
-
-        {item.teacherSummary && <Callout label="Teacher's summary">{item.teacherSummary}</Callout>}
-
-        {item.cycle?.status === "CLOSED" && (
-          <p className="text-[15px] font-bold text-[#8a6500]">
-            This cycle has already closed ({item.cycle.countedSessionCount ?? 0} counted,{" "}
-            {item.cycle.forfeitedSessionCount ?? 0} forfeited
-            {(item.cycle.excusedSessionCount ?? 0) > 0
-              ? `, ${item.cycle.excusedSessionCount} excused with no make-up`
-              : ""}
-            ). A decision here re-counts it.
-          </p>
-        )}
-
-        {item.history.length > 0 && (
-          <div className="flex flex-col gap-1 border-t border-admin-line-soft pt-3">
-            <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
-              History
-            </span>
+      {item.history.length > 0 && (
+        <AdminGroup title="History">
+          <ul className="flex flex-col gap-1">
             {item.history.map((h) => (
-              <p key={h.id} className="text-sm text-admin-muted">
+              <li key={h.id} className="text-[13px] text-pd-ink3">
                 {at(h.createdAt)} · {h.kind === "OVERRIDE" ? "Override" : "Decision"}:{" "}
                 {SESSION_STATUS_LABEL[h.fromStatus]} → {SESSION_STATUS_LABEL[h.toStatus]}
                 {h.decidedByName ? ` · ${h.decidedByName}` : ""} — {h.reason}
-              </p>
+              </li>
             ))}
-          </div>
-        )}
-      </article>
-    </AdminPanel>
+          </ul>
+        </AdminGroup>
+      )}
+    </AdminReviewCard>
   );
 }

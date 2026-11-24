@@ -165,6 +165,17 @@ export function AdminText({ title, children }: { title: string; children: ReactN
   );
 }
 
+/** Quoted words (a parent's report, a teacher's summary) with the design's violet left rule. */
+export function AdminQuote({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <AdminGroup title={title}>
+      <p className="whitespace-pre-wrap border-l-[3px] border-pd-b100 py-0.5 pl-3.5 text-[14px] text-pd-ink2">
+        {children}
+      </p>
+    </AdminGroup>
+  );
+}
+
 export function AdminTwoCols({ children }: { children: ReactNode }) {
   return <div className="grid gap-5 md:grid-cols-2">{children}</div>;
 }
@@ -224,11 +235,17 @@ export function AdminQueue({
   searchPlaceholder = "Filter this list",
   amountLabel = "Amount",
   emptyMessage = "Nothing matches your filter.",
+  countLabel = "waiting",
+  showWaiting = true,
 }: {
   items: AdminQueueItem[];
   searchPlaceholder?: string;
   amountLabel?: string;
   emptyMessage?: string;
+  /** Word after the count pill ("5 waiting", "12 decided"). */
+  countLabel?: string;
+  /** False for finished lists: no "Waiting N days" tag or oldest-waiting summary (dates still sort). */
+  showWaiting?: boolean;
 }) {
   const [now] = useState(() => Date.now());
   const [search, setSearch] = useState("");
@@ -263,7 +280,9 @@ export function AdminQueue({
   const effectiveOpen =
     openId === null ? null : visible.some((item) => item.id === openId) ? openId! : visible[0]?.id ?? null;
 
-  const ages = items.map((item) => waitingDays(item.date, now)).filter((d): d is number => d != null);
+  const ages = showWaiting
+    ? items.map((item) => waitingDays(item.date, now)).filter((d): d is number => d != null)
+    : [];
   const total = items.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const summary = [
     ages.length ? `Oldest waiting ${Math.max(...ages)} days` : "",
@@ -281,7 +300,7 @@ export function AdminQueue({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <b className="rounded-full bg-pd-amber-bg px-3 py-1 text-[13px] font-bold text-pd-amber">
-                {items.length} waiting
+                {items.length} {countLabel}
               </b>
               {summary && <span className="text-[13px] text-pd-ink3">{summary}</span>}
             </div>
@@ -343,7 +362,7 @@ export function AdminQueue({
               {item.render({
                 open: effectiveOpen === item.id,
                 onToggle: () => setOpenId(effectiveOpen === item.id ? null : item.id),
-                waitingTag: waitingTag(waitingDays(item.date, now)),
+                waitingTag: showWaiting ? waitingTag(waitingDays(item.date, now)) : null,
               })}
             </div>
           ))}

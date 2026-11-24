@@ -9,15 +9,11 @@ import {
 } from "@/features/shared/utils/outcomeConfirmation";
 import { SESSION_STATUS_LABEL } from "@/features/shared/utils/sessionOutcome";
 import type { SessionReviewItem } from "@/features/shared/types/sessionReview";
-import {
-  AdminDialog,
-  adminButtonClass,
-  adminLabelClass,
-  adminTextareaClass,
-  cx,
-} from "@/features/admin/components/ui/primitives";
+import { adminBtn, cx } from "@/features/admin/components/ui/adminStyles";
+import { AdminErrorNote } from "@/features/admin/components/ui/design";
+import PdDialog from "@/features/shared/components/PdDialog";
 
-/** Decide (or override) a class outcome. Opens from a Class review card. */
+/** Decide (or override) a class outcome. Opens from a Class review card (Admin design 07). */
 export default function SessionDecisionDialog({
   item,
   onCancel,
@@ -25,27 +21,32 @@ export default function SessionDecisionDialog({
 }: {
   item: SessionReviewItem;
   onCancel: () => void;
+  /** Resolve with an error message to keep the dialog open, or null when saved. */
   onSubmit: (status: string, reason: string) => Promise<string | null>;
 }) {
   const [status, setStatus] = useState<string>(item.reason === "REPORTED" ? item.status : "");
   const [reason, setReason] = useState("");
+  const [invalid, setInvalid] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const isOverride = item.kind === "OVERRIDE";
   const stands = status === item.status;
-  const reasonLength = reason.trim().length;
-  const canSubmit =
-    !busy &&
-    status !== "" &&
-    reasonLength >= DECISION_REASON_MIN_LENGTH &&
-    !(isOverride && stands);
+  const length = reason.trim().length;
+  const canSubmit = !busy && status !== "" && !(isOverride && stands);
 
   async function submit() {
+    if (length < DECISION_REASON_MIN_LENGTH || length > DECISION_REASON_MAX_LENGTH) {
+      setInvalid(true);
+      document.getElementById("decision-reason")?.focus();
+
+      return;
+    }
+
     setBusy(true);
     setError("");
 
-    const failure = await onSubmit(status, reason);
+    const failure = await onSubmit(status, reason.trim());
 
     if (failure) {
       setError(failure);
@@ -54,102 +55,99 @@ export default function SessionDecisionDialog({
   }
 
   return (
-    <AdminDialog
-      wide
-      title={isOverride ? "Override outcome" : "Decide outcome"}
-      subtitle={undefined}
+    <PdDialog
+      title={isOverride ? "Override this class" : "Decide this class"}
       onClose={busy ? () => {} : onCancel}
       footer={
         <>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className={adminButtonClass("secondary")}
-          >
+          <button type="button" onClick={onCancel} disabled={busy} className={adminBtn("sec")}>
             Cancel
           </button>
           <button
             type="button"
-            onClick={submit}
+            onClick={() => void submit()}
             disabled={!canSubmit}
-            className={adminButtonClass("primary")}
+            className={adminBtn("pri")}
           >
             {busy ? "Saving…" : "Save decision"}
           </button>
         </>
       }
     >
-      <p className="-mt-2 mb-4 text-[15px] text-admin-muted">
-        Recorded as <strong>{SESSION_STATUS_LABEL[item.status]}</strong>.
+      <p className="text-pd-ink2">
+        Recorded as <b>{SESSION_STATUS_LABEL[item.status]}</b>.
         {item.reason === "REPORTED" && " Pick the same outcome to keep it as recorded."}
         {isOverride && " For an override, pick a different outcome than the one recorded."}
       </p>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className={adminLabelClass}>Outcome</legend>
-        {ADMIN_DECISION_OPTIONS.map((option) => (
-          <label
-            key={option.status}
-            className={cx(
-              "flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-2.5",
-              status === option.status
-                ? "border-brand bg-admin-tint"
-                : "border-admin-line hover:bg-admin-hover",
-            )}
-          >
-            <input
-              type="radio"
-              name="outcome"
-              value={option.status}
-              checked={status === option.status}
-              onChange={() => setStatus(option.status)}
-              className="mt-1 accent-brand"
-            />
-            <span className="flex flex-col">
-              <span className="text-[15px] font-extrabold">
-                {option.label}
-                {option.status === item.status && (
-                  <span className="ml-2 text-sm font-semibold text-admin-muted">(as recorded)</span>
-                )}
+      <AdminErrorNote>{error}</AdminErrorNote>
+
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-[13px] font-semibold text-pd-ink2">Outcome</legend>
+        <div className="flex flex-col gap-2">
+          {ADMIN_DECISION_OPTIONS.map((option) => (
+            <label
+              key={option.status}
+              className={cx(
+                "flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 font-semibold",
+                status === option.status ? "border-pd-brand bg-pd-b50" : "border-pd-line",
+              )}
+            >
+              <input
+                type="radio"
+                name="outcome"
+                value={option.status}
+                checked={status === option.status}
+                disabled={busy}
+                onChange={() => setStatus(option.status)}
+                className="size-[18px] accent-pd-brand"
+              />
+              <span className="flex flex-col">
+                <span>
+                  {option.label}
+                  {option.status === item.status && (
+                    <span className="ml-2 text-xs font-normal text-pd-ink3">(as recorded)</span>
+                  )}
+                </span>
+                <span className="text-xs font-normal text-pd-ink3">{option.hint}</span>
               </span>
-              <span className="text-sm text-admin-muted">{option.hint}</span>
-            </span>
-          </label>
-        ))}
+            </label>
+          ))}
+        </div>
       </fieldset>
 
-      <div className="mt-4">
-        <label htmlFor="decision-reason" className={adminLabelClass}>
-          Reason{" "}
-          <span className="font-semibold text-admin-muted">
-            (required, it is logged and shown in the class history)
-          </span>
-        </label>
-        <textarea
-          id="decision-reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-          maxLength={DECISION_REASON_MAX_LENGTH}
-          className={adminTextareaClass}
-        />
-        <span className="mt-1 block text-sm text-admin-muted">
-          At least {DECISION_REASON_MIN_LENGTH} characters.
-        </span>
-      </div>
-
       {isOverride && stands && (
-        <p className="mt-2 text-sm font-bold text-[#8a6500]">
+        <p role="note" className="text-xs font-semibold text-pd-amber">
           That is already the recorded outcome. Pick a different one to override it.
         </p>
       )}
 
-      {error && (
-        <p role="alert" className="mt-3 text-[15px] font-bold text-red-700">
-          {error}
-        </p>
-      )}
-    </AdminDialog>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="decision-reason" className="text-[13px] font-semibold text-pd-ink2">
+          Reason
+        </label>
+        <textarea
+          id="decision-reason"
+          value={reason}
+          maxLength={DECISION_REASON_MAX_LENGTH}
+          disabled={busy}
+          aria-invalid={invalid || undefined}
+          onChange={(event) => {
+            setReason(event.target.value);
+            if (event.target.value.trim().length >= DECISION_REASON_MIN_LENGTH) setInvalid(false);
+          }}
+          className="min-h-24 w-full resize-y rounded-xl border border-pd-line2 bg-white p-3 outline-none focus:border-pd-brand focus:ring-4 focus:ring-pd-b100 aria-[invalid=true]:border-pd-red disabled:bg-pd-bg"
+        />
+        <span className="text-xs text-pd-ink3">
+          Required, at least {DECISION_REASON_MIN_LENGTH} characters. Logged and shown in the class
+          history.
+        </span>
+        {invalid && (
+          <span role="alert" className="text-xs font-semibold text-pd-red">
+            Please enter {DECISION_REASON_MIN_LENGTH} to {DECISION_REASON_MAX_LENGTH} characters.
+          </span>
+        )}
+      </div>
+    </PdDialog>
   );
 }
