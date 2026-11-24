@@ -30,9 +30,15 @@ function timeAgo(iso: string) {
  */
 export default function NotificationBell({
   buttonClassName,
+  badgeClassName,
+  panelClassName,
 }: {
   /** Override the trigger button styling (Parent top bar uses its own look). */
   buttonClassName?: string;
+  /** Override the unread-count badge (Admin top bar). */
+  badgeClassName?: string;
+  /** Override the dropdown panel's position and surface (Admin top bar). */
+  panelClassName?: string;
 } = {}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,7 +85,12 @@ export default function NotificationBell({
       >
         <Bell size={17} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+          <span
+            className={
+              badgeClassName ??
+              "absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"
+            }
+          >
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -87,7 +98,12 @@ export default function NotificationBell({
 
       {open && (
         // On phones the popover spans the screen under the header (a 320px panel anchored to a mid-row button clips off the left edge); from sm up it anchors to its button. Pops in from the top-right.
-        <div className="fixed inset-x-3 top-[4.25rem] origin-top-right animate-pop-in sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 bg-white rounded-2xl border border-violet-100 shadow-playful z-50 flex flex-col max-h-[min(28rem,calc(100dvh-5rem))]">
+        <div
+          className={
+            panelClassName ??
+            "fixed inset-x-3 top-[4.25rem] origin-top-right animate-pop-in sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 bg-white rounded-2xl border border-violet-100 shadow-playful z-50 flex flex-col max-h-[min(28rem,calc(100dvh-5rem))]"
+          }
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-violet-100 flex-shrink-0">
             <p className="text-sm font-bold text-gray-800">Notifications</p>
             {unreadCount > 0 && (

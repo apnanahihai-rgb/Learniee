@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { AdminPanel, AdminSectionTitle } from "@/features/admin/components/ui/primitives";
+import { ADMIN_CARD_FLUSH, ADMIN_SECTION_H2 } from "@/features/admin/components/ui/adminStyles";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 
 interface ActivityItem {
@@ -52,34 +52,37 @@ export default function DashboardActivity() {
   useAutoRefresh(() => load(), { paths: ["/api/admin/activity-logs"] });
 
   return (
-    <section aria-labelledby="h-activity" className="flex min-w-0 flex-col gap-3.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <AdminSectionTitle id="h-activity">Recent activity</AdminSectionTitle>
-        <Link href="/admin/activity-logs" className="text-sm font-extrabold text-brand-dark hover:underline">
+    <section aria-labelledby="h-activity" className="min-w-0">
+      <h2 id="h-activity" className={ADMIN_SECTION_H2}>
+        Recent activity
+        <Link
+          href="/admin/activity-logs"
+          className="font-sans text-[13px] font-semibold leading-[1.4] text-pd-brand hover:underline"
+        >
           Open log
         </Link>
-      </div>
+      </h2>
 
-      <AdminPanel className="flex flex-col px-5 py-2">
+      <div className={ADMIN_CARD_FLUSH}>
         {items === null ? (
-          <p role="status" className="py-4 text-[15px] text-admin-muted">
+          <p role="status" className="px-5 py-3.5 text-[14px] text-pd-ink3">
             Loading…
           </p>
         ) : items.length === 0 ? (
-          <p className="py-4 text-[15px] text-admin-muted">No activity yet.</p>
+          <p className="px-5 py-3.5 text-[14px] text-pd-ink3">No activity yet.</p>
         ) : (
-          items.map((item, index) => (
+          items.map((item) => (
             <div
               key={item.id}
-              className={`flex items-center gap-3 py-3.5 ${index > 0 ? "border-t border-admin-line-soft" : ""}`}
+              className="flex w-full items-center gap-3 border-t border-pd-line px-5 py-3.5 first:border-t-0"
             >
-              <span className="size-2.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-              <span className="min-w-0 flex-1 text-[15px] font-bold">{item.description}</span>
-              <span className="shrink-0 text-[13px] text-admin-muted">{timeAgo(item.createdAt)}</span>
+              <i className="size-2.5 shrink-0 rounded-full bg-pd-brand" aria-hidden="true" />
+              <span className="min-w-0 flex-1 text-[14px] font-semibold">{item.description}</span>
+              <span className="shrink-0 text-[13px] text-pd-ink3">{timeAgo(item.createdAt)}</span>
             </div>
           ))
         )}
-      </AdminPanel>
+      </div>
     </section>
   );
 }

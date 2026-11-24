@@ -1,188 +1,99 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { useState } from "react";
 
-import NotificationBell from "@/features/shared/components/NotificationBell";
-import { ADMIN_NAV, isNavItemActive } from "@/features/admin/config/adminNav";
+import AdminBottomNav from "@/features/admin/components/ui/AdminBottomNav";
+import { AdminCountsContext } from "@/features/admin/components/ui/AdminCountsContext";
+import AdminMoreSheet from "@/features/admin/components/ui/AdminMoreSheet";
+import AdminNav from "@/features/admin/components/ui/AdminNav";
+import AdminTopBar from "@/features/admin/components/ui/AdminTopBar";
+import { adminGroupOf } from "@/features/admin/config/adminNav";
 import { useAdminQueueCounts } from "@/features/admin/hooks/useAdminQueueCounts";
-import {
-  AdminCountsContext,
-  useAdminCounts,
-} from "@/features/admin/components/ui/AdminCountsContext";
-
-function Brand({ compact = false }: { compact?: boolean }) {
-  return (
-    <Link
-      href="/admin"
-      className="flex min-h-11 items-center gap-2.5 px-2"
-      aria-label="Learniee Admin home"
-    >
-      <span
-        className={`flex items-center justify-center bg-brand font-heading font-extrabold leading-none text-white ${
-          compact ? "size-8 rounded-[10px] text-xl" : "size-9 rounded-[11px] text-[22px]"
-        }`}
-      >
-        L
-      </span>
-      <span
-        className={`font-heading font-extrabold leading-none text-brand-dark ${
-          compact ? "text-[22px]" : "text-2xl"
-        }`}
-      >
-        Learniee
-      </span>
-      {!compact && (
-        <span className="ml-auto rounded-full bg-admin-tint px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-brand-dark">
-          Admin
-        </span>
-      )}
-    </Link>
-  );
-}
-
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
-  const { counts } = useAdminCounts();
-
-  return (
-    <nav aria-label="Admin" className="flex flex-col gap-[18px]">
-      {ADMIN_NAV.map((group, index) => (
-        <div key={group.label || `group-${index}`} className="flex flex-col gap-0.5">
-          {group.label && (
-            <div className="px-3 pb-1.5 text-xs font-extrabold uppercase tracking-[0.08em] text-admin-muted">
-              {group.label}
-            </div>
-          )}
-
-          {group.items.map((item) => {
-            const active = isNavItemActive(item, pathname);
-            const count = item.countKey && counts ? counts[item.countKey] : 0;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-bold transition-colors ${
-                  active
-                    ? "bg-admin-tint text-brand-dark"
-                    : "text-admin-ink hover:bg-[#f6f1ff]"
-                }`}
-              >
-                <Icon className="size-5 shrink-0" aria-hidden="true" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                {count > 0 && (
-                  <span className="min-w-6 rounded-full bg-brand-yellow px-2 py-0.5 text-center text-[13px] font-extrabold text-admin-ink">
-                    {count}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
-  );
-}
 
 /**
- * Shared Admin chrome (Admin redesign, Oct 2026): fixed sidebar on wide
- * screens, slide-in drawer on phones, top bar with the notification
- * bell and Profile link. Mounted once by `src/app/admin/layout.tsx`, so
- * individual Admin pages only render their own content.
+ * Shared Admin chrome (Admin redesign from the HTML designs, Nov 2026):
+ * 60px top bar, 260px sidebar with collapsible groups from 1024px up,
+ * bottom bar + "All screens" sheet below that. Mounted once by
+ * `src/app/admin/layout.tsx`, so Admin pages render only their content.
  */
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const queue = useAdminQueueCounts();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const pathname = usePathname();
 
-  // Escape closes the drawer; lock page scroll while it is open.
-  useEffect(() => {
-    if (!drawerOpen) return;
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(() => {
+    const group = adminGroupOf(pathname);
 
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setDrawerOpen(false);
-    }
+    return new Set(group ? [group] : []);
+  });
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(pathname);
 
-    document.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+  // On every page change: open that page's group (others stay as they are)
+  // and close the sheet. Done while rendering, so there is no flash.
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setSheetOpen(false);
 
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
-    };
-  }, [drawerOpen]);
+    const group = adminGroupOf(pathname);
+
+    if (group && !openGroups.has(group)) setOpenGroups(new Set(openGroups).add(group));
+  }
+
+  function toggleGroup(label: string) {
+    setOpenGroups((current) => {
+      const next = new Set(current);
+
+      if (!next.delete(label)) next.add(label);
+
+      return next;
+    });
+  }
 
   return (
     <AdminCountsContext.Provider value={queue}>
-      <div className="flex min-h-dvh bg-admin-surface font-sans text-admin-ink">
-        {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-dvh w-[272px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-admin-line bg-white px-4 pb-8 pt-6 lg:flex">
-          <Brand />
-          <SidebarNav />
+      <div className="min-h-dvh bg-pd-bg font-sans text-[14px] leading-[1.55] text-pd-ink antialiased">
+        <a
+          href="#view"
+          className="absolute -top-16 left-3 z-[200] rounded-full bg-pd-brand px-4 py-2 font-bold text-white focus:top-3"
+        >
+          Skip to content
+        </a>
+
+        <AdminTopBar />
+
+        <aside className="fixed bottom-0 left-0 top-[60px] z-40 hidden w-[260px] overflow-y-auto border-r border-pd-line bg-white px-3 pb-6 pt-2 lg:block">
+          <AdminNav
+            pathname={pathname}
+            counts={queue.counts}
+            openGroups={openGroups}
+            onToggleGroup={toggleGroup}
+          />
         </aside>
 
-        {/* Mobile drawer */}
-        {drawerOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Admin menu">
-            <button
-              type="button"
-              aria-label="Close menu"
-              className="absolute inset-0 bg-admin-ink/40"
-              onClick={() => setDrawerOpen(false)}
-            />
-            <div className="absolute inset-y-0 left-0 flex w-[300px] max-w-[85vw] flex-col gap-5 overflow-y-auto bg-white px-4 pb-8 pt-4 shadow-xl">
-              <div className="flex items-center justify-between">
-                <Brand />
-                <button
-                  type="button"
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="Close menu"
-                  className="flex size-11 items-center justify-center rounded-xl border border-admin-line"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-              <SidebarNav onNavigate={() => setDrawerOpen(false)} />
-            </div>
+        <AdminBottomNav
+          pathname={pathname}
+          counts={queue.counts}
+          onOpenMore={() => setSheetOpen(true)}
+        />
+        <AdminMoreSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          pathname={pathname}
+          counts={queue.counts}
+          openGroups={openGroups}
+          onToggleGroup={toggleGroup}
+        />
+
+        <main className="pt-[60px] lg:pl-[260px]">
+          <div
+            id="view"
+            tabIndex={-1}
+            className="mx-auto max-w-[1160px] px-4 pb-[120px] pt-6 outline-none sm:px-6 sm:pt-8 lg:pb-12"
+          >
+            {children}
           </div>
-        )}
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center gap-2 border-b border-admin-line bg-white px-4 py-2.5 sm:px-8 sm:py-4">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open menu"
-              className="flex size-11 items-center justify-center rounded-xl border border-admin-line bg-white lg:hidden"
-            >
-              <Menu className="size-5" />
-            </button>
-            <div className="ml-1 lg:hidden">
-              <Brand compact />
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <NotificationBell />
-              <Link
-                href="/admin/profile"
-                className="flex min-h-11 items-center gap-2.5 rounded-full border border-admin-line bg-white pl-1.5 pr-3.5 text-[15px] font-bold hover:bg-admin-hover"
-              >
-                <span className="flex size-8 items-center justify-center rounded-full bg-admin-tint font-extrabold text-brand-dark">
-                  A
-                </span>
-                <span className="hidden sm:inline">Profile</span>
-              </Link>
-            </div>
-          </header>
-
-          <main className="w-full max-w-[1224px] px-4 py-6 sm:px-8 sm:py-8">{children}</main>
-        </div>
+        </main>
       </div>
     </AdminCountsContext.Provider>
   );

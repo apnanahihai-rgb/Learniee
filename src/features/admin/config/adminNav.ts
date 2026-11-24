@@ -15,7 +15,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageCircle,
-  Receipt,
+  ReceiptIndianRupee,
   RefreshCw,
   ShieldAlert,
   Star,
@@ -78,7 +78,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { label: "Refund requests", href: "/admin/refund-requests", icon: RefreshCw, countKey: "refunds" },
       { label: "Payout review", href: "/admin/payout-review", icon: Wallet, countKey: "payouts" },
-      { label: "Accounts", href: "/admin/accounts", icon: Receipt },
+      { label: "Accounts", href: "/admin/accounts", icon: ReceiptIndianRupee },
     ],
   },
   {
@@ -108,3 +108,34 @@ export function isNavItemActive(item: AdminNavItem, pathname: string): boolean {
   if (item.href === "/admin") return pathname === "/admin";
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
+
+/** Group label for a path (null for Overview or an unknown page). */
+export function adminGroupOf(pathname: string): string | null {
+  const group = ADMIN_NAV.find(
+    (candidate) => candidate.label && candidate.items.some((item) => isNavItemActive(item, pathname)),
+  );
+
+  return group ? group.label : null;
+}
+
+/** Every screen with its group label, for the "Jump to a screen" search. */
+export const ADMIN_SEARCH_ENTRIES: Array<{ label: string; href: string; icon: LucideIcon; group: string }> =
+  ADMIN_NAV.flatMap((group) =>
+    group.items.map((item) => ({
+      label: item.label,
+      href: item.href,
+      icon: item.icon,
+      group: group.label || "Home",
+    })),
+  );
+
+/** The four shortcuts on the phone bottom bar; everything else is under "More". */
+export const ADMIN_BOTTOM_NAV: Array<{
+  label: string;
+  item: AdminNavItem;
+}> = [
+  { label: "Overview", item: ADMIN_NAV_ITEMS.find((i) => i.href === "/admin")! },
+  { label: "Teachers", item: ADMIN_NAV_ITEMS.find((i) => i.href === "/admin/teachers")! },
+  { label: "Refunds", item: ADMIN_NAV_ITEMS.find((i) => i.href === "/admin/refund-requests")! },
+  { label: "Complaints", item: ADMIN_NAV_ITEMS.find((i) => i.href === "/admin/complaints")! },
+];
