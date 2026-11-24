@@ -27,6 +27,7 @@ export function useAdminComplaints(apiBase = "/api/admin/complaints") {
   const [complaints, setComplaints] = useState<AdminComplaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -54,11 +55,15 @@ export function useAdminComplaints(apiBase = "/api/admin/complaints") {
     }
   }
 
+  /** Resolves true when the update was saved. */
   async function respond(
     complaintId: string,
     status: "IN_PROGRESS" | "RESOLVED" | "CLOSED",
     adminNote?: string,
-  ) {
+  ): Promise<boolean> {
+    setBusyId(complaintId);
+    setError("");
+
     try {
       const res = await fetch(`${apiBase}/${complaintId}`, {
         method: "PATCH",
@@ -75,9 +80,15 @@ export function useAdminComplaints(apiBase = "/api/admin/complaints") {
       setComplaints((current) =>
         current.map((c) => (c.id === complaintId ? { ...c, ...data.complaint } : c)),
       );
+
+      return true;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to update complaint.");
+
+      return false;
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -85,6 +96,7 @@ export function useAdminComplaints(apiBase = "/api/admin/complaints") {
     complaints,
     loading,
     error,
+    busyId,
     markInProgress: (id: string) => respond(id, "IN_PROGRESS"),
     resolve: (id: string, adminNote?: string) => respond(id, "RESOLVED", adminNote),
     close: (id: string, adminNote?: string) => respond(id, "CLOSED", adminNote),
