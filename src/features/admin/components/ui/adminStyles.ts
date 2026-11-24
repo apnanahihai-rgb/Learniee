@@ -64,3 +64,7 @@ export const ADMIN_CARD_FLUSH = `${ADMIN_CARD} overflow-hidden`;
 /** Section title ("Needs your review first") */
 export const ADMIN_SECTION_H2 =
   "mb-3 flex items-baseline justify-between gap-3 font-heading text-[19px] font-semibold leading-tight text-balance";
+
+/** Text input / select styling from the design's `.field` (46px, 12px radius). */
+export const ADMIN_CONTROL =
+  "h-[46px] w-full rounded-xl border border-pd-line2 bg-white px-4 outline-none placeholder:text-pd-ink3/70 focus:border-pd-brand focus:ring-4 focus:ring-pd-b100 disabled:bg-pd-bg disabled:text-pd-ink2";

@@ -295,3 +295,37 @@ export function AdminErrorNote({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/* ---------------------------------- Forms ---------------------------------- */
+
+/**
+ * Labelled form field from the design's `.field`. Pass the control
+ * (input / select / textarea) as children and give it the same `id`;
+ * use `ADMIN_CONTROL` from adminStyles for the control's classes.
+ */
+export function AdminField({
+  id,
+  label,
+  optional,
+  hint,
+  className,
+  children,
+}: {
+  id: string;
+  label: string;
+  optional?: boolean;
+  hint?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cx("flex flex-col gap-1.5", className)}>
+      <label htmlFor={id} className="text-[13px] font-semibold text-pd-ink2">
+        {label}
+        {optional && <span className="font-normal text-pd-ink3"> (optional)</span>}
+      </label>
+      {children}
+      {hint && <span className="text-xs text-pd-ink3">{hint}</span>}
+    </div>
+  );
+}

@@ -14,6 +14,8 @@ export interface AdminEnrollment {
   amountPaid: string;
   cycleStartDate: string;
   dueDate: string;
+  /** When the parent booked it; drives the "Waiting N days" tag. */
+  createdAt: string;
   revisedByTeacher: boolean;
   revisionNote: string | null;
   pricingChangedAfterPayment: boolean;
@@ -24,10 +26,18 @@ export interface AdminEnrollment {
   chatRoom: { id: string } | null;
 }
 
+/**
+ * Admin enrollment queue.
+ * Data: GET /api/admin/enrollments (verified Admin auth).
+ * Decisions: PATCH /api/admin/enrollments/[id]/approval
+ * ({ action: "APPROVE" | "REJECT", reason? }), which also writes the
+ * Activity Log entry. Refreshes live when the data changes elsewhere.
+ */
 export function useAdminEnrollments() {
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -46,6 +56,7 @@ export function useAdminEnrollments() {
         throw new Error(data.error || "Failed to fetch enrollments");
       }
 
+      setError("");
       setEnrollments(data.enrollments);
     } catch (err) {
       console.error(err);
@@ -59,7 +70,12 @@ export function useAdminEnrollments() {
     enrollmentId: string,
     action: "APPROVE" | "REJECT",
     reason?: string,
-  ) {
+  ): Promise<boolean> {
+    if (busyId) return false;
+
+    setBusyId(enrollmentId);
+    setError("");
+
     try {
       const res = await fetch(`/api/admin/enrollments/${enrollmentId}/approval`, {
         method: "PATCH",
@@ -75,11 +91,17 @@ export function useAdminEnrollments() {
 
       // Both outcomes leave the admin queue — remove it either way.
       setEnrollments((current) => current.filter((e) => e.id !== enrollmentId));
+
+      return true;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to update enrollment.");
+
+      return false;
+    } finally {
+      setBusyId(null);
     }
   }
 
-  return { enrollments, loading, error, updateApproval };
+  return { enrollments, loading, error, busyId, updateApproval };
 }

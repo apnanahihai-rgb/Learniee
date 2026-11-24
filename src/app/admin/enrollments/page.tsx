@@ -1,44 +1,81 @@
 "use client";
 
-import { useAdminEnrollments } from "@/features/admin/hooks/useEnrollments";
-import EnrollmentApprovalCard from "@/features/admin/components/EnrollmentApprovalCard";
+import EnrollmentApprovalCard, {
+  formatRupees,
+} from "@/features/admin/components/EnrollmentApprovalCard";
 import {
-  AdminEmpty,
-  AdminError,
-  AdminLoading,
-  AdminPage,
-  AdminPageHeader,
-} from "@/features/admin/components/ui/primitives";
+  AdminEmptyState,
+  AdminErrorNote,
+  AdminHead,
+  AdminLoadingState,
+  AdminStack,
+} from "@/features/admin/components/ui/design";
+import { AdminQueue, type AdminQueueItem } from "@/features/admin/components/ui/queue";
+import { useAdminEnrollments } from "@/features/admin/hooks/useEnrollments";
 
 export default function AdminEnrollmentsPage() {
-  const { enrollments, loading, error, updateApproval } = useAdminEnrollments();
+  // Data: GET /api/admin/enrollments, decisions: PATCH
+  // /api/admin/enrollments/[id]/approval (verified Admin auth, live
+  // refresh, Activity Log entry on every decision).
+  const { enrollments, loading, error, busyId, updateApproval } = useAdminEnrollments();
+
+  const items: AdminQueueItem[] = enrollments.map((enrollment) => {
+    const teacher =
+      enrollment.teacher.visibleName?.trim() ||
+      `${enrollment.teacher.firstName} ${enrollment.teacher.lastName}`.trim();
+    const parent = `${enrollment.parent.firstName} ${enrollment.parent.lastName}`.trim();
+    const child = enrollment.student.visibleName || enrollment.student.firstName;
+
+    return {
+      id: enrollment.id,
+      group: teacher,
+      date: enrollment.createdAt,
+      amount: Number(enrollment.amountPaid) || 0,
+      searchText: [
+        enrollment.course.courseTitle,
+        teacher,
+        parent,
+        child,
+        enrollment.parent.email,
+        formatRupees(enrollment.amountPaid),
+      ]
+        .filter(Boolean)
+        .join(" "),
+      render: ({ open, onToggle, waitingTag }) => (
+        <EnrollmentApprovalCard
+          enrollment={enrollment}
+          open={open}
+          onToggle={onToggle}
+          waitingTag={waitingTag}
+          busy={busyId === enrollment.id}
+          onApprove={(id) => void updateApproval(id, "APPROVE")}
+          onReject={(id, reason) => void updateApproval(id, "REJECT", reason)}
+        />
+      ),
+    };
+  });
 
   return (
-    <AdminPage>
-      <AdminPageHeader
+    <AdminStack>
+      <AdminHead
         crumbs={[{ label: "Overview", href: "/admin" }, { label: "Approvals" }]}
         title="Enrollment approvals"
         description="Enrollments the teacher has already approved. This is the final step before a student is active."
       />
 
-      <AdminError>{error}</AdminError>
+      <AdminErrorNote>{error}</AdminErrorNote>
 
       {loading ? (
-        <AdminLoading message="Loading enrollments…" />
+        <AdminLoadingState message="Loading enrollments…" />
       ) : enrollments.length === 0 ? (
-        <AdminEmpty message="No enrollments are waiting for approval." />
+        <AdminEmptyState message="No enrollments are waiting for approval." />
       ) : (
-        <div className="flex flex-col gap-5">
-          {enrollments.map((enrollment) => (
-            <EnrollmentApprovalCard
-              key={enrollment.id}
-              enrollment={enrollment}
-              onApprove={(id) => updateApproval(id, "APPROVE")}
-              onReject={(id, reason) => updateApproval(id, "REJECT", reason)}
-            />
-          ))}
-        </div>
+        <AdminQueue
+          items={items}
+          amountLabel="Total paid"
+          searchPlaceholder="Filter by course, teacher, parent or child"
+        />
       )}
-    </AdminPage>
+    </AdminStack>
   );
 }

@@ -1,20 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Info, MessageCircle, TriangleAlert } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { MessageCircle } from "lucide-react";
 
 import type { AdminEnrollment } from "@/features/admin/hooks/useEnrollments";
+import { ADMIN_CONTROL, adminBtn, adminTag } from "@/features/admin/components/ui/adminStyles";
+import { AdminField } from "@/features/admin/components/ui/design";
 import {
-  AdminPanel,
-  AdminPill,
-  adminButtonClass,
-  adminInputClass,
-  adminLabelClass,
-} from "@/features/admin/components/ui/primitives";
+  AdminDecisionBar,
+  AdminGoldNote,
+  AdminGroup,
+  AdminProps,
+  AdminReviewCard,
+  AdminTwoCols,
+} from "@/features/admin/components/ui/queue";
 
 interface Props {
   enrollment: AdminEnrollment;
+  open: boolean;
+  onToggle: () => void;
+  /** "Waiting N days" tag from the queue. */
+  waitingTag?: ReactNode;
+  /** True while this enrollment's decision is being saved. */
+  busy: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string, reason?: string) => void;
 }
@@ -23,138 +32,139 @@ function displayName(p: { firstName: string; lastName: string; visibleName?: str
   return p.visibleName?.trim() || `${p.firstName} ${p.lastName}`.trim();
 }
 
-function Facts({ items }: { items: Array<{ label: string; value: string }> }) {
-  return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
-      {items.map((item) => (
-        <div key={item.label} className="flex min-w-0 flex-col gap-0.5">
-          <dt className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
-            {item.label}
-          </dt>
-          <dd className="text-base font-bold break-words">{item.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+export function formatRupees(value: string | number): string {
+  const amount = Number(value);
+
+  return Number.isFinite(amount) ? `₹${amount.toLocaleString("en-IN")}` : "-";
 }
 
-export default function EnrollmentApprovalCard({ enrollment, onApprove, onReject }: Props) {
+/** One enrollment waiting for the final Admin approval, as a review card (Admin design 04). */
+export default function EnrollmentApprovalCard({
+  enrollment,
+  open,
+  onToggle,
+  waitingTag,
+  busy,
+  onApprove,
+  onReject,
+}: Props) {
   const [reason, setReason] = useState("");
 
+  const parent = displayName(enrollment.parent);
+  const teacher = displayName(enrollment.teacher);
+  const child = enrollment.student.visibleName || enrollment.student.firstName;
+  const paid = formatRupees(enrollment.amountPaid);
+  const start = new Date(enrollment.cycleStartDate).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
   return (
-    <AdminPanel className="overflow-hidden">
-      <article className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-4 p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <h2 className="font-heading text-xl font-bold">
-              {enrollment.course.courseTitle ?? "Untitled course"}
-            </h2>
-            <AdminPill tone="warn">Enrollment pending</AdminPill>
-          </div>
-
-          <Facts
-            items={[
-              { label: "Parent", value: displayName(enrollment.parent) },
-              { label: "Teacher", value: displayName(enrollment.teacher) },
-              {
-                label: "Child",
-                value: enrollment.student.visibleName || enrollment.student.firstName,
-              },
-            ]}
-          />
-
-          <Facts
-            items={[
-              { label: "Sessions a month", value: String(enrollment.sessionsPerMonth) },
-              { label: "Months", value: String(enrollment.noOfMonths) },
-              {
-                label: "Start",
-                value: new Date(enrollment.cycleStartDate).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                }),
-              },
-              { label: "Total paid", value: `₹${enrollment.amountPaid}` },
-            ]}
-          />
-
-          {enrollment.revisedByTeacher && (
-            <div
-              role="note"
-              className="flex gap-3 rounded-[14px] border border-admin-line bg-admin-tint px-4 py-3"
-            >
-              <Info className="mt-0.5 size-5 shrink-0 text-brand-dark" aria-hidden="true" />
-              <span className="text-[15px]">
-                Teacher revised this enrollment before forwarding it. The parent has confirmed.
-                {enrollment.revisionNote && (
-                  <>
-                    {" "}
-                    <span className="font-extrabold">Note:</span> {enrollment.revisionNote}
-                  </>
-                )}
-              </span>
-            </div>
-          )}
-
-          {enrollment.pricingChangedAfterPayment && (
-            <div
-              role="alert"
-              className="flex gap-3 rounded-[14px] border border-[#f4c01e] bg-[#fff8dc] px-4 py-3"
-            >
-              <TriangleAlert className="mt-0.5 size-5 shrink-0 text-[#8a6500]" aria-hidden="true" />
-              <span className="text-[15px]">
-                <span className="font-extrabold">Amounts do not match.</span> The revised total (₹
-                {enrollment.totalAmount}) differs from what was charged (₹{enrollment.amountPaid}).
-                No automatic charge or refund was made. Reconcile manually before approving.
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4 border-t border-admin-line-soft bg-admin-surface p-5 sm:p-6 lg:border-l lg:border-t-0">
-          <div>
-            <label htmlFor={`reject-${enrollment.id}`} className={adminLabelClass}>
-              Reason for rejecting{" "}
-              <span className="font-semibold text-admin-muted">(optional)</span>
-            </label>
+    <AdminReviewCard
+      id={`enrollment-${enrollment.id}`}
+      open={open}
+      onToggle={onToggle}
+      title={enrollment.course.courseTitle ?? "Untitled course"}
+      meta={`Parent ${parent} · Teacher ${teacher} · Child ${child}`}
+      keyLabel="Total paid"
+      keyValue={paid}
+      tags={
+        <>
+          {waitingTag}
+          <span className={adminTag("amber")}>Enrollment pending</span>
+        </>
+      }
+      footer={
+        <>
+          <AdminField
+            id={`reject-${enrollment.id}`}
+            label="Reason for rejecting"
+            optional
+            className="max-w-[360px] flex-[1_1_220px]"
+          >
             <input
               id={`reject-${enrollment.id}`}
               type="text"
               value={reason}
+              maxLength={500}
+              disabled={busy}
               onChange={(event) => setReason(event.target.value)}
-              className={adminInputClass}
+              className={ADMIN_CONTROL}
             />
-          </div>
+          </AdminField>
 
-          <div className="flex flex-wrap gap-2">
+          <AdminDecisionBar>
+            {enrollment.chatRoom && (
+              <Link href={`/admin/chat/${enrollment.chatRoom.id}`} className={adminBtn("out")}>
+                <MessageCircle size={16} aria-hidden="true" />
+                View conversation
+              </Link>
+            )}
             <button
               type="button"
-              onClick={() => onApprove(enrollment.id)}
-              className={adminButtonClass("primary")}
-            >
-              Approve enrollment
-            </button>
-            <button
-              type="button"
+              disabled={busy}
               onClick={() => onReject(enrollment.id, reason.trim() || undefined)}
-              className={adminButtonClass("secondary", "text-red-700")}
+              className={adminBtn("dtx")}
             >
               Reject
             </button>
-          </div>
-
-          {enrollment.chatRoom && (
-            <Link
-              href={`/admin/chat/${enrollment.chatRoom.id}`}
-              className={adminButtonClass("ghost", "self-start")}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onApprove(enrollment.id)}
+              className={adminBtn("pri")}
             >
-              <MessageCircle className="size-4" aria-hidden="true" />
-              View conversation
-            </Link>
+              {busy ? "Saving…" : "Approve"}
+            </button>
+          </AdminDecisionBar>
+        </>
+      }
+    >
+      <AdminTwoCols>
+        <AdminGroup title="People">
+          <AdminProps
+            items={[
+              { label: "Parent", value: parent },
+              { label: "Teacher", value: teacher },
+              { label: "Child", value: child },
+            ]}
+          />
+        </AdminGroup>
+        <AdminGroup title="Plan">
+          <AdminProps
+            items={[
+              { label: "Sessions a month", value: enrollment.sessionsPerMonth },
+              { label: "Months", value: enrollment.noOfMonths },
+              { label: "Start", value: start },
+              { label: "Total paid", value: paid, highlight: true },
+            ]}
+          />
+        </AdminGroup>
+      </AdminTwoCols>
+
+      {enrollment.revisedByTeacher && (
+        <AdminGoldNote title="Revised by the teacher">
+          Teacher revised this enrollment before forwarding it. The parent has confirmed.
+          {enrollment.revisionNote && (
+            <>
+              {" "}
+              <b>Note:</b> {enrollment.revisionNote}
+            </>
           )}
+        </AdminGoldNote>
+      )}
+
+      {enrollment.pricingChangedAfterPayment && (
+        <div
+          role="alert"
+          className="rounded-xl border border-[#efcdca] bg-pd-red-bg px-3.5 py-3 text-[14px] text-pd-red"
+        >
+          <b>Amounts do not match.</b> The revised total ({formatRupees(enrollment.totalAmount)})
+          differs from what was charged ({paid}). No automatic charge or refund was made. Reconcile
+          manually before approving.
         </div>
-      </article>
-    </AdminPanel>
+      )}
+    </AdminReviewCard>
   );
 }
