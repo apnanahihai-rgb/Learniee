@@ -9,6 +9,7 @@ export function useCoursesList() {
   const [courses, setCourses] = useState<AdminCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCourses();
@@ -21,6 +22,7 @@ export function useCoursesList() {
       if (!isBackgroundRefresh()) setLoading(true);
 
       const res = await fetch("/api/admin/courses");
+      setError("");
 
       if (!res.ok) {
         throw new Error("Failed to fetch courses");
@@ -39,7 +41,12 @@ export function useCoursesList() {
   async function updateApproval(
     courseId: string,
     status: "APPROVED" | "REJECTED",
-  ) {
+  ): Promise<boolean> {
+    if (busyId) return false;
+
+    setBusyId(courseId);
+    setError("");
+
     try {
       const res = await fetch(`/api/admin/courses/${courseId}/approval`, {
         method: "PATCH",
@@ -55,11 +62,17 @@ export function useCoursesList() {
 
       // Remove the course from the pending list
       setCourses((current) => current.filter((course) => course.id !== courseId));
+
+      return true;
     } catch (err) {
       console.error(err);
       setError("Failed to update course approval status.");
+
+      return false;
+    } finally {
+      setBusyId(null);
     }
   }
 
-  return { courses, loading, error, updateApproval };
+  return { courses, loading, error, busyId, updateApproval };
 }

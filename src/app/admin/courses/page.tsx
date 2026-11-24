@@ -1,44 +1,64 @@
 "use client";
 
-import { useCoursesList } from "@/features/admin/hooks/useCoursesList";
 import CourseApprovalCard from "@/features/admin/components/CourseApprovalCard";
 import {
-  AdminEmpty,
-  AdminError,
-  AdminLoading,
-  AdminPage,
-  AdminPageHeader,
-} from "@/features/admin/components/ui/primitives";
+  AdminEmptyState,
+  AdminErrorNote,
+  AdminHead,
+  AdminLoadingState,
+  AdminStack,
+} from "@/features/admin/components/ui/design";
+import { AdminQueue, type AdminQueueItem } from "@/features/admin/components/ui/queue";
+import { useCoursesList } from "@/features/admin/hooks/useCoursesList";
 
 export default function AdminCoursesPage() {
-  const { courses, loading, error, updateApproval } = useCoursesList();
+  // Data: GET /api/admin/courses, decisions: PATCH /api/admin/courses/[id]/approval
+  // (verified Admin auth, live refresh, Activity Log entry on every decision).
+  const { courses, loading, error, busyId, updateApproval } = useCoursesList();
+
+  const items: AdminQueueItem[] = courses.map((course) => ({
+    id: course.id,
+    group: course.subject,
+    date: course.createdAt,
+    searchText: [
+      course.courseTitle,
+      course.subject,
+      course.teacher.firstName,
+      course.teacher.lastName,
+      course.teacher.email,
+    ]
+      .filter(Boolean)
+      .join(" "),
+    render: ({ open, onToggle, waitingTag }) => (
+      <CourseApprovalCard
+        course={course}
+        open={open}
+        onToggle={onToggle}
+        waitingTag={waitingTag}
+        busy={busyId === course.id}
+        onApprove={(id) => void updateApproval(id, "APPROVED")}
+        onReject={(id) => void updateApproval(id, "REJECTED")}
+      />
+    ),
+  }));
 
   return (
-    <AdminPage>
-      <AdminPageHeader
+    <AdminStack>
+      <AdminHead
         crumbs={[{ label: "Overview", href: "/admin" }, { label: "Approvals" }]}
         title="Course approvals"
         description="Review courses submitted by teachers."
       />
 
-      <AdminError>{error}</AdminError>
+      <AdminErrorNote>{error}</AdminErrorNote>
 
       {loading ? (
-        <AdminLoading message="Loading courses…" />
+        <AdminLoadingState message="Loading courses…" />
       ) : courses.length === 0 ? (
-        <AdminEmpty message="No courses are waiting for approval." />
+        <AdminEmptyState message="No courses are waiting for approval." />
       ) : (
-        <div className="flex flex-col gap-5">
-          {courses.map((course) => (
-            <CourseApprovalCard
-              key={course.id}
-              course={course}
-              onApprove={(id) => updateApproval(id, "APPROVED")}
-              onReject={(id) => updateApproval(id, "REJECTED")}
-            />
-          ))}
-        </div>
+        <AdminQueue items={items} searchPlaceholder="Filter by title, subject or teacher" />
       )}
-    </AdminPage>
+    </AdminStack>
   );
 }
