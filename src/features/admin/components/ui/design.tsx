@@ -235,6 +235,18 @@ export function AdminDataTable<Row>({
   );
 }
 
+/** Round initials avatar (the design's `.av.sm`), for the lead slot of review cards. */
+export function AdminInitials({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid size-10 shrink-0 place-items-center rounded-full bg-pd-b100 text-sm font-bold text-pd-brand-d"
+    >
+      {getInitials(name, "?")}
+    </span>
+  );
+}
+
 /** Avatar + name + one muted line, as used in the first column of tables. */
 export function AdminPerson({ name, meta }: { name: string; meta?: string | null }) {
   return (
