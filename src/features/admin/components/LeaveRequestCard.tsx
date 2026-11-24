@@ -1,56 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
+import { ADMIN_CONTROL, adminBtn, adminTag, type AdminTagColor } from "@/features/admin/components/ui/adminStyles";
+import { AdminField, AdminInitials } from "@/features/admin/components/ui/design";
 import {
-  AdminAvatar,
-  AdminFact,
-  AdminPanel,
-  AdminPill,
-  adminButtonClass,
-  adminInputClass,
-  adminLabelClass,
-  formatAdminDate,
-  type PillTone,
-} from "@/features/admin/components/ui/primitives";
+  AdminDecisionBar,
+  AdminGoldNote,
+  AdminProps,
+  AdminReviewCard,
+} from "@/features/admin/components/ui/queue";
+import type { AdminLeaveRequest } from "@/features/admin/hooks/useLeaveRequests";
+import { formatLeaveDay, formatLeaveRange } from "@/features/admin/utils/leaveDates";
+import { displayName } from "@/features/shared/utils/displayName";
 
-export interface LeaveRequestRow {
-  id: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  adminNote: string | null;
-  isEmergency?: boolean;
-  teacher: { firstName: string; lastName: string; visibleName: string | null; email: string };
-  impact?: { moving: number; excused: number; tooSoon: number } | null;
+interface Props {
+  request: AdminLeaveRequest;
+  open: boolean;
+  onToggle: () => void;
+  /** "Waiting N days" tag from the queue (pending list only). */
+  waitingTag?: ReactNode;
+  /** True while this request's decision is being saved. */
+  busy: boolean;
+  onApprove: (id: string) => void;
+  onReject: (id: string, reason?: string) => void;
 }
 
-const STATUS_TONE: Record<string, PillTone> = {
-  PENDING: "warn",
-  APPROVED: "brand",
-  REJECTED: "dark",
-  CANCELLED: "neutral",
+const STATUS: Record<AdminLeaveRequest["status"], { label: string; color: AdminTagColor }> = {
+  PENDING: { label: "Pending", color: "amber" },
+  APPROVED: { label: "Approved", color: "green" },
+  REJECTED: { label: "Rejected", color: "red" },
+  CANCELLED: { label: "Cancelled", color: "gray" },
 };
 
-function teacherName(t: LeaveRequestRow["teacher"]) {
-  return t.visibleName?.trim() || `${t.firstName} ${t.lastName}`.trim();
+function plural(n: number, one: string, many: string) {
+  return `${n} ${n === 1 ? one : many}`;
 }
 
-function ImpactText({ impact }: { impact: NonNullable<LeaveRequestRow["impact"]> }) {
+/** What approving would do to the teacher's classes ("If approved" note). */
+function ImpactText({ impact }: { impact: NonNullable<AdminLeaveRequest["impact"]> }) {
   return (
     <>
-      {impact.moving} class{impact.moving === 1 ? "" : "es"} will move to a new slot
+      {plural(impact.moving, "class", "classes")} will move to {impact.moving === 1 ? "a new slot" : "new slots"}
       {impact.excused > 0 && (
         <>
-          , <strong>{impact.excused}</strong> will be marked excused (no free slot in the 45-day
-          window; a make-up is looked for after the leave)
+          ; <b>{impact.excused}</b> will be excused (no free slot in the 45-day window, a make-up is
+          looked for after the leave)
         </>
       )}
       {impact.tooSoon > 0 && (
         <>
-          ; {impact.tooSoon} starting in under 4 hours can&apos;t be moved (normal teacher cancel
-          rules apply)
+          ; {impact.tooSoon} starting in under 4 hours can&apos;t be moved (normal teacher cancel rules
+          apply)
         </>
       )}
       .
@@ -58,95 +59,100 @@ function ImpactText({ impact }: { impact: NonNullable<LeaveRequestRow["impact"]>
   );
 }
 
+/** One teacher leave request as a review card (Admin design 09). */
 export default function LeaveRequestCard({
   request,
+  open,
+  onToggle,
+  waitingTag,
+  busy,
   onApprove,
   onReject,
-}: {
-  request: LeaveRequestRow;
-  onApprove: (id: string) => void;
-  onReject: (id: string, reason?: string) => void;
-}) {
+}: Props) {
   const [reason, setReason] = useState("");
-  const name = teacherName(request.teacher);
+
+  const name = displayName(request.teacher);
   const pending = request.status === "PENDING";
+  const status = STATUS[request.status] ?? STATUS.CANCELLED;
 
   return (
-    <AdminPanel className="overflow-hidden">
-      <article className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-4 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <AdminAvatar name={name} />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="text-lg font-extrabold">{name}</span>
-              <span className="truncate text-sm text-admin-muted">{request.teacher.email}</span>
-            </div>
-            {request.isEmergency && <AdminPill tone="bad">Emergency</AdminPill>}
-            <AdminPill tone={STATUS_TONE[request.status] ?? "neutral"}>
-              {request.status.charAt(0) + request.status.slice(1).toLowerCase()}
-            </AdminPill>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <AdminFact label="Leave dates">
-              {formatAdminDate(request.startDate)} – {formatAdminDate(request.endDate)}
-            </AdminFact>
-            <AdminFact label="Reason">
-              <span className="font-normal">{request.reason}</span>
-            </AdminFact>
-          </div>
-
-          {pending && request.impact && (
-            <div className="flex flex-col gap-0.5 rounded-[14px] border border-[#f4c01e] bg-[#fff8dc] px-4 py-3">
-              <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
-                If approved
-              </span>
-              <span className="text-[15px]">
-                <ImpactText impact={request.impact} />
-              </span>
-            </div>
-          )}
-
-          {request.adminNote && (
-            <p className="text-sm text-admin-muted">Your note: {request.adminNote}</p>
-          )}
-        </div>
-
-        {pending && (
-          <div className="flex flex-col gap-4 border-t border-admin-line-soft bg-admin-surface p-5 sm:p-6 lg:border-l lg:border-t-0">
-            <div>
-              <label htmlFor={`leave-note-${request.id}`} className={adminLabelClass}>
-                Reason for rejecting{" "}
-                <span className="font-semibold text-admin-muted">(optional)</span>
-              </label>
+    <AdminReviewCard
+      id={`leave-${request.id}`}
+      open={open}
+      onToggle={onToggle}
+      lead={<AdminInitials name={name} />}
+      title={name}
+      meta={request.teacher.email}
+      keyLabel="Leave"
+      keyValue={formatLeaveRange(request.startDate, request.endDate)}
+      tags={
+        <>
+          {waitingTag}
+          {request.isEmergency && <span className={adminTag("red")}>Emergency</span>}
+          <span className={adminTag(status.color)}>{status.label}</span>
+        </>
+      }
+      footer={
+        pending ? (
+          <>
+            <AdminField
+              id={`leave-reject-${request.id}`}
+              label="Reason for rejecting"
+              optional
+              className="max-w-[360px] flex-[1_1_220px]"
+            >
               <input
-                id={`leave-note-${request.id}`}
+                id={`leave-reject-${request.id}`}
                 type="text"
                 value={reason}
+                maxLength={500}
+                disabled={busy}
                 onChange={(event) => setReason(event.target.value)}
-                className={adminInputClass}
+                className={ADMIN_CONTROL}
               />
-            </div>
+            </AdminField>
 
-            <div className="flex flex-wrap gap-2">
+            <AdminDecisionBar>
               <button
                 type="button"
-                onClick={() => onApprove(request.id)}
-                className={adminButtonClass("primary")}
-              >
-                Approve leave
-              </button>
-              <button
-                type="button"
+                disabled={busy}
                 onClick={() => onReject(request.id, reason.trim() || undefined)}
-                className={adminButtonClass("secondary", "text-red-700")}
+                className={adminBtn("dtx")}
               >
                 Reject
               </button>
-            </div>
-          </div>
-        )}
-      </article>
-    </AdminPanel>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onApprove(request.id)}
+                className={adminBtn("pri")}
+              >
+                {busy ? "Saving…" : "Approve leave"}
+              </button>
+            </AdminDecisionBar>
+          </>
+        ) : undefined
+      }
+    >
+      <AdminProps
+        items={[
+          {
+            label: "Leave dates",
+            value: `${formatLeaveDay(request.startDate)} – ${formatLeaveDay(request.endDate)}`,
+            wide: true,
+          },
+          { label: "Reason", value: request.reason, wide: true },
+          ...(!pending && request.adminNote
+            ? [{ label: "Your note", value: request.adminNote, wide: true }]
+            : []),
+        ]}
+      />
+
+      {pending && request.impact && (
+        <AdminGoldNote title="If approved">
+          <ImpactText impact={request.impact} />
+        </AdminGoldNote>
+      )}
+    </AdminReviewCard>
   );
 }

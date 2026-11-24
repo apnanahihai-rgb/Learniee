@@ -30,6 +30,7 @@ export function useAdminLeaveRequests() {
   const [requests, setRequests] = useState<AdminLeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -57,7 +58,15 @@ export function useAdminLeaveRequests() {
     }
   }
 
-  async function respond(requestId: string, action: "APPROVE" | "REJECT", adminNote?: string) {
+  /** Resolves true when the decision was saved. */
+  async function respond(
+    requestId: string,
+    action: "APPROVE" | "REJECT",
+    adminNote?: string,
+  ): Promise<boolean> {
+    setBusyId(requestId);
+    setError("");
+
     try {
       const res = await fetch(`/api/admin/leave-requests/${requestId}`, {
         method: "PATCH",
@@ -77,11 +86,24 @@ export function useAdminLeaveRequests() {
 
       // Approving moves classes, which changes what other pending leaves would do.
       if (action === "APPROVE") await load();
+
+      return true;
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to update leave request.");
+
+      return false;
+    } finally {
+      setBusyId(null);
     }
   }
 
-  return { requests, loading, error, approve: (id: string) => respond(id, "APPROVE"), reject: (id: string, note?: string) => respond(id, "REJECT", note) };
+  return {
+    requests,
+    loading,
+    error,
+    busyId,
+    approve: (id: string) => respond(id, "APPROVE"),
+    reject: (id: string, note?: string) => respond(id, "REJECT", note),
+  };
 }
