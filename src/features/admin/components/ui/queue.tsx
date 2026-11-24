@@ -237,6 +237,7 @@ export function AdminQueue({
   emptyMessage = "Nothing matches your filter.",
   countLabel = "waiting",
   showWaiting = true,
+  defaultSort = "old",
 }: {
   items: AdminQueueItem[];
   searchPlaceholder?: string;
@@ -246,11 +247,13 @@ export function AdminQueue({
   countLabel?: string;
   /** False for finished lists: no "Waiting N days" tag or oldest-waiting summary (dates still sort). */
   showWaiting?: boolean;
+  /** Starting sort. Finished lists read best newest first. */
+  defaultSort?: "old" | "new" | "amt";
 }) {
   const [now] = useState(() => Date.now());
   const [search, setSearch] = useState("");
   const [chip, setChip] = useState("");
-  const [sort, setSort] = useState<SortMode>("old");
+  const [sort, setSort] = useState<SortMode>(defaultSort);
   // undefined = first visible card open; null = Admin closed everything.
   const [openId, setOpenId] = useState<string | null | undefined>(undefined);
 
