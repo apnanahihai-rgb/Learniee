@@ -1,43 +1,49 @@
 "use client";
 
-import { useParentDirectory } from "@/features/admin/hooks/useParentDirectory";
-import DirectoryStatCard from "@/features/admin/components/DirectoryStatCard";
 import ParentDirectoryTable from "@/features/admin/components/ParentDirectoryTable";
 import {
-  AdminError,
-  AdminLoading,
-  AdminPage,
-  AdminPageHeader,
-  AdminSearch,
-} from "@/features/admin/components/ui/primitives";
+  AdminErrorNote,
+  AdminHead,
+  AdminLoadingState,
+  AdminSearchBox,
+  AdminStack,
+  AdminStats,
+} from "@/features/admin/components/ui/design";
+import { useParentDirectory } from "@/features/admin/hooks/useParentDirectory";
 
+/**
+ * Admin "Parent directory" (design 19). Every parent with onboarding status,
+ * students, active classes and Wallet balance.
+ * Data: GET /api/admin/directory/parents (verified Admin auth, read-only),
+ * see `directory.service.ts`. Re-fetches on the realtime feed.
+ */
 export default function AdminParentDirectoryPage() {
   const { parents, summary, search, setSearch, loading, error } = useParentDirectory();
 
   return (
-    <AdminPage>
-      <AdminPageHeader
+    <AdminStack>
+      <AdminHead
         crumbs={[{ label: "Overview", href: "/admin" }, { label: "People" }]}
         title="Parent directory"
         description="Every parent on the platform, with onboarding status and activity at a glance."
       />
 
-      <AdminError>{error}</AdminError>
+      <AdminStats
+        items={[
+          { label: "Total", value: summary?.total ?? "—" },
+          { label: "Onboarded", value: summary?.onboarding.completed ?? "—" },
+          { label: "Not onboarded", value: summary?.onboarding.inProgress ?? "—" },
+          { label: "With active classes", value: summary?.withActiveClasses ?? "—" },
+        ]}
+      />
 
-      {summary && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-          <DirectoryStatCard label="Total parents" value={summary.total} />
-          <DirectoryStatCard label="Onboarding complete" value={summary.onboarding.completed} />
-          <DirectoryStatCard label="Onboarding in progress" value={summary.onboarding.inProgress} />
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-4">
-        <AdminSearch value={search} onChange={setSearch} placeholder="Search by name, email or city" />
-        <span className="text-[15px] font-bold text-admin-muted">{parents.length} shown</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <AdminSearchBox value={search} onChange={setSearch} placeholder="Search by name, email or city" />
       </div>
 
-      {loading ? <AdminLoading message="Loading parents…" /> : <ParentDirectoryTable parents={parents} />}
-    </AdminPage>
+      <AdminErrorNote>{error}</AdminErrorNote>
+
+      {loading ? <AdminLoadingState message="Loading parents…" /> : <ParentDirectoryTable parents={parents} />}
+    </AdminStack>
   );
 }

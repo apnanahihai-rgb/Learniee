@@ -1,67 +1,59 @@
 "use client";
 
-import type { ParentDirectoryRow } from "@/features/admin/hooks/useParentDirectory";
+import { adminTag } from "@/features/admin/components/ui/adminStyles";
 import {
-  AdminAvatar,
-  AdminPill,
-  AdminTableCard,
-  adminRowClass,
-  adminTableClass,
-  adminTdClass,
-  adminThClass,
-  formatAdminDate,
-} from "@/features/admin/components/ui/primitives";
+  AdminDataTable,
+  AdminEmptyState,
+  AdminPerson,
+} from "@/features/admin/components/ui/design";
+import { formatAdminDate } from "@/features/admin/components/ui/primitives";
+import type { ParentDirectoryRow } from "@/features/admin/hooks/useParentDirectory";
 
+/**
+ * Parent directory table (design 19). Columns: Parent, Location, Onboarding,
+ * Students, Active, Wallet, Joined. Built on the shared `AdminDataTable`, so it
+ * turns into stacked cards on phones like every other redesigned table.
+ */
 export default function ParentDirectoryTable({ parents }: { parents: ParentDirectoryRow[] }) {
+  if (parents.length === 0) {
+    return <AdminEmptyState message="No parents match your search." />;
+  }
+
   return (
-    <AdminTableCard>
-      <table className={`${adminTableClass} min-w-[860px]`}>
-        <thead>
-          <tr>
-            <th className={adminThClass}>Parent</th>
-            <th className={adminThClass}>Location</th>
-            <th className={adminThClass}>Onboarding</th>
-            <th className={`${adminThClass} text-right`}>Students</th>
-            <th className={`${adminThClass} text-right`}>Active</th>
-            <th className={`${adminThClass} text-right`}>Wallet</th>
-            <th className={adminThClass}>Joined</th>
-          </tr>
-        </thead>
-        <tbody>
-          {parents.map((p) => (
-            <tr key={p.id} className={adminRowClass}>
-              <td className={adminTdClass}>
-                <div className="flex min-w-0 items-center gap-3">
-                  <AdminAvatar name={p.name} />
-                  <div className="min-w-0">
-                    <p className="truncate font-extrabold">{p.name}</p>
-                    <p className="truncate text-sm text-admin-muted">{p.email}</p>
-                  </div>
-                </div>
-              </td>
-              <td className={adminTdClass}>
-                {[p.city, p.country].filter(Boolean).join(", ") || "—"}
-              </td>
-              <td className={adminTdClass}>
-                <AdminPill tone={p.onboardingComplete ? "brand" : "warn"}>
-                  {p.onboardingComplete ? "Complete" : "In progress"}
-                </AdminPill>
-              </td>
-              <td className={`${adminTdClass} text-right`}>{p.studentsCount}</td>
-              <td className={`${adminTdClass} text-right`}>{p.activeEnrollmentsCount}</td>
-              <td className={`${adminTdClass} text-right`}>₹{p.walletBalance.toLocaleString("en-IN")}</td>
-              <td className={`${adminTdClass} whitespace-nowrap`}>{formatAdminDate(p.createdAt)}</td>
-            </tr>
-          ))}
-          {parents.length === 0 && (
-            <tr>
-              <td colSpan={7} className="px-5 py-10 text-center text-admin-muted">
-                No parents found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </AdminTableCard>
+    <AdminDataTable
+      rows={parents}
+      rowKey={(parent) => parent.id}
+      columns={[
+        {
+          label: "Parent",
+          block: true,
+          render: (parent) => <AdminPerson name={parent.name} meta={parent.email} />,
+        },
+        {
+          label: "Location",
+          render: (parent) => [parent.city, parent.country].filter(Boolean).join(", ") || "—",
+        },
+        {
+          label: "Onboarding",
+          render: (parent) => (
+            <span className={adminTag(parent.onboardingComplete ? "violet" : "amber")}>
+              {parent.onboardingComplete ? "Complete" : "Incomplete"}
+            </span>
+          ),
+        },
+        { label: "Students", right: true, render: (parent) => parent.studentsCount },
+        { label: "Active", right: true, render: (parent) => parent.activeEnrollmentsCount },
+        {
+          label: "Wallet",
+          right: true,
+          render: (parent) => `₹${parent.walletBalance.toLocaleString("en-IN")}`,
+        },
+        {
+          label: "Joined",
+          nowrap: true,
+          render: (parent) => formatAdminDate(parent.createdAt),
+        },
+      ]}
+    />
   );
 }

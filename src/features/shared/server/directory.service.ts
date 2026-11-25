@@ -112,6 +112,7 @@ export async function getTeacherDirectory(): Promise<{
         completed: onboardingCompleted,
         inProgress: total - onboardingCompleted,
       },
+      withActiveClasses,
     },
   };
 }
@@ -137,13 +138,15 @@ export interface ParentDirectoryRow {
 export interface ParentDirectorySummary {
   total: number;
   onboarding: { completed: number; inProgress: number };
+  /** Parents with at least one ACTIVE enrollment ("With active classes" stat). */
+  withActiveClasses: number;
 }
 
 export async function getParentDirectory(): Promise<{
   parents: ParentDirectoryRow[];
   summary: ParentDirectorySummary;
 }> {
-  const [parents, onboardingCompleted, total] = await Promise.all([
+  const [parents, onboardingCompleted, total, withActiveClasses] = await Promise.all([
     prisma.parentProfile.findMany({
       select: {
         id: true,
@@ -168,6 +171,9 @@ export async function getParentDirectory(): Promise<{
     }),
     prisma.parentProfile.count({ where: { onboardingComplete: true } }),
     prisma.parentProfile.count(),
+    prisma.parentProfile.count({
+      where: { enrollments: { some: { status: "ACTIVE" } } },
+    }),
   ]);
 
   return {
@@ -192,6 +198,7 @@ export async function getParentDirectory(): Promise<{
         completed: onboardingCompleted,
         inProgress: total - onboardingCompleted,
       },
+      withActiveClasses,
     },
   };
 }

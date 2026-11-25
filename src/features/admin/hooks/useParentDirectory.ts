@@ -21,6 +21,7 @@ export interface ParentDirectoryRow {
 export interface ParentDirectorySummary {
   total: number;
   onboarding: { completed: number; inProgress: number };
+  withActiveClasses: number;
 }
 
 export function useParentDirectory() {
