@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { CheckCircle2, ChevronRight, Search } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { ADMIN_CARD_FLUSH, ADMIN_FOCUS, cx } from "@/features/admin/components/ui/adminStyles";
+import { ADMIN_CARD_FLUSH, ADMIN_FOCUS, adminBtn, cx } from "@/features/admin/components/ui/adminStyles";
 import { getInitials } from "@/lib/initials";
 
 /**
@@ -398,5 +398,46 @@ export function AdminField({
       {children}
       {hint && <span className="text-xs text-pd-ink3">{hint}</span>}
     </div>
+  );
+}
+
+/* ------------------------------- Pagination -------------------------------- */
+
+/** Previous / Next with "Page X of Y". Renders nothing for a single page. */
+export function AdminPagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (next: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <nav aria-label="Pagination" className="flex items-center justify-center gap-4">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(1, page - 1))}
+        disabled={page <= 1}
+        className={adminBtn("out", "sm")}
+      >
+        <ChevronLeft size={16} aria-hidden="true" />
+        Previous
+      </button>
+      <span className="text-[13px] font-semibold text-pd-ink3">
+        Page {page} of {totalPages}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(totalPages, page + 1))}
+        disabled={page >= totalPages}
+        className={adminBtn("out", "sm")}
+      >
+        Next
+        <ChevronRight size={16} aria-hidden="true" />
+      </button>
+    </nav>
   );
 }

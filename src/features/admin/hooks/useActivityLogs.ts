@@ -4,33 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
 
-export type ActivityAction =
-  | "AUTH_LOGIN"
-  | "AUTH_LOGOUT"
-  | "CLASS_SESSION_COMPLETED"
-  | "PAYMENT_ENROLLMENT"
-  | "PAYMENT_DEMO_BOOKING"
-  | "PAYMENT_WALLET_TOPUP"
-  | "WALLET_CREDITED_MANUAL"
-  | "LEAVE_REQUEST_APPROVED"
-  | "LEAVE_REQUEST_REJECTED"
-  | "ENROLLMENT_TEACHER_APPROVED"
-  | "ENROLLMENT_ADMIN_APPROVED"
-  | "ENROLLMENT_REJECTED"
-  | "TEACHER_APPROVED"
-  | "TEACHER_REJECTED"
-  | "TEACHER_INTERVIEW_SCHEDULED"
-  | "TEACHER_APPEALED"
-  | "COURSE_APPROVED"
-  | "COURSE_REJECTED"
-  | "COURSE_DELETED"
-  | "USER_DELETED"
-  | "BLOG_SUBMITTED"
-  | "BLOG_PUBLISHED"
-  | "BLOG_REJECTED"
-  | "GENERIC";
+/** Action and role codes come from the database enums (see `filterOptions`), so they are plain strings here. */
+export type ActivityAction = string;
+export type ActivityActorRole = string;
 
-export type ActivityActorRole = "PARENT" | "TEACHER" | "ADMIN" | "ACCOUNTS" | "HR" | "SYSTEM";
+export interface ActivityFilterOptions {
+  actions: string[];
+  actorRoles: string[];
+}
 
 export interface ActivityLogRow {
   id: string;
@@ -78,6 +59,10 @@ export function useActivityLogs(pageSize = 50) {
   const [items, setItems] = useState<ActivityLogRow[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [filterOptions, setFilterOptions] = useState<ActivityFilterOptions>({
+    actions: [],
+    actorRoles: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -96,6 +81,7 @@ export function useActivityLogs(pageSize = 50) {
       setItems(data.items);
       setTotalPages(data.totalPages);
       setTotal(data.total);
+      if (data.filterOptions) setFilterOptions(data.filterOptions);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to load the activity log.");
@@ -132,6 +118,7 @@ export function useActivityLogs(pageSize = 50) {
     setPage,
     totalPages,
     total,
+    filterOptions,
     items,
     loading,
     error,

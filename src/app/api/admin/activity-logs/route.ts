@@ -12,6 +12,10 @@ import { ActivityAction, ActivityActorRole } from "@prisma/client";
  * q (free-text search), from, to (ISO date/datetime strings —
  * date-only values like "2026-09-01" are treated as that whole day
  * in `to`'s case, see below).
+ *
+ * The response also carries `filterOptions` (every `ActivityAction` and
+ * `ActivityActorRole` in the schema) so the page's dropdowns can never
+ * drift from the database enums.
  */
 export async function GET(req: Request) {
   const auth = await requireVerifiedAdminAuth(req);
@@ -61,7 +65,13 @@ export async function GET(req: Request) {
       pageSize,
     );
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      filterOptions: {
+        actions: Object.values(ActivityAction).sort(),
+        actorRoles: Object.values(ActivityActorRole),
+      },
+    });
   } catch (error) {
     console.error("Admin activity-logs GET error:", error);
 
