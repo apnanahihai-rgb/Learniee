@@ -1,8 +1,0 @@
-﻿node.exe : npm notice run learniee@0.1.0 npx
-At line:1 char:1
-+ & "C:\Program Files\nodejs/node.exe" "C:\Users\as333\AppData\Roaming\ ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (npm notice run learniee@0.1.0 npx:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-npm notice run tsc --noEmit

@@ -128,7 +128,8 @@ describe("Enrollment: first payment", () => {
     const cycles = await prisma.enrollmentCycle.findMany({ where: { enrollmentId: e1!.id } });
     expect(cycles).toHaveLength(1);
     expect(cycles[0].cycleNumber).toBe(1);
-    expect(Number(e1!.amountPaid)).toBe(Number(cycles[0].price));
+    // amountPaid is the real charge: cycle price (base) + 18% GST (e.g. 15000 -> 17700).
+    expect(Number(e1!.amountPaid)).toBe(Math.round(Number(cycles[0].price) * 1.18 * 100) / 100);
     expect(await prisma.invoice.count({ where: { razorpayOrderId: order.id as string } })).toBe(1);
   });
 
