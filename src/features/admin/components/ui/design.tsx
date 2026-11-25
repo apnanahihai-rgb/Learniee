@@ -193,14 +193,19 @@ export function AdminDataTable<Row>({
   columns,
   rows,
   rowKey,
+  wide,
 }: {
   columns: Array<AdminColumn<Row>>;
   rows: Row[];
   rowKey: (row: Row) => string;
+  /** Many columns: keep the table 1200px wide from 720px up and scroll sideways (the design's `.led`). */
+  wide?: boolean;
 }) {
   return (
     <div className={cx(ADMIN_CARD_FLUSH, "overflow-x-auto")}>
-      <table className={cx("w-full border-collapse", `${PHONE}:block`)}>
+      <table
+        className={cx("w-full border-collapse", wide && "min-[720px]:min-w-[1200px]", `${PHONE}:block`)}
+      >
         <thead className={`${PHONE}:hidden`}>
           <tr>
             {columns.map((column) => (

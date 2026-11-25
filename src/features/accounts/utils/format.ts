@@ -14,6 +14,14 @@ export const currencyExact = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 2,
 });
 
+/** Whole rupees when the amount is whole, paise only when it has them (recent invoices). */
+export const currencyAuto = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 // Fixed to the platform timezone (IST) so server render and browser agree,
 // whatever the host or viewer timezone is.
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
@@ -39,3 +47,16 @@ export function humanizeEnum(value: string): string {
 }
 
 export const EXPORT_HREF = "/api/accounts/export";
+
+const INVOICE_TYPE_LABEL: Record<string, string> = {
+  ENROLLMENT_PAYMENT: "Enrollment",
+  DEMO_BOOKING_PAYMENT: "Demo booking",
+  WALLET_TOPUP: "Wallet top-up",
+  DEMO_COUPON_PURCHASE: "Demo coupons",
+  CYCLE_RENEWAL_PAYMENT: "Renewal",
+};
+
+/** Invoice type enum -> the label shown to Admin and Accounts. */
+export function invoiceTypeLabel(type: string): string {
+  return INVOICE_TYPE_LABEL[type] ?? humanizeEnum(type);
+}

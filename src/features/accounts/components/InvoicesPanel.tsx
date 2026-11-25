@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { useInvoices, type InvoiceType } from "@/features/accounts/hooks/useInvoices";
+import { useInvoices } from "@/features/accounts/hooks/useInvoices";
 import { usePagination } from "@/features/accounts/hooks/usePagination";
 import { AdminError, AdminPanel } from "@/features/admin/components/ui/primitives";
 import {
@@ -21,25 +21,18 @@ import {
   tdClass,
   thClass,
 } from "@/features/accounts/components/ui/accountsUi";
-import { EXPORT_HREF, currencyExact, formatDate, humanizeEnum } from "@/features/accounts/utils/format";
+import {
+  EXPORT_HREF,
+  currencyExact,
+  formatDate,
+  invoiceTypeLabel as typeLabel,
+} from "@/features/accounts/utils/format";
 import {
   TABLE_PERIOD_OPTIONS,
   matchesPeriod,
   matchesQuery,
   type TablePeriod,
 } from "@/features/accounts/utils/period";
-
-const TYPE_LABEL: Record<InvoiceType, string> = {
-  ENROLLMENT_PAYMENT: "Enrollment",
-  DEMO_BOOKING_PAYMENT: "Demo booking",
-  WALLET_TOPUP: "Wallet top-up",
-  DEMO_COUPON_PURCHASE: "Demo coupons",
-  CYCLE_RENEWAL_PAYMENT: "Renewal",
-};
-
-function typeLabel(type: string) {
-  return TYPE_LABEL[type as InvoiceType] ?? humanizeEnum(type);
-}
 
 /**
  * Invoices (Sep 11, 2026): every payment made on the platform, one row per
