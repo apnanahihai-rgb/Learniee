@@ -1,161 +1,194 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User, Pencil, X, Check } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { ADMIN_CARD, ADMIN_CONTROL, adminBtn, adminTag } from "@/features/admin/components/ui/adminStyles";
+import {
+  AdminErrorNote,
+  AdminField,
+  AdminHead,
+  AdminLoadingState,
+  AdminStack,
+  AdminToast,
+} from "@/features/admin/components/ui/design";
 import { useProfile, type AdminProfileFormFields } from "@/features/admin/hooks/useProfile";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
-import ProfileField from "@/features/shared/components/ProfileField";
+import { getInitials } from "@/lib/initials";
 
 /**
- * New (Sep 10, 2026) — Admin has no persistent sidebar/menu yet
- * (01-PROJECT-STATUS.md §1: "most individual Admin pages render
- * their own header inline"), so this is linked from the one shared
- * header on `/admin` itself, next to the NotificationBell, rather
- * than a sidebar entry like Parent/Teacher have.
- *
- * `Admin` is a minimal model (`03-DATA-MODEL.md`) — no phone/address
- * fields like Parent/Teacher — so this only shows/edits name, plus a
- * read-only email + join date.
+ * Admin My profile (design 25). Data: `GET` / `PATCH /api/admin/profile`
+ * (verified Admin auth). Name and phone are editable; email comes from the
+ * login and is read-only. Phone is optional (blank clears it).
  */
 
-const emptyForm: AdminProfileFormFields = { firstName: "", lastName: "" };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+const EMPTY_FORM: AdminProfileFormFields = { firstName: "", lastName: "", phone: "" };
 
 export default function AdminProfilePage() {
   const { profile, loading, saving, error, save } = useProfile();
 
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<AdminProfileFormFields>(emptyForm);
-  const [notice, setNotice] = useState("");
+  const [form, setForm] = useState<AdminProfileFormFields>(EMPTY_FORM);
+  const [toast, setToast] = useState("");
+  const [invalid, setInvalid] = useState<"" | "firstName" | "lastName">("");
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!profile) return;
-    setForm({ firstName: profile.firstName, lastName: profile.lastName });
+    setForm({
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      phone: profile.phone ?? "",
+    });
   }, [profile]);
 
-  function field(name: keyof AdminProfileFormFields) {
-    return (value: string) => setForm((prev) => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
+
+  function showToast(message: string) {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 2800);
+  }
+
+  function setField(name: keyof AdminProfileFormFields, value: string) {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (invalid === name) setInvalid("");
   }
 
   function handleCancel() {
-    if (profile) {
-      setForm({ firstName: profile.firstName, lastName: profile.lastName });
-    }
-    setEditing(false);
-    setNotice("");
+    if (!profile) return;
+    setInvalid("");
+    setForm({
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      phone: profile.phone ?? "",
+    });
   }
 
-  async function handleSave() {
-    setNotice("");
-    const ok = await save(form);
-    if (ok) {
-      setEditing(false);
-      setNotice("Profile updated.");
-      setTimeout(() => setNotice(""), 3000);
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+
+    if (!form.firstName.trim()) {
+      setInvalid("firstName");
+      document.getElementById("p1")?.focus();
+      return;
     }
+    if (!form.lastName.trim()) {
+      setInvalid("lastName");
+      document.getElementById("p2")?.focus();
+      return;
+    }
+
+    const ok = await save({
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      phone: form.phone.trim(),
+    });
+
+    if (ok) showToast("Profile saved");
   }
 
-  const displayName = profile ? `${profile.firstName} ${profile.lastName}` : "";
+  const fullName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : "";
+  const email = profile?.email ?? "";
 
   return (
-    <div>
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0">
-              <User size={22} />
-            </span>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                {loading ? "Your Profile" : displayName || "Your Profile"}
-              </h1>
-              <p className="text-sm text-gray-500">{profile?.email}</p>
-            </div>
-          </div>
+    <AdminStack>
+      <AdminHead
+        crumbs={[{ label: "Overview", href: "/admin" }]}
+        title="My profile"
+        description={email}
+      />
 
-          {!loading && !editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-semibold px-3.5 py-2 rounded-lg flex-shrink-0"
+      <AdminErrorNote>{error}</AdminErrorNote>
+
+      {loading && !profile ? (
+        <AdminLoadingState message="Loading your profile…" />
+      ) : profile ? (
+        <div className="grid max-w-[1000px] items-start gap-5 min-[1024px]:grid-cols-[280px_minmax(0,1fr)]">
+          <aside
+            className={`${ADMIN_CARD} flex flex-col items-center gap-1.5 px-5 py-7 text-center`}
+          >
+            <span
+              aria-hidden="true"
+              className="grid size-[88px] place-items-center rounded-full bg-pd-brand font-heading text-[38px] font-semibold text-white"
             >
-              <Pencil size={14} />
-              Edit
-            </button>
-          )}
-        </div>
+              {getInitials(fullName, "A")}
+            </span>
+            <h2 className="font-heading text-[19px] font-semibold">{fullName}</h2>
+            <p className="text-[13px] text-pd-ink3">{email}</p>
+            <span className={adminTag("violet")}>Admin</span>
+          </aside>
 
-        {error && <ErrorBanner>{error}</ErrorBanner>}
-        {notice && (
-          <div className="bg-green-50 text-green-700 text-sm p-3 rounded-lg mb-4">{notice}</div>
-        )}
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className={`${ADMIN_CARD} flex flex-col gap-4 p-5`}
+          >
+            <div className="grid gap-4 min-[640px]:grid-cols-2">
+              <AdminField id="p1" label="First Name">
+                <input
+                  id="p1"
+                  type="text"
+                  value={form.firstName}
+                  onChange={(event) => setField("firstName", event.target.value)}
+                  aria-invalid={invalid === "firstName" || undefined}
+                  autoComplete="given-name"
+                  className={`${ADMIN_CONTROL} aria-[invalid=true]:border-pd-red`}
+                />
+              </AdminField>
 
-        {loading ? (
-          <div className="space-y-4">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="h-12 rounded-xl bg-purple-50 animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white border rounded-2xl shadow-sm p-6 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <ProfileField
-                label="First Name"
-                name="firstName"
-                value={form.firstName}
-                editing={editing}
-                required
-                onChange={field("firstName")}
-              />
-              <ProfileField
-                label="Last Name"
-                name="lastName"
-                value={form.lastName}
-                editing={editing}
-                required
-                onChange={field("lastName")}
-              />
+              <AdminField id="p2" label="Last Name">
+                <input
+                  id="p2"
+                  type="text"
+                  value={form.lastName}
+                  onChange={(event) => setField("lastName", event.target.value)}
+                  aria-invalid={invalid === "lastName" || undefined}
+                  autoComplete="family-name"
+                  className={`${ADMIN_CONTROL} aria-[invalid=true]:border-pd-red`}
+                />
+              </AdminField>
+
+              <AdminField
+                id="p3"
+                label="Email"
+                hint="Email is managed through your login and cannot be changed here."
+              >
+                <input
+                  id="p3"
+                  type="email"
+                  value={email}
+                  disabled
+                  className={ADMIN_CONTROL}
+                />
+              </AdminField>
+
+              <AdminField id="p4" label="Phone">
+                <input
+                  id="p4"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(event) => setField("phone", event.target.value)}
+                  autoComplete="tel"
+                  className={ADMIN_CONTROL}
+                />
+              </AdminField>
             </div>
 
-            {profile && (
-              <p className="text-xs text-gray-400 border-t pt-4">
-                Admin since {formatDate(profile.createdAt)}
-              </p>
-            )}
+            <div className="flex flex-wrap gap-2 border-t border-pd-line pt-4">
+              <button type="submit" disabled={saving} className={adminBtn("pri")}>
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+              <button type="button" onClick={handleCancel} disabled={saving} className={adminBtn("out")}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
-            {editing && (
-              <div className="flex items-center gap-3 border-t pt-5">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
-                >
-                  <Check size={15} />
-                  {saving ? "Saving…" : "Save changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-lg"
-                >
-                  <X size={15} />
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+      <AdminToast message={toast} />
+    </AdminStack>
   );
 }

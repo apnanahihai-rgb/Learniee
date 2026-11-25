@@ -69,6 +69,7 @@ model Admin {
   email     String   @unique
   firstName String
   lastName  String
+  phone     String?
   createdAt DateTime @default(now())
 }
 

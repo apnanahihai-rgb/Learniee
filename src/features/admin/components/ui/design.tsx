@@ -441,3 +441,24 @@ export function AdminPagination({
     </nav>
   );
 }
+
+/* ---------------------------------- Toast ---------------------------------- */
+
+/**
+ * Short confirmation pill (the design's `.toast`): bottom-centre on phones
+ * (above the bottom bar), bottom-centre on larger screens. Render it only
+ * while there is a message; the page clears the message after a moment.
+ */
+export function AdminToast({ message }: { message: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed bottom-[88px] left-1/2 z-[120] flex w-[calc(100%-32px)] max-w-[420px] -translate-x-1/2 flex-col items-center sm:bottom-6"
+    >
+      {message && (
+        <div className="rounded-xl bg-pd-ink px-4 py-3 font-semibold text-white">{message}</div>
+      )}
+    </div>
+  );
+}

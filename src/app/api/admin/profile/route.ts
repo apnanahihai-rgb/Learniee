@@ -4,9 +4,10 @@ import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 
 /**
  * GET/PATCH `/api/admin/profile` — new (Sep 10, 2026), backs the new
- * `/admin/profile` page. `Admin` is a minimal model (no phone/address
- * fields like Parent/Teacher — see `03-DATA-MODEL.md`), so this only
- * ever has name to show/edit plus a read-only email + join date.
+ * `/admin/profile` page. `Admin` is a minimal model (no address
+ * like Parent/Teacher — see `03-DATA-MODEL.md`), so this only
+ * has name and an optional phone to show/edit plus a read-only email
+ * + join date (phone added Nov 2026 for the redesigned profile page).
  *
  * Signature-verified auth (`requireVerifiedAdminAuth`) — same JWT
  * signature/expiry/role checks as the money routes, so a forged
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
         firstName: true,
         lastName: true,
         email: true,
+        phone: true,
         createdAt: true,
       },
     });
@@ -49,7 +51,7 @@ export async function GET(req: Request) {
   }
 }
 
-const EDITABLE_FIELDS = ["firstName", "lastName"] as const;
+const EDITABLE_FIELDS = ["firstName", "lastName", "phone"] as const;
 type EditableField = (typeof EDITABLE_FIELDS)[number];
 type ProfileUpdateBody = Partial<Record<EditableField, string>>;
 
@@ -70,6 +72,26 @@ export async function PATCH(req: Request) {
       }
     }
 
+    // Phone is optional: blank clears it, otherwise 7-15 digits (a leading + and
+    // spaces / dashes / brackets are allowed).
+    let phone: string | null | undefined;
+    if (typeof data.phone === "string") {
+      if (data.phone === "") {
+        phone = null;
+      } else {
+        const digits = data.phone.replace(/\D/g, "");
+
+        if (!/^\+?[\d\s\-()]+$/.test(data.phone) || digits.length < 7 || digits.length > 15) {
+          return NextResponse.json(
+            { error: "Enter a valid phone number, for example +91 98765 43210." },
+            { status: 400 },
+          );
+        }
+
+        phone = data.phone;
+      }
+    }
+
     if (data.firstName === "" || data.lastName === "") {
       return NextResponse.json(
         { error: "First name and last name are required." },
@@ -77,14 +99,20 @@ export async function PATCH(req: Request) {
       );
     }
 
+    const update: { firstName?: string; lastName?: string; phone?: string | null } = {};
+    if (data.firstName !== undefined) update.firstName = data.firstName;
+    if (data.lastName !== undefined) update.lastName = data.lastName;
+    if (phone !== undefined) update.phone = phone;
+
     const admin = await prisma.admin.update({
       where: { cognitoId: auth.payload.sub },
-      data,
+      data: update,
       select: {
         id: true,
         firstName: true,
         lastName: true,
         email: true,
+        phone: true,
         createdAt: true,
       },
     });

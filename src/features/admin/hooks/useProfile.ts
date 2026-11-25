@@ -7,10 +7,16 @@ export interface AdminProfileData {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string | null;
   createdAt: string;
 }
 
-export type AdminProfileFormFields = Pick<AdminProfileData, "firstName" | "lastName">;
+/** Form values are plain strings; an empty phone is sent as "" and stored as null. */
+export interface AdminProfileFormFields {
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
 
 /** Backs the new `/admin/profile` page, linked from the Admin dashboard header. */
 export function useProfile() {
