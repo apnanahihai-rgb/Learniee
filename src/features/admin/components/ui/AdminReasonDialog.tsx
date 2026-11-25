@@ -18,6 +18,8 @@ interface Props {
   danger?: boolean;
   label?: string;
   hint?: ReactNode;
+  /** Set when the server would refuse the action: shown in red and the confirm button is disabled. */
+  blockedReason?: string | null;
   onCancel: () => void;
   /** Resolve with an error message to keep the dialog open, or null when saved. */
   onSubmit: (reason: string) => Promise<string | null>;
@@ -36,6 +38,7 @@ export default function AdminReasonDialog({
   danger = false,
   label = "Reason",
   hint = "Required, 5 to 500 characters. Kept on record.",
+  blockedReason = null,
   onCancel,
   onSubmit,
 }: Props) {
@@ -77,7 +80,7 @@ export default function AdminReasonDialog({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={busy}
+            disabled={busy || Boolean(blockedReason)}
             className={adminBtn(danger ? "dng" : "pri")}
           >
             {busy ? "Saving…" : confirmLabel}
@@ -87,6 +90,7 @@ export default function AdminReasonDialog({
     >
       {description && <p>{description}</p>}
 
+      <AdminErrorNote>{blockedReason}</AdminErrorNote>
       <AdminErrorNote>{error}</AdminErrorNote>
 
       <div className="flex flex-col gap-1.5">

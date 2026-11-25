@@ -2,33 +2,41 @@
 
 import { useState } from "react";
 
+import RatingCell from "@/features/admin/components/RatingCell";
+import AdminReasonDialog from "@/features/admin/components/ui/AdminReasonDialog";
+import { adminBtn, adminTag } from "@/features/admin/components/ui/adminStyles";
+import {
+  AdminDataTable,
+  AdminEmptyState,
+  AdminErrorNote,
+  AdminHead,
+  AdminLoadingState,
+  AdminPillTabs,
+  AdminSearchBox,
+  AdminStack,
+  AdminStats,
+} from "@/features/admin/components/ui/design";
 import {
   useRatingBoard,
   type RatingBoardCourse,
   type RatingBoardTeacher,
 } from "@/features/admin/hooks/useRatingBoard";
-import RatedDeleteDialog from "@/features/admin/components/RatedDeleteDialog";
-import RatingCell from "@/features/admin/components/RatingCell";
-import {
-  AdminEmpty,
-  AdminError,
-  AdminLoading,
-  AdminPage,
-  AdminPageHeader,
-  AdminPill,
-  AdminSearch,
-  AdminStatCard,
-  AdminTableCard,
-  AdminTabs,
-  adminButtonClass,
-  adminRowClass,
-  adminTableClass,
-  adminTdClass,
-  adminThClass,
-} from "@/features/admin/components/ui/primitives";
+import { usePdToast } from "@/features/parent/components/courses/usePdToast";
+
+/**
+ * Admin "Lowest rated" (design 17). The bottom 2% of courses and teachers by
+ * parent review average (needs at least 3 reviews to be ranked); Admin can
+ * delete any item with a reason.
+ * Data: GET /api/admin/rating-board, delete: DELETE
+ * /api/admin/rating-board/{courses|teachers}/[id] (verified Admin auth, reason
+ * 5 to 500 characters, Activity Log, refused with live enrollments or open
+ * payouts). See `ratingBoard.service.ts` and `ratingRemoval.service.ts`.
+ */
 
 type Tab = "courses" | "teachers";
-type Target = { kind: "course"; row: RatingBoardCourse } | { kind: "teacher"; row: RatingBoardTeacher };
+type Target =
+  | { kind: "course"; row: RatingBoardCourse }
+  | { kind: "teacher"; row: RatingBoardTeacher };
 
 /** Why the server will refuse a delete, shown before the Admin types a reason. */
 function blockedReason(row: { liveEnrollments: number; openPayouts: number }): string | null {
@@ -43,6 +51,10 @@ function blockedReason(row: { liveEnrollments: number; openPayouts: number }): s
   return null;
 }
 
+function InProgress({ live }: { live: number }) {
+  return <span className={adminTag(live > 0 ? "amber" : "gray")}>{live > 0 ? `${live} live` : "None"}</span>;
+}
+
 export default function AdminLowestRatedPage() {
   const { courses, teachers, bottomPercent, minReviews, loading, error, deleteCourse, deleteTeacher } =
     useRatingBoard();
@@ -50,7 +62,8 @@ export default function AdminLowestRatedPage() {
   const [showAll, setShowAll] = useState(false);
   const [query, setQuery] = useState("");
   const [target, setTarget] = useState<Target | null>(null);
-  const [notice, setNotice] = useState("");
+  const [warning, setWarning] = useState("");
+  const { toast, toastNode } = usePdToast();
 
   const q = query.trim().toLowerCase();
   const flaggedCourses = courses.filter((c) => c.flagged);
@@ -65,146 +78,153 @@ export default function AdminLowestRatedPage() {
     (t) => (showAll || t.flagged) && (!q || `${t.name} ${t.email}`.toLowerCase().includes(q)),
   );
 
-  const rows = tab === "courses" ? courseRows : teacherRows;
+  const rowCount = tab === "courses" ? courseRows.length : teacherRows.length;
 
   return (
-    <AdminPage>
-      <AdminPageHeader
+    <AdminStack>
+      <AdminHead
         crumbs={[{ label: "Overview", href: "/admin" }, { label: "People" }]}
         title="Lowest rated"
-        description={`The bottom ${bottomPercent}% of courses and teachers by parent review average (needs at least ${minReviews} reviews to be ranked). You can delete any course or teacher from the full list too.`}
+        description={`The bottom ${bottomPercent}% of courses and teachers by parent review average (needs at least ${minReviews} reviews to be ranked). You can delete one with a reason.`}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <AdminStatCard label="Courses flagged" value={flaggedCourses.length} />
-        <AdminStatCard label="Teachers flagged" value={flaggedTeachers.length} />
-        <AdminStatCard label="Courses total" value={courses.length} />
-        <AdminStatCard label="Teachers total" value={teachers.length} />
+      <AdminStats
+        items={[
+          { label: "Courses flagged", value: flaggedCourses.length },
+          { label: "Teachers flagged", value: flaggedTeachers.length },
+          { label: "Courses total", value: courses.length },
+          { label: "Teachers total", value: teachers.length },
+        ]}
+      />
+
+      <AdminPillTabs<Tab>
+        label="Rated by"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: "courses", label: "Courses", count: courseRows.length },
+          { value: "teachers", label: "Teachers", count: teacherRows.length },
+        ]}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <AdminSearchBox value={query} onChange={setQuery} placeholder="Search name or email" />
+        <button
+          type="button"
+          aria-pressed={showAll}
+          onClick={() => setShowAll((value) => !value)}
+          className={adminBtn("out")}
+        >
+          {showAll ? `Show bottom ${bottomPercent}% only` : "Show all"}
+        </button>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <AdminTabs<Tab>
-          label="Courses or teachers"
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { value: "courses", label: "Courses", count: courseRows.length },
-            { value: "teachers", label: "Teachers", count: teacherRows.length },
-          ]}
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <AdminSearch value={query} onChange={setQuery} placeholder="Search name or email" />
-          <button
-            type="button"
-            aria-pressed={showAll}
-            onClick={() => setShowAll((v) => !v)}
-            className={adminButtonClass("secondary")}
-          >
-            {showAll ? `Show bottom ${bottomPercent}% only` : "Show all"}
-          </button>
-        </div>
-      </div>
-
-      {notice && (
-        <p role="status" className="rounded-xl bg-admin-tint px-4 py-3 text-[15px] font-bold text-brand-dark">
-          {notice}
+      {warning && (
+        <p
+          role="status"
+          className="rounded-xl border border-[#efd694] bg-pd-amber-bg px-4 py-3 text-[14px] text-pd-amber"
+        >
+          {warning}
         </p>
       )}
-      <AdminError>{error}</AdminError>
+      <AdminErrorNote>{error}</AdminErrorNote>
 
       {loading ? (
-        <AdminLoading message="Loading ratings…" />
-      ) : rows.length === 0 ? (
-        <AdminEmpty
+        <AdminLoadingState message="Loading ratings…" />
+      ) : rowCount === 0 ? (
+        <AdminEmptyState
           message={
             showAll || q
               ? "Nothing matches."
               : "Nothing is in the bottom group yet. Use Show all to see every item."
           }
         />
+      ) : tab === "courses" ? (
+        <AdminDataTable
+          rows={courseRows}
+          rowKey={(c) => c.id}
+          columns={[
+            {
+              label: "Course",
+              block: true,
+              render: (c) => (
+                <div className="text-left">
+                  <b className="block font-semibold">{c.title}</b>
+                  <small className="block text-xs text-pd-ink3">
+                    {c.teacherName}
+                    {c.subject ? ` · ${c.subject}` : ""}
+                  </small>
+                </div>
+              ),
+            },
+            { label: "Rating", render: (c) => <RatingCell {...c} showStatus={showAll} /> },
+            { label: "In progress", render: (c) => <InProgress live={c.liveEnrollments} /> },
+            {
+              label: "Action",
+              right: true,
+              block: true,
+              render: (c) => (
+                <button
+                  type="button"
+                  onClick={() => setTarget({ kind: "course", row: c })}
+                  aria-label={`Delete course ${c.title}`}
+                  className={adminBtn("dtx", "sm")}
+                >
+                  Delete
+                </button>
+              ),
+            },
+          ]}
+        />
       ) : (
-        <AdminTableCard>
-          <table className={`${adminTableClass} min-w-[820px]`}>
-            <thead>
-              <tr>
-                <th className={adminThClass}>{tab === "courses" ? "Course" : "Teacher"}</th>
-                <th className={adminThClass}>Rating</th>
-                <th className={adminThClass}>In progress</th>
-                <th className={`${adminThClass} text-right`}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tab === "courses"
-                ? courseRows.map((c) => (
-                    <tr key={c.id} className={adminRowClass}>
-                      <td className={adminTdClass}>
-                        <div className="flex flex-col">
-                          <span className="text-base font-extrabold">{c.title}</span>
-                          <span className="text-sm text-admin-muted">
-                            {c.teacherName}
-                            {c.subject ? ` · ${c.subject}` : ""} · {c.status.replace("_", " ").toLowerCase()}
-                          </span>
-                        </div>
-                      </td>
-                      <td className={adminTdClass}>
-                        <RatingCell {...c} />
-                      </td>
-                      <td className={adminTdClass}>
-                        <AdminPill tone={c.liveEnrollments > 0 ? "warn" : "neutral"}>
-                          {c.liveEnrollments} live enrollment{c.liveEnrollments === 1 ? "" : "s"}
-                        </AdminPill>
-                      </td>
-                      <td className={`${adminTdClass} text-right`}>
-                        <button
-                          type="button"
-                          onClick={() => setTarget({ kind: "course", row: c })}
-                          aria-label={`Delete course ${c.title}`}
-                          className={adminButtonClass("danger")}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                : teacherRows.map((t) => (
-                    <tr key={t.id} className={adminRowClass}>
-                      <td className={adminTdClass}>
-                        <div className="flex flex-col">
-                          <span className="text-base font-extrabold">{t.name}</span>
-                          <span className="text-sm text-admin-muted">
-                            {t.email} · {t.courseCount} course{t.courseCount === 1 ? "" : "s"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className={adminTdClass}>
-                        <RatingCell {...t} />
-                      </td>
-                      <td className={adminTdClass}>
-                        <AdminPill tone={t.liveEnrollments > 0 ? "warn" : "neutral"}>
-                          {t.liveEnrollments} live enrollment{t.liveEnrollments === 1 ? "" : "s"}
-                        </AdminPill>
-                      </td>
-                      <td className={`${adminTdClass} text-right`}>
-                        <button
-                          type="button"
-                          onClick={() => setTarget({ kind: "teacher", row: t })}
-                          aria-label={`Delete teacher ${t.name}`}
-                          className={adminButtonClass("danger")}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-            </tbody>
-          </table>
-        </AdminTableCard>
+        <AdminDataTable
+          rows={teacherRows}
+          rowKey={(t) => t.id}
+          columns={[
+            {
+              label: "Teacher",
+              block: true,
+              render: (t) => (
+                <div className="text-left">
+                  <b className="block font-semibold">{t.name}</b>
+                  <small className="block text-xs text-pd-ink3">
+                    {t.email} · {t.courseCount} course{t.courseCount === 1 ? "" : "s"}
+                  </small>
+                </div>
+              ),
+            },
+            { label: "Rating", render: (t) => <RatingCell {...t} showStatus={showAll} /> },
+            { label: "In progress", render: (t) => <InProgress live={t.liveEnrollments} /> },
+            {
+              label: "Action",
+              right: true,
+              block: true,
+              render: (t) => (
+                <button
+                  type="button"
+                  onClick={() => setTarget({ kind: "teacher", row: t })}
+                  aria-label={`Delete teacher ${t.name}`}
+                  className={adminBtn("dtx", "sm")}
+                >
+                  Delete
+                </button>
+              ),
+            },
+          ]}
+        />
       )}
 
       {target && (
-        <RatedDeleteDialog
-          kind={target.kind}
-          name={target.kind === "course" ? target.row.title : `${target.row.name} (${target.row.email})`}
+        <AdminReasonDialog
+          danger
+          title={`Delete “${target.kind === "course" ? target.row.title : target.row.name}”`}
+          description={
+            target.kind === "course"
+              ? "This is permanent. It removes the course with its past enrollments, classes, reviews and certificates. It is refused while there are live enrollments or unfinished payouts."
+              : "This is permanent. It removes the teacher's login and everything linked to it: courses, reviews, past classes, files and certificates. It is refused while there are live enrollments or unfinished payouts."
+          }
+          confirmLabel="Delete"
+          hint="Required, 5 to 500 characters. Saved in the Activity Log."
           blockedReason={blockedReason(target.row)}
           onCancel={() => setTarget(null)}
           onSubmit={async (reason) => {
@@ -215,19 +235,23 @@ export default function AdminLowestRatedPage() {
 
             if (!result.ok) return result.error ?? "Delete failed.";
 
-            setNotice(
-              target.kind === "teacher" && result.loginRemoved === false
-                ? "Teacher deleted from the database, but the login could not be removed. Remove it in Cognito."
-                : target.kind === "course"
-                  ? "Course deleted."
-                  : "Teacher account deleted.",
-            );
+            if (target.kind === "teacher" && result.loginRemoved === false) {
+              setWarning(
+                "Teacher deleted from the database, but the login could not be removed. Remove it in Cognito.",
+              );
+            } else {
+              setWarning("");
+            }
+
+            toast(target.kind === "course" ? "Course deleted" : "Teacher account deleted");
             setTarget(null);
 
             return null;
           }}
         />
       )}
-    </AdminPage>
+
+      {toastNode}
+    </AdminStack>
   );
 }
