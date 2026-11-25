@@ -24,7 +24,7 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState(""); // expected in E.164, e.g. +91XXXXXXXXXX
-  const [role, setRole] = useState<StaffRole>("HR");
+  const [role, setRole] = useState<StaffRole>("ACCOUNTS");
 
   const [result, setResult] = useState<CreatedResult | null>(null);
 
@@ -57,7 +57,7 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
           role,
         }),
       });
-      const body = await res.json();
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to create account.");
 
       setResult({ account: body.account, tempPassword: body.tempPassword });
@@ -68,6 +68,18 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     } finally {
       setLoading(false);
     }
+  }
+
+  /** Clears the form and goes back to the details step (design: Cancel / Done). */
+  function reset() {
+    setStep("details");
+    setError("");
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setRole("ACCOUNTS");
+    setResult(null);
   }
 
   return {
@@ -88,5 +100,6 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     setRole,
 
     handleCreateAccount,
+    reset,
   };
 }
