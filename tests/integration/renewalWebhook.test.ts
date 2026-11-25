@@ -13,7 +13,6 @@ vi.mock("@/lib/razorpay", async (orig) => {
 
 import { reconcileRenewalFromWebhook } from "@/features/parent/server/renewal/webhook";
 import { buildCyclePlan, priceForSessions } from "@/features/shared/utils/cyclePlan";
-import { rupeesToPaise } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
 import { createSessionFixture, resetDb } from "../helpers/db";
 
@@ -41,6 +40,13 @@ async function renewable() {
   return { ...f, cycleStartDate, scheduleDays, sessionCount: plan.sessionCount, price };
 }
 
+/**
+ * What a domestic parent is charged for `price` rupees: price + 18% GST, in paise.
+ * (Renewals now charge GST on top of the base price; this parent has no NRI/country flag, so no
+ * international surcharge.) Written out here instead of calling the app's pricing function.
+ */
+const paiseWithGst = (price: number) => Math.round(price * 118);
+
 function putOrder(
   r: Awaited<ReturnType<typeof renewable>>,
   over: { status?: string; amount?: number; kind?: string } = {},
@@ -49,7 +55,8 @@ function putOrder(
   store.orders[id] = {
     id,
     status: over.status ?? "paid",
-    amount: over.amount ?? rupeesToPaise(r.price),
+    // price + 18% GST, because applyPaidRenewal compares the paid amount with the GST-inclusive total.
+    amount: over.amount ?? paiseWithGst(r.price),
     currency: "INR",
     notes: {
       kind: over.kind ?? "cycle_renewal",
@@ -118,7 +125,8 @@ describe("renewal reconciled from the webhook (parent closed the tab)", () => {
 
   it("amount does not match the enrollment's rate -> null, nothing created (needs manual refund)", async () => {
     const r = await renewable();
-    const orderId = putOrder(r, { amount: rupeesToPaise(r.price) - 100 });
+    // Clearly wrong: half of the correct GST-inclusive amount (so this tests a wrong rate, not just a missing GST).
+    const orderId = putOrder(r, { amount: Math.round(paiseWithGst(r.price) / 2) });
     expect(await reconcileRenewalFromWebhook(orderId, `pay_ren_${++seq}`)).toBeNull();
     expect(await prisma.enrollmentCycle.count({ where: { enrollmentId: r.enrollment.id } })).toBe(1);
   });

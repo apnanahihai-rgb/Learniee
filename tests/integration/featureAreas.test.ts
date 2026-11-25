@@ -34,25 +34,69 @@ async function room() {
   return { ...f, chat };
 }
 
-describe("Chat: phone masking", () => {
-  it("a phone number is masked in the saved message; the original is kept for Admin only", async () => {
+/** Activity-log rows of one kind that belong to this chat room (the log is shared across tests in this file). */
+async function chatFlagLogs(roomId: string, level: "BLOCKED" | "SUSPICIOUS") {
+  const rows = await prisma.activityLog.findMany({ where: { action: "CHAT_PHONE_NUMBER_FLAGGED" } });
+  return rows.filter((r) => {
+    const m = r.metadata as { chatRoomId?: string; level?: string } | null;
+    return m?.chatRoomId === roomId && m?.level === level;
+  });
+}
+
+describe("Chat: phone number blocking", () => {
+  it("a message with a phone number is refused (422), never saved; Admin gets a BLOCKED flag and an activity-log entry", async () => {
+    // Since migration 20261026090000_add_chat_safety_flags a clear number is BLOCKED, not saved masked.
     const f = await room();
-    const msg = await sendMessage({ roomId: f.chat.id, senderRole: "PARENT", senderId: f.parent.id, body: "Call me on 9876543210 please" });
-    expect(msg.body).not.toContain("9876543210");
-    expect(msg.containsPhoneNumber).toBe(true);
-    const row = await prisma.chatMessage.findUniqueOrThrow({ where: { id: msg.id } });
-    expect(row.originalBody).toContain("9876543210");
-    expect(row.body).not.toContain("9876543210");
-    expect(await prisma.activityLog.count({ where: { action: "CHAT_PHONE_NUMBER_FLAGGED" } })).toBeGreaterThanOrEqual(1);
+    const err = await sendMessage({
+      roomId: f.chat.id,
+      senderRole: "PARENT",
+      senderId: f.parent.id,
+      body: "Call me on 9876543210 please",
+    }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ChatError);
+    expect((err as ChatError).status).toBe(422);
+
+    expect(await prisma.chatMessage.count({ where: { chatRoomId: f.chat.id } })).toBe(0);
+    const flags = await prisma.chatSafetyFlag.findMany({ where: { chatRoomId: f.chat.id } });
+    expect(flags).toHaveLength(1);
+    expect(flags[0].level).toBe("BLOCKED");
+    expect(flags[0].chatMessageId).toBeNull(); // no message row exists to point at
+    expect(flags[0].text).toContain("9876543210"); // the original is kept for Admin review only
+    expect(await chatFlagLogs(f.chat.id, "BLOCKED")).toHaveLength(1);
+    expect(JSON.stringify(await listMessages(f.chat.id))).not.toContain("9876543210");
   });
 
-  it("the other side's message list never contains the number or the original", async () => {
+  it("a +91 number with spaces is blocked too, and the other side's message list has no trace of it", async () => {
     const f = await room();
-    await sendMessage({ roomId: f.chat.id, senderRole: "PARENT", senderId: f.parent.id, body: "my number is +91 98765 43210" });
+    await expect(
+      sendMessage({ roomId: f.chat.id, senderRole: "PARENT", senderId: f.parent.id, body: "my number is +91 98765 43210" }),
+    ).rejects.toMatchObject({ status: 422 });
+
+    expect(await prisma.chatMessage.count({ where: { chatRoomId: f.chat.id } })).toBe(0);
+    const flag = await prisma.chatSafetyFlag.findFirstOrThrow({ where: { chatRoomId: f.chat.id } });
+    expect(flag.level).toBe("BLOCKED");
+    expect(await chatFlagLogs(f.chat.id, "BLOCKED")).toHaveLength(1);
+
     const list = await listMessages(f.chat.id); // what Parent/Teacher routes return (no includeOriginal)
+    expect(list).toEqual([]);
     const text = JSON.stringify(list);
     expect(text).not.toContain("98765");
     expect(text).not.toContain("originalBody");
+  });
+
+  it("digits spelled out as words are only SUSPICIOUS: the message is sent as typed and Admin gets a flag to review", async () => {
+    // Suspicious never blocks (see chatScreening.ts): ordinary chat can look like this too.
+    const f = await room();
+    const body = "nine eight seven six five four three two one zero";
+    const msg = await sendMessage({ roomId: f.chat.id, senderRole: "PARENT", senderId: f.parent.id, body });
+
+    expect(msg.body).toBe(body);
+    expect(await prisma.chatMessage.count({ where: { chatRoomId: f.chat.id } })).toBe(1);
+    const flag = await prisma.chatSafetyFlag.findFirstOrThrow({ where: { chatRoomId: f.chat.id } });
+    expect(flag.level).toBe("SUSPICIOUS");
+    expect(flag.chatMessageId).toBe(msg.id);
+    expect(flag.reasons).toContain("SPELLED_OUT_DIGITS");
+    expect(await chatFlagLogs(f.chat.id, "SUSPICIOUS")).toHaveLength(1);
   });
 
   it("an ordinary message is stored as typed, with no flag", async () => {

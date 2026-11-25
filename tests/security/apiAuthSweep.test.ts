@@ -61,6 +61,30 @@ const area = (label: string) => label.split("/")[1];
 /** Public by design: no login needed. */
 const PUBLIC_AREAS = new Set(["blog-images"]);
 
+/**
+ * Public by design: login, sign-up, password reset and logout must work for someone who is not
+ * logged in, so they answer 400 (bad input) or 200 (logout) instead of 401/403.
+ * They get a different check (see `checkPublicRoute`): never a 5xx, never tokens or session data.
+ * Keep this list explicit. A NEW route under /auth that is not listed here is still required to
+ * refuse unauthenticated callers. /auth/session and /auth/change-password stay protected.
+ */
+const PUBLIC_ROUTES = new Set([
+  "/auth/confirm",
+  "/auth/forgot-password",
+  "/auth/login",
+  "/auth/logout",
+  "/auth/new-password",
+  "/auth/resend-code",
+  "/auth/reset-password",
+  "/auth/signup",
+]);
+
+/** What a public route may answer: handled input errors, success (logout), refusal or rate limit. Never 5xx. */
+const PUBLIC_ROUTE_ALLOWED_STATUSES = [200, 400, 401, 403, 422, 429];
+
+/** A JWT, or a JSON key that would carry tokens / session data. Must never appear in a failed public call. */
+const SESSION_DATA_RE = /eyJ[\w-]+\.[\w-]+\.[\w-]+|"(?:id|access|refresh)?token"\s*:|"session"\s*:/i;
+
 /** Valid token of a role that must be REFUSED in that area. */
 const WRONG_ROLE_TOKEN: Record<string, string> = {
   admin: "valid.parent.p1",
@@ -85,12 +109,18 @@ const ROUTE_BODY: Record<string, string> = {
   }),
 };
 
-async function call(
+interface CallResult {
+  status: number;
+  body: string;
+  setCookie: string;
+}
+
+async function callFull(
   label: string,
   handler: Handler,
   method: string,
   opts: { token?: string; authorization?: string; body?: string },
-): Promise<number> {
+): Promise<CallResult> {
   state.token = opts.token;
   const headers = new Headers({ "content-type": "application/json" });
   if (opts.token) headers.set("cookie", `idToken=${opts.token}`);
@@ -111,10 +141,23 @@ async function call(
 
   try {
     const res = await handler(req, ctx);
-    return res.status;
+    return {
+      status: res.status,
+      body: await res.text(),
+      setCookie: res.headers.get("set-cookie") ?? "",
+    };
   } finally {
     state.token = undefined;
   }
+}
+
+async function call(
+  label: string,
+  handler: Handler,
+  method: string,
+  opts: Parameters<typeof callFull>[3],
+): Promise<number> {
+  return (await callFull(label, handler, method, opts)).status;
 }
 
 describe("API security sweep", () => {
@@ -171,6 +214,33 @@ describe("API security sweep", () => {
           delete process.env.CRON_SECRET;
           await check("secret unset (fail closed)", method, handler, { authorization: "Bearer undefined" }, [401]);
           if (saved !== undefined) process.env.CRON_SECRET = saved;
+          continue;
+        }
+
+        if (PUBLIC_ROUTES.has(route.label)) {
+          // Public by design: no token, a bad token and a wrong-role (logged-in parent) token all get
+          // the same treatment. No 5xx, and nothing that looks like tokens or session data in the answer.
+          for (const [what, opts] of [
+            ["no token", {}],
+            ["bad token", { token: BAD_TOKEN }],
+            ["wrong-role token", { token: "valid.parent.p1" }],
+          ] as const) {
+            let result: CallResult;
+            try {
+              result = await callFull(route.label, handler, method, opts);
+            } catch (e) {
+              failures.push(`${method} (${what}): threw ${(e as Error).message}`);
+              continue;
+            }
+            if (!PUBLIC_ROUTE_ALLOWED_STATUSES.includes(result.status)) {
+              failures.push(
+                `${method} (${what}): got ${result.status}, expected ${PUBLIC_ROUTE_ALLOWED_STATUSES.join("/")}`,
+              );
+            }
+            if (SESSION_DATA_RE.test(result.body) || SESSION_DATA_RE.test(result.setCookie)) {
+              failures.push(`${method} (${what}): response contains token/session data`);
+            }
+          }
           continue;
         }
 

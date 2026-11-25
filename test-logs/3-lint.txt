@@ -1,0 +1,1983 @@
+﻿node.exe : npm notice run learniee@0.1.0 lint
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\as333\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run learniee@0.1.0 lint:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run eslint
+
+C:\Users\as333\Desktop\learniee\check-meet.cjs
+  26:20  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  27:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  28:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  29:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\as333\Desktop\learniee\src\app\admin\profile\page.tsx
+  35:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\app\admin\profile\page.tsx:35:5
+  33 |   useEffect(() => {
+  34 |     if (!profile) return;
+> 35 |     setForm({
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  36 |       firstName: profile.firstName,
+  37 |       lastName: profile.lastName,
+  38 |       phone: profile.phone ?? "",  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\app\parent\(dashboard)\certificates\[certificateId]\page.tsx
+  47:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\app\parent\(dashboard)\certificates\[certificateId]\page.tsx:47:10
+  45 |
+  46 |   useEffect(() => {
+> 47 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  48 |   }, [load]);
+  49 |
+  50 |   useAutoRefresh(() => load(), { paths: [`/api/parent/certificates/${certificateId}`] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\app\parent\(dashboard)\payments\[invoiceId]\page.tsx
+  75:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\app\parent\(dashboard)\payments\[invoiceId]\page.tsx:75:10
+  73 |
+  74 |   useEffect(() => {
+> 75 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  76 |   }, [load]);
+  77 |
+  78 |   useAutoRefresh(() => load(), { paths: [`/api/parent/invoices/${invoiceId}`] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\app\teacher\certificates\[certificateId]\page.tsx
+  47:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\app\teacher\certificates\[certificateId]\page.tsx:47:10
+  45 |
+  46 |   useEffect(() => {
+> 47 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  48 |   }, [load]);
+  49 |
+  50 |   useAutoRefresh(() => load(), { paths: [`/api/teacher/certificates/${certificateId}`] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\components\DashboardActivity.tsx
+  49:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\components\DashboardActivity.tsx:49:10
+  47 |
+  48 |   useEffect(() => {
+> 49 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  50 |   }, [load]);
+  51 |
+  52 |   useAutoRefresh(() => load(), { paths: ["/api/admin/activity-logs"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\components\TeacherDocumentsStatusSection.tsx
+  16:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useActivityLogs.ts
+  94:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useActivityLogs.ts:94:5
+  92 |
+  93 |   useEffect(() => {
+> 94 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  95 |   }, [load]);
+  96 |
+  97 |   useAutoRefresh(() => load(), { paths: ["/api/admin/activity-logs"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminIdentity.ts
+  32:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminIdentity.ts:32:10
+  30 |
+  31 |   useEffect(() => {
+> 32 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  33 |   }, [load]);
+  34 |
+  35 |   // Picks up a name change made on the Profile page  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminQueueCounts.ts
+  30:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminQueueCounts.ts:30:10
+  28 |
+  29 |   useEffect(() => {
+> 30 |     void refresh();
+     |          ^^^^^^^ Avoid calling setState() directly within an effect
+  31 |   }, [refresh]);
+  32 |
+  33 |   // Re-check on tab focus and right after any approve/save anywhere in  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminUserDetail.ts
+  46:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminUserDetail.ts:46:10
+  44 |
+  45 |   useEffect(() => {
+> 46 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  47 |
+  48 |     return () => {
+  49 |       requestRef.current += 1;  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminUsers.ts
+  48:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useAdminUsers.ts:48:10
+  46 |
+  47 |   useEffect(() => {
+> 48 |     void loadUsers();
+     |          ^^^^^^^^^ Avoid calling setState() directly within an effect
+  49 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  50 |   }, []);
+  51 |  react-hooks/set-state-in-effect
+  49:5   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useBankAccounts.ts
+  39:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useBankAccounts.ts:39:5
+  37 |
+  38 |   useEffect(() => {
+> 39 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  40 |   }, []);
+  41 |
+  42 |   useAutoRefresh(() => load(), { paths: ["/api/admin/bank-accounts"] });
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useBankAccounts.ts:44:3
+  42 |   useAutoRefresh(() => load(), { paths: ["/api/admin/bank-accounts"] });
+  43 |
+> 44 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |     try {
+     | ^^^^^^^^^
+> 46 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 62 |     }
+     | ^^^^^^^^^
+> 63 |   }
+     | ^^^^ `load` is declared here
+  64 |
+  65 |   async function respond(
+  66 |     bankAccountId: string,  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useChatReports.ts
+  78:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useChatReports.ts:78:10
+  76 |
+  77 |   useEffect(() => {
+> 78 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  79 |   }, [load]);
+  80 |
+  81 |   useAutoRefresh(() => load(), { paths: ["/api/admin/chat-reports"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useComplaints.ts
+  33:5  error    Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useComplaints.ts:33:5
+  31 |
+  32 |   useEffect(() => {
+> 33 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  34 |   }, []);
+  35 |
+  36 |   useAutoRefresh(() => load(), { paths: [apiBase] });
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useComplaints.ts:38:3
+  36 |   useAutoRefresh(() => load(), { paths: [apiBase] });
+  37 |
+> 38 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 39 |     try {
+     | ^^^^^^^^^
+> 40 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 55 |     }
+     | ^^^^^^^^^
+> 56 |   }
+     | ^^^^ `load` is declared here
+  57 |
+  58 |   /** Resolves true when the update was saved. */
+  59 |   async function respond(  react-hooks/immutability
+  34:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useCoursesList.ts
+  15:5  error  Error: Cannot access variable before it is declared
+
+`fetchCourses` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useCoursesList.ts:15:5
+  13 |
+  14 |   useEffect(() => {
+> 15 |     fetchCourses();
+     |     ^^^^^^^^^^^^ `fetchCourses` accessed before it is declared
+  16 |   }, []);
+  17 |
+  18 |   useAutoRefresh(() => fetchCourses(), { paths: ["/api/admin/courses"] });
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useCoursesList.ts:20:3
+  18 |   useAutoRefresh(() => fetchCourses(), { paths: ["/api/admin/courses"] });
+  19 |
+> 20 |   async function fetchCourses() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 21 |     try {
+     | ^^^^^^^^^
+> 22 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 38 |     }
+     | ^^^^^^^^^
+> 39 |   }
+     | ^^^^ `fetchCourses` is declared here
+  40 |
+  41 |   async function updateApproval(
+  42 |     courseId: string,  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useEnrollments.ts
+  43:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useEnrollments.ts:43:5
+  41 |
+  42 |   useEffect(() => {
+> 43 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  44 |   }, []);
+  45 |
+  46 |   useAutoRefresh(() => load(), { paths: ["/api/admin/enrollments"] });
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useEnrollments.ts:48:3
+  46 |   useAutoRefresh(() => load(), { paths: ["/api/admin/enrollments"] });
+  47 |
+> 48 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 49 |     try {
+     | ^^^^^^^^^
+> 50 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 66 |     }
+     | ^^^^^^^^^
+> 67 |   }
+     | ^^^^ `load` is declared here
+  68 |
+  69 |   async function updateApproval(
+  70 |     enrollmentId: string,  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useLeaveRequests.ts
+  36:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useLeaveRequests.ts:36:5
+  34 |
+  35 |   useEffect(() => {
+> 36 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  37 |   }, []);
+  38 |
+  39 |   useAutoRefresh(() => load(), { paths: ["/api/admin/leave-requests"] });
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useLeaveRequests.ts:41:3
+  39 |   useAutoRefresh(() => load(), { paths: ["/api/admin/leave-requests"] });
+  40 |
+> 41 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 42 |     try {
+     | ^^^^^^^^^
+> 43 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 58 |     }
+     | ^^^^^^^^^
+> 59 |   }
+     | ^^^^ `load` is declared here
+  60 |
+  61 |   /** Resolves true when the decision was saved. */
+  62 |   async function respond(  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\usePayoutReview.ts
+  36:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\usePayoutReview.ts:36:5
+  34 |
+  35 |   useEffect(() => {
+> 36 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  37 |   }, []);
+  38 |
+  39 |   useAutoRefresh(() => load(), { paths: ["/api/admin/payout-review"] });
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\usePayoutReview.ts:41:3
+  39 |   useAutoRefresh(() => load(), { paths: ["/api/admin/payout-review"] });
+  40 |
+> 41 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 42 |     try {
+     | ^^^^^^^^^
+> 43 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 57 |     }
+     | ^^^^^^^^^
+> 58 |   }
+     | ^^^^ `load` is declared here
+  59 |
+  60 |   async function act(entryId: string, action: "RELEASE" | "REOPEN" | "CONFIRM_REJECT") {
+  61 |     try {  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useProfile.ts
+  29:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useProfile.ts:29:5
+  27 |
+  28 |   useEffect(() => {
+> 29 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  30 |   }, []);
+  31 |
+  32 |   async function load() {
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useProfile.ts:32:3
+  30 |   }, []);
+  31 |
+> 32 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 33 |     try {
+     | ^^^^^^^^^
+> 34 |       setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 50 |     }
+     | ^^^^^^^^^
+> 51 |   }
+     | ^^^^ `load` is declared here
+  52 |
+  53 |   async function save(fields: Partial<AdminProfileFormFields>) {
+  54 |     try {  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useRatingBoard.ts
+  46:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useRatingBoard.ts:46:5
+  44 |
+  45 |   useEffect(() => {
+> 46 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  47 |   }, [load]);
+  48 |
+  49 |   async function remove(kind: "courses" | "teachers", id: string, reason: string): Promise<DeleteResult> {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useSessionReviews.ts
+  48:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useSessionReviews.ts:48:5
+  46 |
+  47 |   useEffect(() => {
+> 48 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  49 |   }, [load]);
+  50 |
+  51 |   useAutoRefresh(() => load(), { paths: ["/api/admin/session-reviews"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useStaffAccounts.ts
+  46:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useStaffAccounts.ts:46:10
+  44 |
+  45 |   useEffect(() => {
+> 46 |     void loadAccounts();
+     |          ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  48 |   }, []);
+  49 |  react-hooks/set-state-in-effect
+  47:5   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useTeacherApplication.ts
+  45:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useTeacherApplication.ts:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  46 |   }, [load]);
+  47 |
+  48 |   useAutoRefresh(() => load(), { paths: ["/api/admin/teachers"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useTeacherStrikes.ts
+  49:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useTeacherStrikes.ts:49:5
+  47 |
+  48 |   useEffect(() => {
+> 49 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  50 |   }, [load]);
+  51 |
+  52 |   useAutoRefresh(() => load(), { paths: ["/api/admin/teacher-strikes"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useTeachersList.ts
+  46:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\admin\hooks\useTeachersList.ts:46:5
+  44 |
+  45 |   useEffect(() => {
+> 46 |     fetchTeachers();
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |   }, [fetchTeachers]);
+  48 |
+  49 |   useAutoRefresh(() => fetchTeachers(), { paths: ["/api/admin/teachers"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\auth\components\forgot-password\ForgotPasswordForm.tsx
+  56:38  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\as333\Desktop\learniee\src\features\blog\hooks\useAdminBlogs.ts
+  60:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\blog\hooks\useAdminBlogs.ts:60:5
+  58 |
+  59 |   useEffect(() => {
+> 60 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  61 |   }, [load]);
+  62 |
+  63 |   useAutoRefresh(() => load(), { paths: ["/api/admin/blogs"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\blog\hooks\useTeacherBlogs.ts
+  68:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\blog\hooks\useTeacherBlogs.ts:68:5
+  66 |
+  67 |   useEffect(() => {
+> 68 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  69 |   }, [load]);
+  70 |
+  71 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/blogs"] });         react-hooks/set-state-in-effect
+  97:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\blog\hooks\useTeacherBlogs.ts:97:5
+   95 |
+   96 |   useEffect(() => {
+>  97 |     load();
+      |     ^^^^ Avoid calling setState() directly within an effect
+   98 |   }, [load]);
+   99 |
+  100 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/blogs"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\chat\hooks\useChatMessages.ts
+  78:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\chat\hooks\useChatMessages.ts:78:5
+  76 |
+  77 |   useEffect(() => {
+> 78 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  79 |     setMessages([]);
+  80 |     lastTimestampRef.current = null;
+  81 |  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\chat\hooks\useChatRooms.ts
+  41:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\chat\hooks\useChatRooms.ts:41:5
+  39 |
+  40 |   useEffect(() => {
+> 41 |     setLoading(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  42 |     loadRooms();
+  43 |   }, [loadRooms]);
+  44 |  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\class-requests\hooks\useClassRequests.ts
+   82:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\class-requests\hooks\useClassRequests.ts:82:5
+  80 |
+  81 |   useEffect(() => {
+> 82 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  83 |   }, [load]);
+  84 |
+  85 |   useAutoRefresh(() => load(), { paths: ["/api/parent/class-requests"] });           react-hooks/set-state-in-effect
+  165:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\class-requests\hooks\useClassRequests.ts:165:5
+  163 |
+  164 |   useEffect(() => {
+> 165 |     load();
+      |     ^^^^ Avoid calling setState() directly within an effect
+  166 |   }, [load]);
+  167 |
+  168 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/class-requests"] });  react-hooks/set-state-in-effect
+  229:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\class-requests\hooks\useClassRequests.ts:229:5
+  227 |
+  228 |   useEffect(() => {
+> 229 |     load();
+      |     ^^^^ Avoid calling setState() directly within an effect
+  230 |   }, [load]);
+  231 |
+  232 |   useAutoRefresh(() => load(), { paths: ["/api/admin/class-requests"] });    react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\courses\components\CourseMediaPreview.tsx
+  44:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\as333\Desktop\learniee\src\features\courses\components\CourseMediaUpload.tsx
+  97:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\as333\Desktop\learniee\src\features\courses\hooks\useTeacherCourses.ts
+  84:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\courses\hooks\useTeacherCourses.ts:84:5
+  82 |
+  83 |   useEffect(() => {
+> 84 |     loadCourses();
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  85 |   }, [loadCourses]);
+  86 |
+  87 |   useAutoRefresh(() => loadCourses(), { paths: ["/api/teacher/course"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\courses\server\course.service.ts
+  4:10  warning  'sessionLengthForCourse' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\course-detail\BookingCalendar.tsx
+  78:29  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\course-detail\BookingCalendar.tsx:78:29
+  76 |     if (!selectedDate) return [];
+  77 |     const all = availableHours(availability, selectedDate.getDay(), 60);
+> 78 |     const nowIst = new Date(Date.now() + 330 * 60_000);
+     |                             ^^^^^^^^^^ Cannot call impure function
+  79 |     const isToday =
+  80 |       nowIst.getUTCFullYear() === selectedDate.getFullYear() &&
+  81 |       nowIst.getUTCMonth() === selectedDate.getMonth() &&  react-hooks/purity
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\course-detail\BookingPanel.tsx
+  76:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\course-detail\BookingPanel.tsx:76:7
+  74 |       !students.some((s) => s.id === selectedStudentId)
+  75 |     ) {
+> 76 |       setSelectedStudentId("");
+     |       ^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  77 |     }
+  78 |   }, [studentsLoading, students, selectedStudentId]);
+  79 |   const { slots: availability, loading: availabilityLoading } =  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\enrollments\RenewalPanel.tsx
+  44:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\enrollments\RenewalPanel.tsx:44:7
+  42 |   useEffect(() => {
+  43 |     if (status?.preview) {
+> 44 |       setScheduleDays(status.preview.scheduleDays);
+     |       ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  45 |       setCustomDates(status.preview.customDates ?? []);
+  46 |       setScheduleTime(status.preview.scheduleTime);
+  47 |     } else if (status) {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\layout\ParentBottomNav.tsx
+  27:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\layout\ParentBottomNav.tsx:27:5
+  25 |   // Close the sheet whenever the route changes.
+  26 |   useEffect(() => {
+> 27 |     setMoreOpen(false);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  28 |   }, [pathname, tab]);
+  29 |
+  30 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\layout\ParentNavbar.tsx
+  45:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\components\layout\ParentNavbar.tsx:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     fetchParent();
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  46 |   }, [fetchParent]);
+  47 |
+  48 |   // Name changes made on the profile page show up here straight away  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useApprovedCourses.ts
+  14:5  error  Error: Cannot access variable before it is declared
+
+`fetchCourses` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useApprovedCourses.ts:14:5
+  12 |
+  13 |   useEffect(() => {
+> 14 |     fetchCourses();
+     |     ^^^^^^^^^^^^ `fetchCourses` accessed before it is declared
+  15 |   }, []);
+  16 |
+  17 |   useAutoRefresh(() => fetchCourses(), { paths: ["/api/parent/courses"] });
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useApprovedCourses.ts:19:3
+  17 |   useAutoRefresh(() => fetchCourses(), { paths: ["/api/parent/courses"] });
+  18 |
+> 19 |   async function fetchCourses() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 20 |     try {
+     | ^^^^^^^^^
+> 21 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 36 |     }
+     | ^^^^^^^^^
+> 37 |   }
+     | ^^^^ `fetchCourses` is declared here
+  38 |
+  39 |   return { courses, loading, error };
+  40 | }  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useClassDetail.ts
+  45:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useClassDetail.ts:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     load(false);
+     |     ^^^^ Avoid calling setState() directly within an effect
+  46 |   }, [load]);
+  47 |
+  48 |   useAutoRefresh(() => load(true), { paths: ["/api/parent/my-classes"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useClassListExtras.ts
+  28:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useClassListExtras.ts:28:5
+  26 |
+  27 |   useEffect(() => {
+> 28 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  29 |   }, [load]);
+  30 |
+  31 |   useAutoRefresh(() => load(), { paths: ["/api/parent/homework/summary"] });                react-hooks/set-state-in-effect
+  55:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useClassListExtras.ts:55:5
+  53 |
+  54 |   useEffect(() => {
+> 55 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  56 |   }, [load]);
+  57 |
+  58 |   useAutoRefresh(() => load(), { paths: ["/api/parent/chat/previews"], staleMs: 10_000 });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useComplaints.ts
+  25:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useComplaints.ts:25:5
+  23 |
+  24 |   useEffect(() => {
+> 25 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  26 |   }, []);
+  27 |
+  28 |   useAutoRefresh(() => load(), { paths: ["/api/parent/complaints"] });
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useComplaints.ts:30:3
+  28 |   useAutoRefresh(() => load(), { paths: ["/api/parent/complaints"] });
+  29 |
+> 30 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |     try {
+     | ^^^^^^^^^
+> 32 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 47 |     }
+     | ^^^^^^^^^
+> 48 |   }
+     | ^^^^ `load` is declared here
+  49 |
+  50 |   async function submit(input: { subject: string; description: string; department: string }) {
+  51 |     setError("");  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useCourseDetail.ts
+  55:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useCourseDetail.ts:55:5
+  53 |
+  54 |   useEffect(() => {
+> 55 |     loadCourse();
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  56 |   }, [loadCourse]);
+  57 |
+  58 |   useAutoRefresh(() => loadCourse(), { paths: ["/api/parent/courses"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useCourseReviews.ts
+  66:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useCourseReviews.ts:66:5
+  64 |
+  65 |   useEffect(() => {
+> 66 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  67 |   }, [load]);
+  68 |
+  69 |   useAutoRefresh(() => load(), { paths: ["/api/parent/courses"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDashboard.ts
+  49:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDashboard.ts:49:5
+  47 |
+  48 |   useEffect(() => {
+> 49 |     reload();
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  50 |   }, [reload]);
+  51 |
+  52 |   useAutoRefresh(() => reload(), {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDemoBookings.ts
+  81:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDemoBookings.ts:81:5
+  79 |
+  80 |   useEffect(() => {
+> 81 |     reload();
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  82 |   }, [reload]);
+  83 |
+  84 |   useAutoRefresh(() => reload(), { paths: ["/api/parent/demo-bookings"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDemoCoupons.ts
+  67:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDemoCoupons.ts:67:5
+  65 |
+  66 |   useEffect(() => {
+> 67 |     reload();
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  68 |   }, [reload]);
+  69 |
+  70 |   useAutoRefresh(() => reload(), { paths: ["/api/parent/demo-coupons"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDemoSurvey.ts
+  88:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useDemoSurvey.ts:88:5
+  86 |
+  87 |   useEffect(() => {
+> 88 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  89 |   }, [load]);
+  90 |
+  91 |   const submit = useCallback(  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useEnrollments.ts
+  62:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useHomework.ts
+  40:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useNextAction.ts
+  45:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useNextAction.ts:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     reload();
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  46 |   }, [reload]);
+  47 |
+  48 |   useAutoRefresh(() => reload(), { paths: ["/api/parent/next-action"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useParentCertificates.ts
+  37:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useParentCertificates.ts:37:10
+  35 |
+  36 |   useEffect(() => {
+> 37 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  38 |   }, [load]);
+  39 |
+  40 |   useAutoRefresh(() => load(), { paths: ["/api/parent/certificates"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useProfile.ts
+  50:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useProfile.ts:50:5
+  48 |
+  49 |   useEffect(() => {
+> 50 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  51 |   }, []);
+  52 |
+  53 |   async function load() {
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useProfile.ts:53:3
+  51 |   }, []);
+  52 |
+> 53 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 54 |     try {
+     | ^^^^^^^^^
+> 55 |       setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 71 |     }
+     | ^^^^^^^^^
+> 72 |   }
+     | ^^^^ `load` is declared here
+  73 |
+  74 |   async function save(fields: Partial<ParentProfileFormFields>) {
+  75 |     try {  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useReferral.ts
+  34:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useReferral.ts:34:5
+  32 |
+  33 |   useEffect(() => {
+> 34 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  35 |   }, []);
+  36 |
+  37 |   useAutoRefresh(() => load(), { paths: ["/api/parent/referral"] });
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useReferral.ts:39:3
+  37 |   useAutoRefresh(() => load(), { paths: ["/api/parent/referral"] });
+  38 |
+> 39 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 40 |     try {
+     | ^^^^^^^^^
+> 41 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 56 |     }
+     | ^^^^^^^^^
+> 57 |   }
+     | ^^^^ `load` is declared here
+  58 |
+  59 |   return { summary, loading, error };
+  60 | }  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useRenewal.ts
+  75:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useRenewal.ts:75:5
+  73 |
+  74 |   useEffect(() => {
+> 75 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  76 |   }, [load]);
+  77 |
+  78 |   useAutoRefresh(() => load(), { paths: ["/api/parent/enrollments"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useSettings.ts
+  21:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useSettings.ts:21:5
+  19 |
+  20 |   useEffect(() => {
+> 21 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  22 |   }, []);
+  23 |
+  24 |   async function load() {
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useSettings.ts:24:3
+  22 |   }, []);
+  23 |
+> 24 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 25 |     try {
+     | ^^^^^^^^^
+> 26 |       setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 42 |     }
+     | ^^^^^^^^^
+> 43 |   }
+     | ^^^^ `load` is declared here
+  44 |
+  45 |   async function setNotificationsEnabled(next: boolean) {
+  46 |     // Optimistic update, reverted below if the save fails ΓÇö the  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useStudentCertificates.ts
+  38:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useStudentCertificates.ts:38:5
+  36 |
+  37 |   useEffect(() => {
+> 38 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  39 |   }, [load]);
+  40 |
+  41 |   useAutoRefresh(() => load(), { paths: ["/api/parent/students"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useStudentProfile.ts
+  52:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useStudentProfile.ts:52:5
+  50 |
+  51 |   useEffect(() => {
+> 52 |     loadStudent();
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  53 |   }, [loadStudent]);
+  54 |
+  55 |   useAutoRefresh(() => loadStudent(), { paths: [`/api/parent/students/${studentId}`] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useStudents.ts
+  45:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useStudents.ts:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     loadStudents();
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  46 |   }, [loadStudents]);
+  47 |
+  48 |   useAutoRefresh(() => loadStudents(), { paths: ["/api/parent/students"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useTeacherAvailability.ts
+  34:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useTeacherAvailability.ts:34:5
+  32 |
+  33 |   useEffect(() => {
+> 34 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  35 |   }, [load]);
+  36 |
+  37 |   useAutoRefresh(() => load(), { paths: ["/api/parent/teachers"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useWalletBalance.ts
+  29:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\parent\hooks\useWalletBalance.ts:29:5
+  27 |
+  28 |   useEffect(() => {
+> 29 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  30 |   }, [load]);
+  31 |
+  32 |   useAutoRefresh(() => load(), { paths: ["/api/parent/wallet"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\refunds\hooks\useRefundRequests.ts
+   55:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\refunds\hooks\useRefundRequests.ts:55:5
+  53 |
+  54 |   useEffect(() => {
+> 55 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  56 |   }, [load]);
+  57 |
+  58 |   useAutoRefresh(() => load(), { paths: ["/api/parent/refund-requests"] });         react-hooks/set-state-in-effect
+  132:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\refunds\hooks\useRefundRequests.ts:132:5
+  130 |
+  131 |   useEffect(() => {
+> 132 |     load();
+      |     ^^^^ Avoid calling setState() directly within an effect
+  133 |   }, [load]);
+  134 |
+  135 |   useAutoRefresh(() => load(), { paths: ["/api/admin/refund-requests"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\shared\components\MultiFileUploadField.tsx
+   69:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\shared\components\MultiFileUploadField.tsx:69:5
+  67 |     }));
+  68 |
+> 69 |     setPreviews(previewFiles);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  70 |
+  71 |     return () => {
+  72 |       previewFiles.forEach((preview) => URL.revokeObjectURL(preview.url));  react-hooks/set-state-in-effect
+  136:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @next/next/no-img-element
+
+C:\Users\as333\Desktop\learniee\src\features\shared\components\NotificationToggleCard.tsx
+  31:49  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useAccountAccess.ts
+  56:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useAccountAccess.ts:56:5
+  54 |
+  55 |   useEffect(() => {
+> 56 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  57 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  58 |   }, [apiBasePath]);
+  59 |  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useInterviewJoinWindow.ts
+  30:32  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useInterviewJoinWindow.ts:30:32
+  28 |     const server = new Date(serverNowIso).getTime();
+  29 |
+> 30 |     if (!Number.isNaN(server)) setSkewMs(server - Date.now());
+     |                                ^^^^^^^^^ Avoid calling setState() directly within an effect
+  31 |   }, [serverNowIso]);
+  32 |
+  33 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useNotifications.ts
+  57:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useNotifications.ts:57:5
+  55 |   useEffect(() => {
+  56 |     mountedRef.current = true;
+> 57 |     refresh();
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  58 |
+  59 |     return () => {
+  60 |       mountedRef.current = false;  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useSessionFlow.ts
+  79:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\shared\hooks\useSessionFlow.ts:79:5
+  77 |   useEffect(() => {
+  78 |     mountedRef.current = true;
+> 79 |     refresh();
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  80 |
+  81 |     return () => {
+  82 |       mountedRef.current = false;  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\shared\server\classRequest\requests.ts
+  105:64  warning  '_legacyBudget' is defined but never used  @typescript-eslint/no-unused-vars
+  155:61  warning  '_legacyBudget' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\as333\Desktop\learniee\src\features\shared\server\enrollmentCompletion.service.ts
+  27:3  warning  'now' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\as333\Desktop\learniee\src\features\shared\server\resource.service.ts
+  176:7  warning  Unused eslint-disable directive (no problems were reported from 'no-new')
+
+C:\Users\as333\Desktop\learniee\src\features\teacher-profile\hooks\useTeacherPublicProfile.ts
+  52:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher-profile\hooks\useTeacherPublicProfile.ts:52:10
+  50 |
+  51 |   useEffect(() => {
+> 52 |     void load();
+     |          ^^^^ Avoid calling setState() directly within an effect
+  53 |
+  54 |     return () => {
+  55 |       requestRef.current += 1;  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\availability\AvailabilityGate.tsx
+  24:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\availability\AvailabilityGate.tsx:24:7
+  22 |   useEffect(() => {
+  23 |     try {
+> 24 |       setDismissed(sessionStorage.getItem(DISMISS_KEY) === "1");
+     |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  25 |     } catch {
+  26 |       setDismissed(false);
+  27 |     }  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\layout\TeacherBottomNav.tsx
+  27:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\layout\TeacherBottomNav.tsx:27:5
+  25 |   // Close the sheet whenever the route changes.
+  26 |   useEffect(() => {
+> 27 |     setMoreOpen(false);
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  28 |   }, [pathname]);
+  29 |
+  30 |   useEffect(() => {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\layout\TeacherNavbar.tsx
+  43:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\layout\TeacherNavbar.tsx:43:5
+  41 |
+  42 |   useEffect(() => {
+> 43 |     fetchTeacher();
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  44 |   }, [fetchTeacher]);
+  45 |
+  46 |   // Name changes made on the profile page show up here straight away  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\my-classes\HomeworkTab.tsx
+  33:15  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\my-classes\HomeworkTab.tsx:33:15
+  31 |   const [reviewing, setReviewing] = useState<HomeworkOverviewItem | null>(null);
+  32 |   const notice = useNotice();
+> 33 |   const now = Date.now();
+     |               ^^^^^^^^^^ Cannot call impure function
+  34 |
+  35 |   return (
+  36 |     <div>  react-hooks/purity
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\onboarding\step1\TeacherMediaPlaceholder.tsx
+   46:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\onboarding\step1\TeacherMediaPlaceholder.tsx:46:7
+  44 |   useEffect(() => {
+  45 |     if (!profilePhoto) {
+> 46 |       setProfilePhotoPreview(null);
+     |       ^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |       return;
+  48 |     }
+  49 |  react-hooks/set-state-in-effect
+   64:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\onboarding\step1\TeacherMediaPlaceholder.tsx:64:7
+  62 |   useEffect(() => {
+  63 |     if (!introVideo) {
+> 64 |       setIntroVideoPreview(null);
+     |       ^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  65 |       return;
+  66 |     }
+  67 |        react-hooks/set-state-in-effect
+  179:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @next/next/no-img-element
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\onboarding\step3\DocumentUpload.tsx
+   34:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\onboarding\step3\DocumentUpload.tsx:34:7
+  32 |   useEffect(() => {
+  33 |     if (!file) {
+> 34 |       setPreviewUrl(null);
+     |       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  35 |       return;
+  36 |     }
+  37 |  react-hooks/set-state-in-effect
+  111:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @next/next/no-img-element
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\requests\DemoRequestsTab.tsx
+  65:15  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\requests\DemoRequestsTab.tsx:65:15
+  63 |   if (error && bookings.length === 0) return <RequestsError message={error} onRetry={reload} />;
+  64 |
+> 65 |   const now = Date.now() + skewMs;
+     |               ^^^^^^^^^^ Cannot call impure function
+  66 |   const upcoming = bookings
+  67 |     .filter(
+  68 |       (b) =>  react-hooks/purity
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\views\DemoView.tsx
+  29:15  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\views\DemoView.tsx:29:15
+  27 |   const { bookings, loading, error, meetEnabled, skewMs } = useTeacherDemoBookings();
+  28 |
+> 29 |   const now = Date.now();
+     |               ^^^^^^^^^^ Cannot call impure function
+  30 |   const isUpcoming = (b: TeacherDemoBookingListItem) =>
+  31 |     !!b.scheduledAt &&
+  32 |     (new Date(b.scheduledAt).getTime() >= now ||  react-hooks/purity
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\components\views\RescheduleView.tsx
+  38:81  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useAvailability.ts
+  36:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useAvailability.ts:36:5
+  34 |
+  35 |   useEffect(() => {
+> 36 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  37 |   }, [load]);
+  38 |
+  39 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/availability"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useBankAccount.ts
+  44:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useBankAccount.ts:44:5
+  42 |
+  43 |   useEffect(() => {
+> 44 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  45 |   }, []);
+  46 |
+  47 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/bank-account"] });
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useBankAccount.ts:49:3
+  47 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/bank-account"] });
+  48 |
+> 49 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 50 |     try {
+     | ^^^^^^^^^
+> 51 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 65 |     }
+     | ^^^^^^^^^
+> 66 |   }
+     | ^^^^ `load` is declared here
+  67 |
+  68 |   async function save(input: BankAccountInput) {
+  69 |     try {  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useComplaints.ts
+  25:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useComplaints.ts:25:5
+  23 |
+  24 |   useEffect(() => {
+> 25 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  26 |   }, []);
+  27 |
+  28 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/complaints"] });
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useComplaints.ts:30:3
+  28 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/complaints"] });
+  29 |
+> 30 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |     try {
+     | ^^^^^^^^^
+> 32 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 47 |     }
+     | ^^^^^^^^^
+> 48 |   }
+     | ^^^^ `load` is declared here
+  49 |
+  50 |   async function submit(input: { subject: string; description: string; department: string }) {
+  51 |     setError("");  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useDemoBookings.ts
+  79:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useDemoBookings.ts:79:5
+  77 |
+  78 |   useEffect(() => {
+> 79 |     reload();
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  80 |   }, [reload]);
+  81 |
+  82 |   useAutoRefresh(() => reload(), { paths: ["/api/teacher/demo-bookings"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useEnrollmentSessions.ts
+  38:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useEnrollmentSessions.ts:38:5
+  36 |   useEffect(() => {
+  37 |     if (!enabled) return;
+> 38 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  39 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  40 |   }, [enabled, enrollmentId]);
+  41 |
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useEnrollmentSessions.ts:44:3
+  42 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/enrollments", "/api/teacher/class-sessions"], enabled });
+  43 |
+> 44 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |     try {
+     | ^^^^^^^^^
+> 46 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 61 |     }
+     | ^^^^^^^^^
+> 62 |   }
+     | ^^^^ `load` is declared here
+  63 |
+  64 |   async function markComplete(sessionId: string) {
+  65 |     try {  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useHomework.ts
+  37:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useHomeworkOverview.ts
+  66:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useHomeworkOverview.ts:66:5
+  64 |
+  65 |   useEffect(() => {
+> 66 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  67 |   }, [load]);
+  68 |
+  69 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/homework"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useLeaveRequests.ts
+  25:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useLeaveRequests.ts:25:5
+  23 |
+  24 |   useEffect(() => {
+> 25 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  26 |   }, []);
+  27 |
+  28 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/leave-requests"] });
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useLeaveRequests.ts:30:3
+  28 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/leave-requests"] });
+  29 |
+> 30 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |     try {
+     | ^^^^^^^^^
+> 32 |       if (!isBackgroundRefresh()) setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 47 |     }
+     | ^^^^^^^^^
+> 48 |   }
+     | ^^^^ `load` is declared here
+  49 |
+  50 |   async function submit(input: { startDate: string; endDate: string; reason: string }) {
+  51 |     setError("");  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useMyClasses.ts
+   40:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useMyClasses.ts:40:5
+  38 |
+  39 |   useEffect(() => {
+> 40 |     load(false);
+     |     ^^^^ Avoid calling setState() directly within an effect
+  41 |   }, [load]);
+  42 |
+  43 |   useAutoRefresh(() => load(true), { paths: ["/api/teacher/my-classes"] });                                                                                                                                           react-hooks/set-state-in-effect
+   79:19  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useMyClasses.ts:79:19
+  77 |
+  78 |   useEffect(() => {
+> 79 |     if (courseId) load(false);
+     |                   ^^^^ Avoid calling setState() directly within an effect
+  80 |   }, [courseId, load]);
+  81 |
+  82 |   useAutoRefresh(() => load(true), { paths: ["/api/teacher/my-classes"], enabled: Boolean(courseId) });                                                                        react-hooks/set-state-in-effect
+  120:35  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useMyClasses.ts:120:35
+  118 |
+  119 |   useEffect(() => {
+> 120 |     if (courseId && enrollmentId) load(false);
+      |                                   ^^^^ Avoid calling setState() directly within an effect
+  121 |   }, [courseId, enrollmentId, load]);
+  122 |
+  123 |   useAutoRefresh(() => load(true), { paths: ["/api/teacher/my-classes"], enabled: Boolean(courseId && enrollmentId) });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useProfile.ts
+  58:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useProfile.ts:58:5
+  56 |
+  57 |   useEffect(() => {
+> 58 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  59 |   }, []);
+  60 |
+  61 |   async function load() {
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useProfile.ts:61:3
+  59 |   }, []);
+  60 |
+> 61 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 62 |     try {
+     | ^^^^^^^^^
+> 63 |       setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 79 |     }
+     | ^^^^^^^^^
+> 80 |   }
+     | ^^^^ `load` is declared here
+  81 |
+  82 |   async function save(fields: Partial<TeacherProfileFormFields>) {
+  83 |     try {  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useResources.ts
+  27:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useResourcesOverview.ts
+  59:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useResourcesOverview.ts:59:5
+  57 |
+  58 |   useEffect(() => {
+> 59 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  60 |   }, [load]);
+  61 |
+  62 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/resources"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useSettings.ts
+  21:5  error  Error: Cannot access variable before it is declared
+
+`load` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useSettings.ts:21:5
+  19 |
+  20 |   useEffect(() => {
+> 21 |     load();
+     |     ^^^^ `load` accessed before it is declared
+  22 |   }, []);
+  23 |
+  24 |   async function load() {
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useSettings.ts:24:3
+  22 |   }, []);
+  23 |
+> 24 |   async function load() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^
+> 25 |     try {
+     | ^^^^^^^^^
+> 26 |       setLoading(true);
+     ΓÇª
+     | ^^^^^^^^^
+> 42 |     }
+     | ^^^^^^^^^
+> 43 |   }
+     | ^^^^ `load` is declared here
+  44 |
+  45 |   async function setNotificationsEnabled(next: boolean) {
+  46 |     const previous = settings;  react-hooks/immutability
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherApprovalWatch.ts
+  62:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherApprovalWatch.ts:62:5
+  60 |
+  61 |   useEffect(() => {
+> 62 |     check();
+     |     ^^^^^ Avoid calling setState() directly within an effect
+  63 |   }, [check]);
+  64 |
+  65 |   useAutoRefresh(() => check(), { paths: ["/api/teacher/onboarding/status"], staleMs: 5_000 });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherCertificates.ts
+  42:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherCertificates.ts:42:5
+  40 |
+  41 |   useEffect(() => {
+> 42 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  43 |   }, [load]);
+  44 |
+  45 |   useAutoRefresh(() => load(), { paths: ["/api/teacher/certificates"] });  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherHome.ts
+  80:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherHome.ts:80:5
+  78 |
+  79 |   useEffect(() => {
+> 80 |     reload();
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  81 |   }, [reload]);
+  82 |
+  83 |   useAutoRefresh(() => reload(), {  react-hooks/set-state-in-effect
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherStep2Form.ts
+  53:30  warning  'setCertificationError' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  54:22  warning  'setAwardError' is assigned a value but never used          @typescript-eslint/no-unused-vars
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherStep3Form.ts
+  38:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\as333\Desktop\learniee\src\features\teacher\hooks\useTeacherStep3Form.ts:38:5
+  36 |     }
+  37 |
+> 38 |     setTeacherId(id);
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |   }, [router]);
+  40 |
+  41 |   function handleFileSelect(slotKey: DocumentKey, file: File | null) {  react-hooks/set-state-in-effect
+
+Γ£û 121 problems (101 errors, 20 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.
+

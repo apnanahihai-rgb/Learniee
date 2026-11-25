@@ -1,0 +1,351 @@
+﻿node.exe : npm notice run learniee@0.1.0 test:integration
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\as333\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run ...est:integration:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run vitest run --config vitest.integration.config.ts
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major 
+version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.integration.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest 
+package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 C:/Users/as333/Desktop/learniee
+
+stderr | tests/integration/featureAreas.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ¥» tests/integration/featureAreas.test.ts (19 tests | 2 failed) 1688ms
+     ├ù a phone number is masked in the saved message; the original is kept for Admin only 137ms
+     ├ù the other side's message list never contains the number or the original 46ms
+     Γ£ô an ordinary message is stored as typed, with no flag 53ms
+     Γ£ô empty, over-long and someone-else's-room messages are refused 40ms
+     Γ£ô no message can be sent once the enrollment is cancelled/rejected 26ms
+     Γ£ô a parent cannot read another parent's room 42ms
+     Γ£ô the other party can report once; a second report is refused 66ms
+     Γ£ô you cannot report your own message 50ms
+     Γ£ô someone outside the room cannot report in it 51ms
+     Γ£ô reporting still works after the enrollment ended (a safety action) 42ms
+     Γ£ô a complaint goes to the chosen department and only that department's staff (and Admin) see it 28ms
+     Γ£ô a raiser only sees their own complaints 39ms
+     Γ£ô validation: missing subject, missing description, unknown department, over-long subject 18ms
+     Γ£ô staff of another department cannot move a complaint; Admin and its own department can; resolved is final 39ms
+     Γ£ô a valid request starts as PENDING_REVIEW 24ms
+     Γ£ô grade, days and a valid time are required 17ms
+     Γ£ô another parent's child cannot be attached 31ms
+     Γ£ô at most 5 requests can wait for review at once 43ms
+     Γ£ô a parent can cancel their own pending request but not someone else's 45ms
+stderr | tests/integration/firstPayments.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ¥» tests/integration/firstPayments.test.ts (23 tests | 7 failed) 1382ms
+     ├ù creating the order writes NOTHING to the database 109ms
+     Γ£ô order creation refuses a start date in the past 21ms
+     Γ£ô order creation refuses another parent's student 37ms
+     Γ£ô order creation refuses a course that is not APPROVED 27ms
+     ├ù paid webhook -> one enrollment + cycle 1 + invoice; a duplicate delivery adds nothing 22ms
+     ├ù unpaid order -> nothing is created 21ms
+     Γ£ô order of another kind -> ignored 3ms
+     ├ù amount that does not match the re-computed price -> refused, nothing created 21ms
+     ├ù a payment that cleared just before midnight still creates the enrollment (start-date rule is order-time only) 22ms
+     ├ù referral: the referrer is paid once when the referee's FIRST enrollment is reconciled 49ms
+     Γ£ô order creation writes nothing and refuses amounts outside the limits 20ms
+     Γ£ô verify: good signature credits exactly the amount; a retry does not credit twice 61ms
+     Γ£ô verify: bad signature -> refused, nothing credited 20ms
+     Γ£ô verify: another parent's order cannot be claimed 36ms
+     Γ£ô verify: unpaid order -> refused (402) 18ms
+     Γ£ô webhook (tab closed): paid order credits once; second delivery adds nothing; verify afterwards adds nothing 34ms
+     Γ£ô webhook: unpaid or non-wallet order -> nothing credited 17ms
+     Γ£ô webhook: Razorpay charged LESS than the top-up amount -> refused, nothing credited 17ms
+     Γ£ô quantity outside 1-20 is refused at order time 19ms
+     ├ù webhook: paid order adds coupons once (2 free + 3 bought = 5); duplicate delivery adds nothing 20ms
+     Γ£ô webhook: wrong amount -> refused, no coupons 22ms
+     Γ£ô verify: bad signature refused; good signature then retry credits once 40ms
+     Γ£ô non-demo / unpaid / unknown orders create no booking 5ms
+stderr | tests/integration/renewalWebhook.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ¥» tests/integration/renewalWebhook.test.ts (5 tests | 2 failed) 871ms
+     ├ù paid order -> cycle 2 + all its sessions + invoice; second delivery adds nothing 109ms
+     Γ£ô order not paid -> nothing created 36ms
+     Γ£ô not a renewal order -> null, nothing created 23ms
+     Γ£ô amount does not match the enrollment's rate -> null, nothing created (needs manual refund) 27ms
+     ├ù a second, different payment for the same cycle is refused (no double cycle) 35ms
+stderr | tests/integration/razorpayX.test.ts
+Γùç injected env (12) from .env.test
+
+(node:3532) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. 
+Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/razorpayX.test.ts (22 tests) 2898ms
+     Γ£ô failed / reversed / rejected -> record FAILED and the cycle goes back to the Payment Queue  342ms
+stderr | tests/integration/sessionFlowExtras.test.ts
+Γùç injected env (12) from .env.test
+
+(node:17132) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in 
+pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/sessionFlowExtras.test.ts (26 tests) 2626ms
+stderr | tests/integration/payoutLedger.test.ts
+Γùç injected env (12) from .env.test
+
+(node:416) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. 
+Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/payoutLedger.test.ts (9 tests) 1666ms
+stderr | tests/integration/sessionOutcome.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/sessionOutcome.test.ts (10 tests) 1515ms
+stderr | tests/integration/massPay.test.ts
+Γùç injected env (12) from .env.test
+
+(node:24980) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in 
+pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/massPay.test.ts (5 tests) 1454ms
+stderr | tests/integration/ownership.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/ownership.test.ts (18 tests) 1818ms
+     Γ£ô parent A can read their own My Classes page  316ms
+stderr | tests/integration/cycleCloseRelease.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/cycleCloseRelease.test.ts (6 tests) 1518ms
+stderr | tests/integration/approvalAndLeave.test.ts
+Γùç injected env (12) from .env.test
+
+(node:23672) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in 
+pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/approvalAndLeave.test.ts (5 tests) 1258ms
+stderr | tests/integration/adminDecision.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/adminDecision.test.ts (5 tests) 2515ms
+     Γ£ô NEEDS_REVIEW -> COMPLETED: status changes, audit row written, session settled  453ms
+stderr | tests/integration/cronRoutes.test.ts
+Γùç injected env (12) from .env.test
+
+12:58:37 am [vite] (ssr) warning: invalid import "../../src/app/api/cron/${name}/route". A file extension must be included in the static part of 
+the import. For example: import(`./foo/${bar}.js`).
+  Plugin: vite:dynamic-import-vars
+  File: C:/Users/as333/Desktop/learniee/tests/integration/cronRoutes.test.ts
+ Γ£ô tests/integration/cronRoutes.test.ts (37 tests) 2019ms
+stderr | tests/integration/certificateAutoLapse.test.ts
+Γùç injected env (12) from .env.test
+
+(node:23852) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in 
+pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/certificateAutoLapse.test.ts (8 tests) 1577ms
+stderr | tests/integration/reschedule.test.ts
+Γùç injected env (12) from .env.test
+
+(node:12888) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in 
+pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ Γ£ô tests/integration/reschedule.test.ts (6 tests) 1766ms
+stderr | tests/integration/renewalReminder.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/renewalReminder.test.ts (8 tests) 1628ms
+stderr | tests/integration/walletReferral.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/walletReferral.test.ts (6 tests) 1318ms
+stderr | tests/integration/dueDateReminder.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/dueDateReminder.test.ts (5 tests) 1111ms
+stderr | tests/integration/razorpayWebhookGate.test.ts
+Γùç injected env (12) from .env.test
+
+ Γ£ô tests/integration/razorpayWebhookGate.test.ts (6 tests) 389ms
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 11 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  tests/integration/featureAreas.test.ts > Chat: phone masking > a phone number is masked in the saved message; the original is kept for 
+Admin only
+Error: Your message wasn't sent because it appears to contain a phone number. For everyone's safety, please keep all communication on Learniee.
+ Γ¥» sendMessage src/features/chat/server/chat.service.ts:360:11
+    358|     }
+    359|
+    360|     throw new ChatError(
+       |           ^
+    361|       "Your message wasn't sent because it appears to contain a phone ΓÇª
+    362|       422,
+ Γ¥» tests/integration/featureAreas.test.ts:40:17
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/11]ΓÄ»
+
+ FAIL  tests/integration/featureAreas.test.ts > Chat: phone masking > the other side's message list never contains the number or the original
+Error: Your message wasn't sent because it appears to contain a phone number. For everyone's safety, please keep all communication on Learniee.
+ Γ¥» sendMessage src/features/chat/server/chat.service.ts:360:11
+    358|     }
+    359|
+    360|     throw new ChatError(
+       |           ^
+    361|       "Your message wasn't sent because it appears to contain a phone ΓÇª
+    362|       422,
+ Γ¥» tests/integration/featureAreas.test.ts:51:5
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > creating the order writes NOTHING to the database
+Error: This teacher hasn't set their availability yet ΓÇö please check back soon.
+ Γ¥» priceCycleEnrollment src/features/parent/server/enrollment/pricing.ts:280:13
+    278|
+    279|     if (slots.length === 0) {
+    280|       throw new EnrollmentError(
+       |             ^
+    281|         "This teacher hasn't set their availability yet ΓÇö please checkΓÇª
+    282|         409,
+ Γ¥» Module.createEnrollmentOrder src/features/parent/server/enrollment/order.ts:31:18
+ Γ¥» tests/integration/firstPayments.test.ts:88:32
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > paid webhook -> one enrollment + cycle 1 + invoice; a duplicate 
+delivery adds nothing
+Error: This teacher hasn't set their availability yet ΓÇö please check back soon.
+ Γ¥» priceCycleEnrollment src/features/parent/server/enrollment/pricing.ts:280:13
+    278|
+    279|     if (slots.length === 0) {
+    280|       throw new EnrollmentError(
+       |             ^
+    281|         "This teacher hasn't set their availability yet ΓÇö please checkΓÇª
+    282|         409,
+ Γ¥» Module.createEnrollmentOrder src/features/parent/server/enrollment/order.ts:31:18
+ Γ¥» tests/integration/firstPayments.test.ts:115:23
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > unpaid order -> nothing is created
+Error: This teacher hasn't set their availability yet ΓÇö please check back soon.
+ Γ¥» priceCycleEnrollment src/features/parent/server/enrollment/pricing.ts:280:13
+    278|
+    279|     if (slots.length === 0) {
+    280|       throw new EnrollmentError(
+       |             ^
+    281|         "This teacher hasn't set their availability yet ΓÇö please checkΓÇª
+    282|         409,
+ Γ¥» Module.createEnrollmentOrder src/features/parent/server/enrollment/order.ts:31:18
+ Γ¥» tests/integration/firstPayments.test.ts:134:23
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[5/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > amount that does not match the re-computed price -> refused, 
+nothing created
+Error: This teacher hasn't set their availability yet ΓÇö please check back soon.
+ Γ¥» priceCycleEnrollment src/features/parent/server/enrollment/pricing.ts:280:13
+    278|
+    279|     if (slots.length === 0) {
+    280|       throw new EnrollmentError(
+       |             ^
+    281|         "This teacher hasn't set their availability yet ΓÇö please checkΓÇª
+    282|         409,
+ Γ¥» Module.createEnrollmentOrder src/features/parent/server/enrollment/order.ts:31:18
+ Γ¥» tests/integration/firstPayments.test.ts:146:23
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[6/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > a payment that cleared just before midnight still creates the 
+enrollment (start-date rule is order-time only)
+Error: This teacher hasn't set their availability yet ΓÇö please check back soon.
+ Γ¥» priceCycleEnrollment src/features/parent/server/enrollment/pricing.ts:280:13
+    278|
+    279|     if (slots.length === 0) {
+    280|       throw new EnrollmentError(
+       |             ^
+    281|         "This teacher hasn't set their availability yet ΓÇö please checkΓÇª
+    282|         409,
+ Γ¥» Module.createEnrollmentOrder src/features/parent/server/enrollment/order.ts:31:18
+ Γ¥» tests/integration/firstPayments.test.ts:154:23
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[7/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > referral: the referrer is paid once when the referee's FIRST 
+enrollment is reconciled
+Error: This teacher hasn't set their availability yet ΓÇö please check back soon.
+ Γ¥» priceCycleEnrollment src/features/parent/server/enrollment/pricing.ts:280:13
+    278|
+    279|     if (slots.length === 0) {
+    280|       throw new EnrollmentError(
+       |             ^
+    281|         "This teacher hasn't set their availability yet ΓÇö please checkΓÇª
+    282|         409,
+ Γ¥» Module.createEnrollmentOrder src/features/parent/server/enrollment/order.ts:31:18
+ Γ¥» tests/integration/firstPayments.test.ts:173:23
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[8/11]ΓÄ»
+
+ FAIL  tests/integration/firstPayments.test.ts > Demo coupon purchase > webhook: paid order adds coupons once (2 free + 3 bought = 5); duplicate 
+delivery adds nothing
+AssertionError: expected 354 to be 300 // Object.is equality
+
+- Expected
++ Received
+
+- 300
++ 354
+
+ Γ¥» tests/integration/firstPayments.test.ts:286:20
+    284|     const f = await createSessionFixture({});
+    285|     const { order, amount } = await createDemoCouponPurchaseOrder(f.paΓÇª
+    286|     expect(amount).toBe(300);
+       |                    ^
+    287|     rz.orders[order.id as string] = { ...rz.orders[order.id as string]ΓÇª
+    288|     const pay = nextPay();
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[9/11]ΓÄ»
+
+ FAIL  tests/integration/renewalWebhook.test.ts > renewal reconciled from the webhook (parent closed the tab) > paid order -> cycle 2 + all its 
+sessions + invoice; second delivery adds nothing
+AssertionError: expected null to be truthy
+
+- Expected:
+true
+
++ Received:
+null
+
+ Γ¥» tests/integration/renewalWebhook.test.ts:83:19
+     81|
+     82|     const first = await reconcileRenewalFromWebhook(orderId, payId);
+     83|     expect(first).toBeTruthy();
+       |                   ^
+     84|
+     85|     const cycles = await prisma.enrollmentCycle.findMany({
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[10/11]ΓÄ»
+
+ FAIL  tests/integration/renewalWebhook.test.ts > renewal reconciled from the webhook (parent closed the tab) > a second, different payment for 
+the same cycle is refused (no double cycle)
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ Γ¥» tests/integration/renewalWebhook.test.ts:131:94
+    129|     const again = await reconcileRenewalFromWebhook(putOrder(r), `pay_ΓÇª
+    130|     expect(again).toBeNull();
+    131|     expect(await prisma.enrollmentCycle.count({ where: { enrollmentId:ΓÇª
+       |                                                                                              ^
+    132|   });
+    133| });
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[11/11]ΓÄ»
+
+
+ Test Files  3 failed | 16 passed (19)
+      Tests  11 failed | 218 passed (229)
+   Start at  00:58:10
+   Duration  39.61s (transform 1.82s, setup 227ms, import 4.88s, tests 31.02s, environment 2ms)
+

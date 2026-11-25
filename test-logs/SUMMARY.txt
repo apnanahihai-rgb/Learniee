@@ -1,0 +1,63 @@
+﻿=== MIGRATE ===
+    ΓööΓöÇ migration.sql
+
+All migrations have been successfully applied.
+=== TSC ===
+node.exe : npm notice run learniee@0.1.0 npx
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\as333\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice run learniee@0.1.0 npx:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run tsc --noEmit
+=== LINT ===
+
+  49:5   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  47:5   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  176:7  warning  Unused eslint-disable directive (no problems were reported from 'no-new')
+Γ£û 121 problems (101 errors, 20 warnings)
+=== UNIT ===
+ Γ¥» tests/security/apiAuthSweep.test.ts (212 tests | 8 failed) 10764ms
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 8 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/confirm refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/forgot-password refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/login refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/logout refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/new-password refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/resend-code refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/reset-password refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ FAIL  tests/security/apiAuthSweep.test.ts > API security sweep > /auth/signup refuses unauthenticated / wrong-role callers
+    186|       expect(failures, `${route.label}\n  ${failures.join("\n  ")}`).tΓÇª
+ Test Files  1 failed | 13 passed (14)
+      Tests  8 failed | 393 passed | 2 expected fail (403)
+   Duration  15.80s (transform 4.71s, setup 158ms, import 906ms, tests 12.26s, environment 1ms)
+=== INTEGRATION ===
+ Γ¥» tests/integration/featureAreas.test.ts (19 tests | 2 failed) 1688ms
+ Γ¥» tests/integration/firstPayments.test.ts (23 tests | 7 failed) 1382ms
+ Γ¥» tests/integration/renewalWebhook.test.ts (5 tests | 2 failed) 871ms
+     Γ£ô failed / reversed / rejected -> record FAILED and the cycle goes back to the Payment Queue  342ms
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 11 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  tests/integration/featureAreas.test.ts > Chat: phone masking > a phone number is masked in the saved message; the original is kept for 
+ FAIL  tests/integration/featureAreas.test.ts > Chat: phone masking > the other side's message list never contains the number or the original
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > creating the order writes NOTHING to the database
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > paid webhook -> one enrollment + cycle 1 + invoice; a duplicate 
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > unpaid order -> nothing is created
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > amount that does not match the re-computed price -> refused, 
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > a payment that cleared just before midnight still creates the 
+ FAIL  tests/integration/firstPayments.test.ts > Enrollment: first payment > referral: the referrer is paid once when the referee's FIRST 
+ FAIL  tests/integration/firstPayments.test.ts > Demo coupon purchase > webhook: paid order adds coupons once (2 free + 3 bought = 5); duplicate 
+ FAIL  tests/integration/renewalWebhook.test.ts > renewal reconciled from the webhook (parent closed the tab) > paid order -> cycle 2 + all its 
+ FAIL  tests/integration/renewalWebhook.test.ts > renewal reconciled from the webhook (parent closed the tab) > a second, different payment for 
+ Test Files  3 failed | 16 passed (19)
+      Tests  11 failed | 218 passed (229)
+   Duration  39.61s (transform 1.82s, setup 227ms, import 4.88s, tests 31.02s, environment 2ms)
+
+

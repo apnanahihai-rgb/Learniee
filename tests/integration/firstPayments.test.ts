@@ -42,7 +42,7 @@ import {
 } from "@/features/shared/server/wallet/topup";
 import { rupeesToPaise } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
-import { createSessionFixture, resetDb } from "../helpers/db";
+import { createSessionFixture, resetDb, seedTeacherAvailability } from "../helpers/db";
 
 const KEY_SECRET = "test-key-secret";
 const checkoutSig = (orderId: string, payId: string) =>
@@ -61,6 +61,9 @@ async function enrollable() {
     where: { id: f.course.id },
     data: { status: "APPROVED", price: 500, duration: "1 Hour", subject: "Maths", grade: "5" },
   });
+  // Order creation now refuses a teacher with no weekly availability (409). Open every day 06:00-22:00 so the
+  // tests' 10:00 / 60-minute / all-days schedule fits; the availability check itself stays switched on.
+  await seedTeacherAvailability(f.teacher.id);
   return f;
 }
 const input = (f: Awaited<ReturnType<typeof enrollable>>, startOffset = 2) => ({
@@ -283,7 +286,9 @@ describe("Demo coupon purchase", () => {
   it("webhook: paid order adds coupons once (2 free + 3 bought = 5); duplicate delivery adds nothing", async () => {
     const f = await createSessionFixture({});
     const { order, amount } = await createDemoCouponPurchaseOrder(f.parent.id, 3);
-    expect(amount).toBe(300);
+    // 3 coupons x Rs 100 = Rs 300 base, plus 18% GST (Rs 54) = Rs 354 (GST added Oct 24, 2026).
+    // Written as a plain number on purpose, not computed with the app's own pricing function.
+    expect(amount).toBe(354);
     rz.orders[order.id as string] = { ...rz.orders[order.id as string], status: "paid" };
     const pay = nextPay();
     await reconcileDemoCouponPurchaseFromWebhook(order.id as string, pay);

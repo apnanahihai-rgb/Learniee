@@ -49,3 +49,6 @@ next-env.d.ts
 sweep-output.txt
 
 forged-exposed.txt
+
+# diagnostics output (scripts/diagnose)
+diagnostics/

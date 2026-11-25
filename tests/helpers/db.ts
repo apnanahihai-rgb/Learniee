@@ -101,3 +101,18 @@ export async function createSessionFixture(opts: SessionFixtureOptions = {}) {
 
   return { parent, student, teacher, course, enrollment, cycle, session, startsAt, endsAt };
 }
+
+/**
+ * Gives a teacher a weekly availability window on every weekday (0 = Sunday ... 6 = Saturday), 06:00-22:00 IST.
+ * Needed because order creation (priceCycleEnrollment, enforceAvailability) refuses a teacher with no availability
+ * rows (migration 20261028090000_add_teacher_availability). 06:00-22:00 covers any class the tests book
+ * (10:00 start, 60-minute sessions). Opt-in, so tests that do not book through that check are unaffected.
+ */
+export async function seedTeacherAvailability(
+  teacherId: string,
+  window: { startTime: string; endTime: string } = { startTime: "06:00", endTime: "22:00" },
+) {
+  await prisma.teacherAvailability.createMany({
+    data: [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ teacherId, dayOfWeek, ...window })),
+  });
+}
