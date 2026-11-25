@@ -71,8 +71,9 @@ export function useAccountAccess(apiBasePath: string) {
     setSuccessMessage(null);
   }
 
-  async function submit(input: AccountAccessUpdateInput) {
-    if (!target) return;
+  /** Resolves with an error message, or null when the update was saved. */
+  async function submit(input: AccountAccessUpdateInput): Promise<string | null> {
+    if (!target) return "No account selected.";
     setSaving(true);
     setFormError(null);
     setSuccessMessage(null);
@@ -95,8 +96,11 @@ export function useAccountAccess(apiBasePath: string) {
         setTarget({ ...target, email: input.newEmail });
       }
       await load();
+      return null;
     } catch (e) {
-      setFormError((e as Error).message);
+      const message = (e as Error).message;
+      setFormError(message);
+      return message;
     } finally {
       setSaving(false);
     }
