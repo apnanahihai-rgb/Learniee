@@ -286,6 +286,44 @@ export function AdminPerson({ name, meta }: { name: string; meta?: string | null
   );
 }
 
+/* ----------------------------- Toolbar / icon cell ------------------------- */
+
+/** Small muted row above a list (the design's `.ctl` + `.sm`): "Newest first" on the left, a count on the right. */
+export function AdminListMeta({ left, right }: { left?: ReactNode; right?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 text-[13px] text-pd-ink3">
+      <span>{left}</span>
+      <span>{right}</span>
+    </div>
+  );
+}
+
+/** Rounded icon tile + bold title + one muted line (the design's `.who` with `.ico`), for the first column of tables. */
+export function AdminIconTitle({
+  icon,
+  title,
+  meta,
+}: {
+  icon: ReactNode;
+  title: string;
+  meta?: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <span
+        aria-hidden="true"
+        className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-pd-b50 text-pd-brand"
+      >
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <b className="block truncate text-[15px] font-semibold">{title}</b>
+        {meta && <small className="block text-[13px] text-pd-ink3">{meta}</small>}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------ States / notes ----------------------------- */
 
 export function AdminEmptyState({

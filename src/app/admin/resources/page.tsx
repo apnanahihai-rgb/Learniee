@@ -2,116 +2,107 @@
 
 import { ExternalLink, FileText, Link as LinkIcon } from "lucide-react";
 
-import { useAdminResources } from "@/features/admin/hooks/useResources";
-import { displayName } from "@/features/shared/utils/displayName";
+import { adminBtn } from "@/features/admin/components/ui/adminStyles";
 import {
-  AdminEmpty,
-  AdminError,
-  AdminLoading,
-  AdminPage,
-  AdminPageHeader,
-  AdminTableCard,
-  adminButtonClass,
-  adminRowClass,
-  adminTableClass,
-  adminTdClass,
-  adminThClass,
-  formatAdminDate,
-} from "@/features/admin/components/ui/primitives";
+  AdminDataTable,
+  AdminEmptyState,
+  AdminErrorNote,
+  AdminHead,
+  AdminIconTitle,
+  AdminListMeta,
+  AdminLoadingState,
+  AdminStack,
+} from "@/features/admin/components/ui/design";
+import { formatAdminDate } from "@/features/admin/components/ui/primitives";
+import { useAdminResources, type AdminResource } from "@/features/admin/hooks/useResources";
+import { displayName } from "@/features/shared/utils/displayName";
+
+const resourceHref = (r: AdminResource) => (r.type === "LINK" ? r.externalUrl : r.fileUrl);
 
 /**
- * Admin oversight of the Resource Library: every resource shared on the
- * platform, newest first, with who shared it and who it belongs to —
- * read-only, no decision to make here (a Teacher's own delete button is
- * the only edit path).
+ * Admin oversight of the Resource Library (design 23): every resource shared
+ * on the platform, newest first, with who shared it and who it belongs to.
+ * Read-only: a Teacher's own delete button is the only edit path.
+ * Data comes from `GET /api/admin/resources` (verified Admin auth).
  */
 export default function AdminResourcesPage() {
   const { resources, loading, error } = useAdminResources();
 
   return (
-    <AdminPage>
-      <AdminPageHeader
+    <AdminStack>
+      <AdminHead
         crumbs={[{ label: "Overview", href: "/admin" }, { label: "Records" }]}
         title="Resource library"
         description="Everything shared by a teacher with a student, across every course. Read-only: only the teacher who shared a resource can delete it."
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[15px] font-bold text-admin-muted">
-        <span>Newest first</span>
-        <span>{resources.length} shared</span>
-      </div>
+      <AdminListMeta left="Newest first" right={`${resources.length} shared`} />
 
-      <AdminError>{error}</AdminError>
+      <AdminErrorNote>{error}</AdminErrorNote>
 
       {loading ? (
-        <AdminLoading />
+        <AdminLoadingState />
       ) : resources.length === 0 ? (
-        <AdminEmpty message="Nothing has been shared yet." />
+        !error && (
+          <AdminEmptyState title="Nothing shared yet" message="Resources teachers share will appear here." />
+        )
       ) : (
-        <AdminTableCard>
-          <table className={`${adminTableClass} min-w-[900px]`}>
-            <thead>
-              <tr>
-                <th className={adminThClass}>Resource</th>
-                <th className={adminThClass}>Course</th>
-                <th className={adminThClass}>Shared by (teacher)</th>
-                <th className={adminThClass}>To (student, parent)</th>
-                <th className={adminThClass}>Shared</th>
-                <th className={`${adminThClass} text-right`}>Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resources.map((r) => {
-                const href = r.type === "LINK" ? r.externalUrl : r.fileUrl;
-                const Icon = r.type === "LINK" ? LinkIcon : FileText;
+        <AdminDataTable
+          rows={resources}
+          rowKey={(r) => r.id}
+          columns={[
+            {
+              label: "Resource",
+              block: true,
+              render: (r) => (
+                <AdminIconTitle
+                  icon={r.type === "LINK" ? <LinkIcon size={20} /> : <FileText size={20} />}
+                  title={r.title}
+                  meta={r.type === "LINK" ? "Link" : "File"}
+                />
+              ),
+            },
+            {
+              label: "Course",
+              render: (r) => r.enrollment.course.courseTitle || r.enrollment.course.subject || "—",
+            },
+            { label: "Shared by (teacher)", render: (r) => displayName(r.teacher) },
+            {
+              label: "To (student, parent)",
+              render: (r) => (
+                <>
+                  <b className="block font-semibold">{displayName(r.student)}</b>
+                  <small className="block text-xs text-pd-ink3">Parent: {displayName(r.parent)}</small>
+                </>
+              ),
+            },
+            { label: "Shared", nowrap: true, render: (r) => formatAdminDate(r.createdAt) },
+            {
+              label: "Link",
+              right: true,
+              block: true,
+              render: (r) => {
+                const href = resourceHref(r);
 
-                return (
-                  <tr key={r.id} className={adminRowClass}>
-                    <td className={adminTdClass}>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-admin-tint text-brand-dark">
-                          <Icon className="size-5" aria-hidden="true" />
-                        </span>
-                        <div className="flex min-w-0 flex-col">
-                          <span className="truncate font-extrabold">{r.title}</span>
-                          <span className="text-sm text-admin-muted">
-                            {r.type === "LINK" ? "Link" : "File"}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={adminTdClass}>
-                      {r.enrollment.course.courseTitle || r.enrollment.course.subject || "—"}
-                    </td>
-                    <td className={adminTdClass}>{displayName(r.teacher)}</td>
-                    <td className={adminTdClass}>
-                      <div className="flex flex-col">
-                        <span className="font-bold">{displayName(r.student)}</span>
-                        <span className="text-sm text-admin-muted">Parent: {displayName(r.parent)}</span>
-                      </div>
-                    </td>
-                    <td className={`${adminTdClass} whitespace-nowrap`}>{formatAdminDate(r.createdAt)}</td>
-                    <td className={`${adminTdClass} text-right`}>
-                      {href && (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`Open ${r.title}`}
-                          className={adminButtonClass("secondary")}
-                        >
-                          Open
-                          <ExternalLink className="size-4" aria-hidden="true" />
-                        </a>
-                      )}
-                    </td>
-                  </tr>
+                return href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open ${r.title}`}
+                    className={adminBtn("out", "sm")}
+                  >
+                    Open
+                    <ExternalLink size={14} aria-hidden="true" />
+                  </a>
+                ) : (
+                  "—"
                 );
-              })}
-            </tbody>
-          </table>
-        </AdminTableCard>
+              },
+            },
+          ]}
+        />
       )}
-    </AdminPage>
+    </AdminStack>
   );
 }

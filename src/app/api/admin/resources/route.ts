@@ -11,7 +11,7 @@ import { listResourcesForAdmin } from "@/features/shared/server/resource.service
  * (Teacher) and who it belongs to (Parent/Student) — Admin's
  * oversight view, same reasoning as Chat oversight and
  * teacher-strikes. Read-only and not money-adjacent, so it uses the
- * same decode-only Admin auth as the other Admin listing routes
+ * verified Admin auth like the other Admin listing routes
  * (06-OPEN-DECISIONS.md #21).
  */
 export async function GET(req: Request) {
