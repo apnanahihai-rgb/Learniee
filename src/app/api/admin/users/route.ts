@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+
 import { requireAdmin } from "@/lib/verifyAdmin";
+import { listAdminUsers } from "@/features/admin/server/userManagement.service";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -8,19 +9,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [parents, teachers] = await Promise.all([
-    prisma.parentProfile.findMany({
-      select: { firstName: true, lastName: true, email: true },
-    }),
-    prisma.teacher.findMany({
-      select: { firstName: true, lastName: true, email: true },
-    }),
-  ]);
+  try {
+    const users = await listAdminUsers();
 
-  const users = [
-    ...parents.map((p) => ({ ...p, role: "parent" as const })),
-    ...teachers.map((t) => ({ ...t, role: "teacher" as const })),
-  ];
+    return NextResponse.json({ users }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("[admin/users] list failed", error);
 
-  return NextResponse.json({ users });
+    return NextResponse.json({ error: "Could not load users" }, { status: 500 });
+  }
 }

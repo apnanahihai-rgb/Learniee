@@ -1,102 +1,74 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
-
 import type { AdminUser } from "@/features/admin/types/user";
+import { adminBtn, adminTag } from "@/features/admin/components/ui/adminStyles";
 import {
-  AdminAvatar,
-  AdminPill,
-  AdminTableCard,
-  adminButtonClass,
-  adminRowClass,
-  adminTableClass,
-  adminTdClass,
-  adminThClass,
-} from "@/features/admin/components/ui/primitives";
+  AdminDataTable,
+  AdminEmptyState,
+  AdminPerson,
+} from "@/features/admin/components/ui/design";
 
 interface UsersTableProps {
   users: AdminUser[];
-  deletingEmail: string | null;
-  confirmingEmail?: string | null;
   onView: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
 }
 
-export default function UsersTable({
-  users,
-  deletingEmail,
-  confirmingEmail,
-  onView,
-  onDelete,
-}: UsersTableProps) {
+/**
+ * Manage users table (design 20). Columns: User, Role, Actions (View, Delete).
+ * Built on the shared `AdminDataTable`, so it turns into stacked cards on phones.
+ */
+export default function UsersTable({ users, onView, onDelete }: UsersTableProps) {
+  if (users.length === 0) {
+    return <AdminEmptyState message="No users match your search." />;
+  }
+
   return (
-    <AdminTableCard>
-      <table className={adminTableClass}>
-        <thead>
-          <tr>
-            <th className={adminThClass}>User</th>
-            <th className={adminThClass}>Role</th>
-            <th className={`${adminThClass} text-right`}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => {
-            const name = `${u.firstName} ${u.lastName}`.trim();
+    <AdminDataTable
+      rows={users}
+      rowKey={(user) => `${user.role}:${user.email}`}
+      columns={[
+        {
+          label: "User",
+          block: true,
+          render: (user) => (
+            <AdminPerson name={`${user.firstName} ${user.lastName}`.trim() || user.email} meta={user.email} />
+          ),
+        },
+        {
+          label: "Role",
+          render: (user) => <span className={adminTag("violet")}>{user.role}</span>,
+        },
+        {
+          label: "Actions",
+          right: true,
+          block: true,
+          render: (user) => {
+            const name = `${user.firstName} ${user.lastName}`.trim() || user.email;
 
             return (
-              <tr key={u.email} className={adminRowClass}>
-                <td className={adminTdClass}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <AdminAvatar name={name || u.email} />
-                    <div className="min-w-0">
-                      <p className="truncate font-extrabold">{name || "—"}</p>
-                      <p className="truncate text-sm text-admin-muted">{u.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className={adminTdClass}>
-                  <AdminPill className="capitalize">{u.role}</AdminPill>
-                </td>
-                <td className={`${adminTdClass} text-right`}>
-                  {confirmingEmail === u.email ? (
-                    <span className="text-sm font-extrabold text-admin-muted">
-                      Awaiting confirmation
-                    </span>
-                  ) : (
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onView(u)}
-                        aria-label={`View ${name || u.email}`}
-                        className={adminButtonClass("secondary")}
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(u)}
-                        disabled={deletingEmail === u.email}
-                        aria-label={`Delete ${name || u.email}`}
-                        className={adminButtonClass("secondary", "text-red-700")}
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                        {deletingEmail === u.email ? "Deleting…" : "Delete"}
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => onView(user)}
+                  aria-label={`View ${name}`}
+                  className={adminBtn("out", "sm")}
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(user)}
+                  aria-label={`Delete ${name}`}
+                  className={adminBtn("dtx", "sm")}
+                >
+                  Delete
+                </button>
+              </div>
             );
-          })}
-          {users.length === 0 && (
-            <tr>
-              <td colSpan={3} className="px-5 py-10 text-center text-admin-muted">
-                No users found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </AdminTableCard>
+          },
+        },
+      ]}
+    />
   );
 }

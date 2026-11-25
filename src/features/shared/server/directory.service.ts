@@ -112,7 +112,6 @@ export async function getTeacherDirectory(): Promise<{
         completed: onboardingCompleted,
         inProgress: total - onboardingCompleted,
       },
-      withActiveClasses,
     },
   };
 }
