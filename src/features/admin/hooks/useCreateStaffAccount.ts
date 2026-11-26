@@ -3,18 +3,15 @@
 import { useState } from "react";
 import type { StaffAccount, StaffRole } from "@/features/admin/types/staffAccount";
 
-export type CreateStaffStep = "details" | "done";
+export type CreateStaffStep = "details" | "otp" | "done";
 
 interface CreatedResult {
   account: StaffAccount;
   tempPassword: string;
 }
 
-// OTP verification (email + phone) was removed from this flow on 2026-09-03.
-// Account creation now happens directly from the details step. Re-add an
-// OTP/verification step here (via AWS SES) when that's ready — see
-// src/app/api/admin/staff-accounts/send-otp and /verify-otp, which still
-// exist but are no longer called.
+// Flow: details -> SMS OTP (Fast2SMS) sent to the staff phone -> admin enters
+// the code -> account is created with the verified token.
 export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void) {
   const [step, setStep] = useState<CreateStaffStep>("details");
   const [loading, setLoading] = useState(false);
@@ -26,6 +23,9 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
   const [phone, setPhone] = useState(""); // expected in E.164, e.g. +91XXXXXXXXXX
   const [role, setRole] = useState<StaffRole>("ACCOUNTS");
 
+  const [challengeToken, setChallengeToken] = useState("");
+  const [otp, setOtp] = useState("");
+
   const [result, setResult] = useState<CreatedResult | null>(null);
 
   function validateDetails(): string | null {
@@ -36,7 +36,8 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     return null;
   }
 
-  async function handleCreateAccount() {
+  /** Step 1: validate details and send the SMS OTP. Also used for "Resend". */
+  async function handleSendOtp() {
     setError("");
     const validationError = validateDetails();
     if (validationError) {
@@ -46,6 +47,42 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
 
     setLoading(true);
     try {
+      const res = await fetch("/api/admin/staff-accounts/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "phone", target: phone.trim() }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to send OTP.");
+
+      setChallengeToken(body.challengeToken);
+      setOtp("");
+      setStep("otp");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /** Step 2: verify the code, then create the account. */
+  async function handleVerifyAndCreate() {
+    setError("");
+    if (!/^\d{6}$/.test(otp.trim())) {
+      setError("Enter the 6-digit code sent to the phone.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const verifyRes = await fetch("/api/admin/staff-accounts/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeToken, code: otp.trim() }),
+      });
+      const verifyBody = await verifyRes.json().catch(() => ({}));
+      if (!verifyRes.ok) throw new Error(verifyBody.error || "Incorrect code.");
+
       const res = await fetch("/api/admin/staff-accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -55,6 +92,7 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
           email: email.trim(),
           phone: phone.trim(),
           role,
+          phoneVerifiedToken: verifyBody.verifiedToken,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -70,6 +108,13 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     }
   }
 
+  /** Back from the OTP step to edit the details. */
+  function backToDetails() {
+    setError("");
+    setOtp("");
+    setStep("details");
+  }
+
   /** Clears the form and goes back to the details step (design: Cancel / Done). */
   function reset() {
     setStep("details");
@@ -79,6 +124,8 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     setEmail("");
     setPhone("");
     setRole("ACCOUNTS");
+    setChallengeToken("");
+    setOtp("");
     setResult(null);
   }
 
@@ -91,15 +138,19 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     email,
     phone,
     role,
+    otp,
     result,
 
+    setOtp,
     setFirstName,
     setLastName,
     setEmail,
     setPhone,
     setRole,
 
-    handleCreateAccount,
+    handleSendOtp,
+    handleVerifyAndCreate,
+    backToDetails,
     reset,
   };
 }

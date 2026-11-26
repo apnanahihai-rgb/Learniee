@@ -1,41 +1,58 @@
 /**
- * Fast2SMS was decided as the SMS/OTP provider (08-PROJECT-KNOWLEDGE-BASE.md)
- * but was not wired anywhere in the codebase before this. This is the first
- * real integration point — requires FAST2SMS_API_KEY to be set, and an
- * approved OTP template/sender ID in the Fast2SMS dashboard for production
- * use (India DLT regulations apply to transactional SMS). Until that's
- * confirmed set up, phone OTP sends will fail loudly rather than silently.
+ * Fast2SMS OTP sender (DLT route).
+ *
+ * Required env vars (server-side only):
+ *   FAST2SMS_API_KEY     - Fast2SMS dashboard -> Dev API -> API key
+ *   FAST2SMS_SENDER_ID   - your DLT-approved header (6-letter sender ID)
+ *   FAST2SMS_TEMPLATE_ID - the Fast2SMS "message ID" of your approved OTP template
+ *
+ * Your template must contain exactly one variable ({#var#}) = the OTP.
  */
 
-const FAST2SMS_OTP_URL = "https://www.fast2sms.com/dev/bulkV2";
+const FAST2SMS_URL = "https://www.fast2sms.com/dev/bulkV2";
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is not configured.`);
+  }
+  return value;
+}
 
 export async function sendOtpSms(phone: string, code: string): Promise<void> {
-  const apiKey = process.env.FAST2SMS_API_KEY;
-  if (!apiKey) {
-    throw new Error("FAST2SMS_API_KEY is not configured.");
-  }
+  const apiKey = requireEnv("FAST2SMS_API_KEY");
+  const senderId = requireEnv("FAST2SMS_SENDER_ID");
+  const templateId = requireEnv("FAST2SMS_TEMPLATE_ID");
 
-  // Fast2SMS expects a bare 10-digit Indian number (no +91) for its
-  // standard route — strip any leading country code/spacing.
+  // Fast2SMS wants a bare 10-digit Indian number (no +91).
   const digits = phone.replace(/\D/g, "");
   const localNumber = digits.length > 10 ? digits.slice(-10) : digits;
+  if (localNumber.length !== 10) {
+    throw new Error("Phone number must be a 10-digit Indian mobile number.");
+  }
 
-  const res = await fetch(FAST2SMS_OTP_URL, {
+  const res = await fetch(FAST2SMS_URL, {
     method: "POST",
     headers: {
       authorization: apiKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      route: "otp",
+      route: "dlt",
+      sender_id: senderId,
+      message: templateId,
       variables_values: code,
       numbers: localNumber,
+      flash: 0,
     }),
+    signal: AbortSignal.timeout(15_000),
   });
 
   const body = await res.json().catch(() => null);
 
   if (!res.ok || body?.return !== true) {
-    throw new Error(body?.message?.[0] || "Failed to send SMS OTP.");
+    const detail = Array.isArray(body?.message) ? body.message[0] : body?.message;
+    console.error("[fast2sms] send failed", res.status, detail);
+    throw new Error("Could not send the SMS OTP. Please try again.");
   }
 }

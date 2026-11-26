@@ -13,7 +13,7 @@ interface CreateStaffAccountFormProps {
 
 /**
  * "Create staff account" card (design 21). Always visible beside the table.
- * POST /api/admin/staff-accounts creates the Cognito login and the database row;
+ * Details -> SMS OTP (Fast2SMS) -> POST /api/admin/staff-accounts creates the Cognito login and the database row;
  * the temporary password is shown once in this card, then the form resets.
  */
 export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaffAccountFormProps) {
@@ -26,13 +26,17 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
     email,
     phone,
     role,
+    otp,
     result,
+    setOtp,
     setFirstName,
     setLastName,
     setEmail,
     setPhone,
     setRole,
-    handleCreateAccount,
+    handleSendOtp,
+    handleVerifyAndCreate,
+    backToDetails,
     reset,
   } = useCreateStaffAccount(onCreated);
 
@@ -68,12 +72,62 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
     );
   }
 
+  if (step === "otp") {
+    return (
+      <form
+        className={`${ADMIN_CARD} flex flex-col gap-4 p-5`}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleVerifyAndCreate();
+        }}
+        noValidate
+      >
+        <h2 className="font-heading text-[19px] font-semibold">Verify phone number</h2>
+        <p className="text-pd-ink2">
+          A 6-digit code was sent by SMS to {phone}. It is valid for 10 minutes.
+        </p>
+
+        <AdminField id="staff-otp" label="SMS code">
+          <input
+            id="staff-otp"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+            className={ADMIN_CONTROL}
+          />
+        </AdminField>
+
+        <AdminErrorNote>{error}</AdminErrorNote>
+
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={loading} className={adminBtn("pri")}>
+            {loading ? "Verifying…" : "Verify & create account"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSendOtp()}
+            disabled={loading}
+            className={adminBtn("out")}
+          >
+            Resend code
+          </button>
+          <button type="button" onClick={backToDetails} disabled={loading} className={adminBtn("out")}>
+            Back
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form
       className={`${ADMIN_CARD} flex flex-col gap-4 p-5`}
       onSubmit={(event) => {
         event.preventDefault();
-        void handleCreateAccount();
+        void handleSendOtp();
       }}
       noValidate
     >
@@ -142,7 +196,7 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
 
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={loading} className={adminBtn("pri")}>
-          {loading ? "Creating account…" : "Create account"}
+          {loading ? "Sending code…" : "Send OTP"}
         </button>
         <button type="button" onClick={reset} disabled={loading} className={adminBtn("out")}>
           Cancel

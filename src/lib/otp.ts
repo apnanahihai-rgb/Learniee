@@ -37,9 +37,9 @@ export function generateOtpCode(): string {
  */
 export function signOtpChallenge(target: string, purpose: string, code: string): string {
   const expiresAt = Date.now() + OTP_TTL_MS;
-  const payload = `${target}|${purpose}|${code}|${expiresAt}`;
-  const sig = sign(payload);
-  const raw = `${target}|${purpose}|${code}|${expiresAt}|${sig}`;
+  // The code is only mixed into the signature, never put in the token itself.
+  const sig = sign(`${target}|${purpose}|${code}|${expiresAt}`);
+  const raw = `${target}|${purpose}|${expiresAt}|${sig}`;
   return Buffer.from(raw).toString("base64url");
 }
 
@@ -61,21 +61,20 @@ export function verifyOtpChallenge(
   }
 
   const parts = raw.split("|");
-  if (parts.length !== 5) {
+  if (parts.length !== 4) {
     return { ok: false, error: "Invalid or corrupted verification token." };
   }
-  const [target, purpose, code, expiresAtStr, sig] = parts;
-
-  const expected = sign(`${target}|${purpose}|${code}|${expiresAtStr}`);
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
-    return { ok: false, error: "Invalid verification token." };
-  }
+  const [target, purpose, expiresAtStr, sig] = parts;
 
   if (Date.now() > Number(expiresAtStr)) {
     return { ok: false, error: "This code has expired. Please request a new one." };
   }
 
-  if (submittedCode.trim() !== code) {
+  // Recompute the signature using the code the user typed; a wrong code gives a different signature.
+  const expected = sign(`${target}|${purpose}|${submittedCode.trim()}|${expiresAtStr}`);
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
     return { ok: false, error: "Incorrect code." };
   }
 
