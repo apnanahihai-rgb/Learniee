@@ -3,6 +3,7 @@
 import { ADMIN_CARD, ADMIN_CONTROL, adminBtn } from "@/features/admin/components/ui/adminStyles";
 import { AdminErrorNote, AdminField } from "@/features/admin/components/ui/design";
 import { useCreateStaffAccount } from "@/features/admin/hooks/useCreateStaffAccount";
+import { PHONE_COUNTRY_CODES } from "@/features/shared/utils/phoneCountryCodes";
 import type { StaffAccount, StaffRole } from "@/features/admin/types/staffAccount";
 
 interface CreateStaffAccountFormProps {
@@ -25,6 +26,8 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
     lastName,
     email,
     phone,
+    phoneCode,
+    phoneLocal,
     role,
     otp,
     result,
@@ -32,7 +35,8 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
     setFirstName,
     setLastName,
     setEmail,
-    setPhone,
+    setPhoneCode,
+    setPhoneLocal,
     setRole,
     handleSendOtp,
     handleVerifyAndCreate,
@@ -168,15 +172,31 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
       </AdminField>
 
       <AdminField id="staff-phone" label="Phone">
-        <input
-          id="staff-phone"
-          type="tel"
-          autoComplete="off"
-          placeholder="+91XXXXXXXXXX"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className={ADMIN_CONTROL}
-        />
+        <div className="flex gap-2">
+          <select
+            id="staff-phone-code"
+            aria-label="Country code"
+            value={phoneCode}
+            onChange={(e) => setPhoneCode(e.target.value)}
+            className={`${ADMIN_CONTROL} w-[110px] shrink-0`}
+          >
+            {PHONE_COUNTRY_CODES.map((c) => (
+              <option key={`${c.label}-${c.code}`} value={c.code}>
+                {c.code} {c.label}
+              </option>
+            ))}
+          </select>
+          <input
+            id="staff-phone"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="98765 43210"
+            value={phoneLocal}
+            onChange={(e) => setPhoneLocal(e.target.value.replace(/[^\d\s]/g, ""))}
+            className={ADMIN_CONTROL}
+          />
+        </div>
       </AdminField>
 
       <AdminField id="staff-role" label="Role">

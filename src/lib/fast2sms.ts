@@ -25,6 +25,10 @@ export async function sendOtpSms(phone: string, code: string): Promise<void> {
   const templateId = requireEnv("FAST2SMS_TEMPLATE_ID");
 
   // Fast2SMS wants a bare 10-digit Indian number (no +91).
+  // Only +91 numbers can be texted; never trim a foreign number to its last 10 digits.
+  if (!phone.trim().startsWith("+91")) {
+    throw new Error("SMS OTP is only available for Indian (+91) numbers.");
+  }
   const digits = phone.replace(/\D/g, "");
   const localNumber = digits.length > 10 ? digits.slice(-10) : digits;
   if (localNumber.length !== 10) {

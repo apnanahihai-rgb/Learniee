@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import {
+  buildE164,
+  DEFAULT_PHONE_COUNTRY_CODE,
+} from "@/features/shared/utils/phoneCountryCodes";
 import type { StaffAccount, StaffRole } from "@/features/admin/types/staffAccount";
 
 export type CreateStaffStep = "details" | "otp" | "done";
@@ -20,7 +24,9 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState(""); // expected in E.164, e.g. +91XXXXXXXXXX
+  const [phoneCode, setPhoneCode] = useState(DEFAULT_PHONE_COUNTRY_CODE);
+  const [phoneLocal, setPhoneLocal] = useState(""); // number without the country code
+  const phone = buildE164(phoneCode, phoneLocal); // E.164, e.g. +91XXXXXXXXXX
   const [role, setRole] = useState<StaffRole>("ACCOUNTS");
 
   const [challengeToken, setChallengeToken] = useState("");
@@ -31,8 +37,8 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
   function validateDetails(): string | null {
     if (!firstName.trim() || !lastName.trim()) return "First and last name are required.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address.";
-    if (!/^\+[1-9]\d{7,14}$/.test(phone.trim()))
-      return "Enter a valid phone number in E.164 format, e.g. +91XXXXXXXXXX.";
+    if (!/^\+[1-9]\d{7,14}$/.test(phone))
+      return "Enter a valid phone number (digits only, without the country code).";
     return null;
   }
 
@@ -50,7 +56,7 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
       const res = await fetch("/api/admin/staff-accounts/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel: "phone", target: phone.trim() }),
+        body: JSON.stringify({ channel: "phone", target: phone }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to send OTP.");
@@ -90,7 +96,7 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim(),
-          phone: phone.trim(),
+          phone,
           role,
           phoneVerifiedToken: verifyBody.verifiedToken,
         }),
@@ -122,7 +128,8 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     setFirstName("");
     setLastName("");
     setEmail("");
-    setPhone("");
+    setPhoneCode(DEFAULT_PHONE_COUNTRY_CODE);
+    setPhoneLocal("");
     setRole("ACCOUNTS");
     setChallengeToken("");
     setOtp("");
@@ -137,6 +144,8 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     lastName,
     email,
     phone,
+    phoneCode,
+    phoneLocal,
     role,
     otp,
     result,
@@ -145,7 +154,8 @@ export function useCreateStaffAccount(onCreated: (account: StaffAccount) => void
     setFirstName,
     setLastName,
     setEmail,
-    setPhone,
+    setPhoneCode,
+    setPhoneLocal,
     setRole,
 
     handleSendOtp,
