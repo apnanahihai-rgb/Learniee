@@ -178,11 +178,11 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
             aria-label="Country code"
             value={phoneCode}
             onChange={(e) => setPhoneCode(e.target.value)}
-            className={`${ADMIN_CONTROL} w-[110px] shrink-0`}
+            className="h-[46px] w-[96px] shrink-0 rounded-xl border border-pd-line2 bg-white px-2 outline-none focus:border-pd-brand focus:ring-4 focus:ring-pd-b100"
           >
             {PHONE_COUNTRY_CODES.map((c) => (
-              <option key={`${c.label}-${c.code}`} value={c.code}>
-                {c.code} {c.label}
+              <option key={`${c.label}-${c.code}`} value={c.code} title={c.label}>
+                {c.flag} {c.code}
               </option>
             ))}
           </select>
@@ -194,7 +194,7 @@ export default function CreateStaffAccountForm({ onCreated, onDone }: CreateStaf
             placeholder="98765 43210"
             value={phoneLocal}
             onChange={(e) => setPhoneLocal(e.target.value.replace(/[^\d\s]/g, ""))}
-            className={ADMIN_CONTROL}
+            className={`${ADMIN_CONTROL} min-w-0 flex-1`}
           />
         </div>
       </AdminField>
