@@ -5,7 +5,8 @@ import type { AdminCourse } from "@/features/admin/types/course";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
 
-export function useCoursesList() {
+export function useCoursesList(options: { groupOnly?: boolean } = {}) {
+  const groupOnly = Boolean(options.groupOnly);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -21,7 +22,7 @@ export function useCoursesList() {
     try {
       if (!isBackgroundRefresh()) setLoading(true);
 
-      const res = await fetch("/api/admin/courses");
+      const res = await fetch(groupOnly ? "/api/admin/courses?type=group" : "/api/admin/courses");
       setError("");
 
       if (!res.ok) {

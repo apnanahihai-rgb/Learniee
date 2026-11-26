@@ -7,6 +7,7 @@ import { SUBJECT_OPTIONS } from "@/features/courses/constants/courseOptions";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import { frequencyForDays, timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
+import { GROUP_CLASS_TYPE, isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
 
 export function useCreateCourse() {
   const router = useRouter();
@@ -24,9 +25,17 @@ export function useCreateCourse() {
   const [initialValues, setInitialValues] = useState<Partial<CourseFormData> | undefined>();
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("classRequestId");
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("classRequestId");
 
-    if (!id) return;
+    // "Create group class" links here with ?type=group: start with Class type = Group.
+    if (!id) {
+      if (params.get("type")?.toLowerCase() === "group") {
+        setInitialValues({ type: GROUP_CLASS_TYPE });
+      }
+
+      return;
+    }
 
     let cancelled = false;
 
@@ -101,6 +110,15 @@ export function useCreateCourse() {
     if (!formData.courseTitle.trim()) {
       setError("Course title is required.");
       return;
+    }
+
+    if (isGroupType(formData.type)) {
+      const group = parseGroupMaxStudents(formData.groupMaxStudents);
+
+      if (!group.ok) {
+        setError(group.error);
+        return;
+      }
     }
 
     if (!thumbnail) {

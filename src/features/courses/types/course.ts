@@ -33,6 +33,9 @@ export interface CourseFormData {
 
   certificateEnabled: boolean;
   certificateSessionThreshold: string;
+
+  /** Only used when `type` is "Group". */
+  groupMaxStudents: string;
 }
 
 export const initialCourseFormData: CourseFormData = {
@@ -66,6 +69,8 @@ export const initialCourseFormData: CourseFormData = {
 
   certificateEnabled: false,
   certificateSessionThreshold: "",
+
+  groupMaxStudents: "",
 };
 
 /**
@@ -79,6 +84,7 @@ export interface TeacherCourseSummary {
   grade: string | null;
   board: string | null;
   type: string | null;
+  groupMaxStudents?: number | null;
   price: string | null;
   thumbnailKey: string | null;
   introVideoKey: string | null;

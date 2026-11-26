@@ -19,6 +19,7 @@ export interface AdminCourse {
 
   duration: string | null;
   type: string | null;
+  groupMaxStudents: number | null;
   language: string | null;
   frequency: string | null;
 

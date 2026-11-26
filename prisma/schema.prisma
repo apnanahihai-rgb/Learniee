@@ -303,6 +303,10 @@ model Course {
   isIITian          Boolean       @default(false)
   standardPrice     Decimal?      @db.Decimal(10, 2)
   isPriceCustomized Boolean       @default(false)
+  /// Group classes (Nov 2026). Only set when `type` is "Group": the most
+  /// students one group may have. Temporary single option while the group
+  /// rules are being decided; null for Individual courses.
+  groupMaxStudents  Int?
   chatRooms       ChatRoom[]
   teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   demoBookings    DemoBooking[]

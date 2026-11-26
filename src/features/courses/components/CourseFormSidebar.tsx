@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { COURSE_SECTIONS } from "@/features/courses/components/courseSections";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import type { CourseFormData } from "@/features/courses/types/course";
+import { isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
 
 interface Props {
   formData: CourseFormData;
@@ -22,7 +23,11 @@ function getCompletion(formData: CourseFormData, hasThumbnail: boolean, hasIntro
   return {
     basics: f.courseTitle.trim() !== "",
     audience: subjectOk && Boolean(f.grade) && Boolean(f.board),
-    format: Boolean(f.duration) && Boolean(f.type) && frequencyOk,
+    format:
+      Boolean(f.duration) &&
+      Boolean(f.type) &&
+      frequencyOk &&
+      (!isGroupType(f.type) || parseGroupMaxStudents(f.groupMaxStudents).ok),
     pricing: Number(f.price) > 0,
     certificate: !f.certificateEnabled || Number(f.certificateSessionThreshold) >= 1,
     media: hasThumbnail && hasIntroVideo,

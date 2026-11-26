@@ -22,6 +22,7 @@ import {
   UserCheck,
   UserX,
   Users,
+  UsersRound,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -56,6 +57,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { label: "Teacher applications", href: "/admin/teachers", icon: UserCheck, countKey: "teachers" },
       { label: "Course approvals", href: "/admin/courses", icon: BookOpenCheck, countKey: "courses" },
+      { label: "Group classes", href: "/admin/group-classes", icon: UsersRound },
       { label: "Enrollment approvals", href: "/admin/enrollments", icon: ListChecks, countKey: "enrollments" },
       { label: "Bank accounts", href: "/admin/bank-accounts", icon: Landmark, countKey: "bankAccounts" },
       { label: "Blog posts", href: "/admin/blogs", icon: BookOpen, countKey: "blogs" },

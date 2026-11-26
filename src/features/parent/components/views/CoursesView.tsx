@@ -9,6 +9,7 @@ import { useApprovedCourses } from "@/features/parent/hooks/useApprovedCourses";
 import type { ParentCourse } from "@/features/parent/types/course";
 import { NeutralAvatar, RatingBadge, Tag } from "@/features/parent/components/home/HomeBits";
 import { SUBJECT_COLOR } from "@/features/parent/components/home/homeLogic";
+import { groupLabel, isGroupType } from "@/features/courses/utils/groupClass";
 import CourseEnrollDialog from "@/features/parent/components/courses/CourseEnrollDialog";
 import {
   GridSkeleton,
@@ -27,6 +28,7 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
   const name = teacherDisplayName(course.teacher);
   const price = coursePrice(course.price);
   const rating = course.teacher.averageRating;
+  const group = isGroupType(course.type);
 
   return (
     <article
@@ -52,8 +54,14 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
 
         <div className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-pd-ink2">
           <NeutralAvatar name={name} small />
-          <span className="truncate">{name} · Group class</span>
+          <span className="truncate">{name}</span>
         </div>
+
+        {group && (
+          <div>
+            <Tag tone="amber">{groupLabel(course.groupMaxStudents)}</Tag>
+          </div>
+        )}
 
         <div className="mt-auto flex items-center justify-between gap-2">
           <span className="text-lg font-semibold">
@@ -70,8 +78,13 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
 }
 
 /** "Courses" tab — approved courses, searchable (also by `?q=` from the top bar) and filterable by subject. */
-export default function CoursesView() {
-  const { courses, loading, error } = useApprovedCourses();
+export default function CoursesView({ groupOnly = false }: { groupOnly?: boolean }) {
+  const { courses: allCourses, loading, error } = useApprovedCourses();
+  // Group courses show with the normal ones (marked "Group"); the Group classes page shows only them.
+  const courses = useMemo(
+    () => (groupOnly ? allCourses.filter((c) => isGroupType(c.type)) : allCourses),
+    [allCourses, groupOnly],
+  );
   const urlQ = useSearchParams().get("q") ?? "";
 
   // The top-bar search can change `?q=` while this tab is open: follow it.
@@ -152,10 +165,18 @@ export default function CoursesView() {
       ) : list.length === 0 ? (
         <PdEmpty
           icon={SearchX}
-          title={courses.length === 0 ? "No courses yet" : "No courses match"}
+          title={
+            courses.length === 0
+              ? groupOnly
+                ? "No group classes yet"
+                : "No courses yet"
+              : "No courses match"
+          }
           text={
             courses.length === 0
-              ? "Courses appear here once teachers publish them and our team approves them. You can also request a custom class."
+              ? groupOnly
+                ? "Group classes appear here once teachers publish them and our team approves them."
+                : "Courses appear here once teachers publish them and our team approves them. You can also request a custom class."
               : "Try another subject or search term, or request a custom class."
           }
           action={

@@ -15,7 +15,10 @@ export async function GET(req: Request) {
       return auth.error;
     }
 
-    const courses = await getCoursesUnderReview();
+    // ?type=group → only the group-class queue (Admin "Group classes" page).
+    const groupOnly = new URL(req.url).searchParams.get("type") === "group";
+
+    const courses = await getCoursesUnderReview({ groupOnly });
 
     /*
      * The S3 bucket is private, so the browser cannot load

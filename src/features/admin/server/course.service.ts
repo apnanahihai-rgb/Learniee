@@ -7,10 +7,12 @@ import { notifyCourseApproval } from "@/features/shared/server/notificationTrigg
  * Approved/Rejected courses are intentionally excluded —
  * this list is only the Admin's action queue.
  */
-export async function getCoursesUnderReview() {
+export async function getCoursesUnderReview(options: { groupOnly?: boolean } = {}) {
   return prisma.course.findMany({
     where: {
       status: CourseStatus.UNDER_REVIEW,
+      // Group classes page: only courses whose Class type is "Group".
+      ...(options.groupOnly ? { type: { equals: "Group", mode: "insensitive" as const } } : {}),
     },
 
     include: {

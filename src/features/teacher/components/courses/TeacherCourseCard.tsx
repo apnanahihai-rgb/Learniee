@@ -4,6 +4,8 @@ import type { Course } from "@/features/courses/hooks/useTeacherCourses";
 
 import { subjectStyle } from "@/features/teacher/components/home/teacherHomeLogic";
 
+import { groupLabel, isGroupType } from "@/features/courses/utils/groupClass";
+
 import { formatCreated, formatPrice, gradeLabel } from "./courseDisplay";
 
 const COVER_TAG =
@@ -14,7 +16,14 @@ export default function TeacherCourseCard({ course }: { course: Course }) {
   const { color } = subjectStyle(course.subject);
   const approved = course.status === "APPROVED";
   const price = formatPrice(course.price);
-  const facts = [gradeLabel(course.grade), course.board, course.type].filter(Boolean).join(" · ");
+  const group = isGroupType(course.type);
+  const facts = [
+    gradeLabel(course.grade),
+    course.board,
+    group ? groupLabel(course.groupMaxStudents) : course.type,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <article
@@ -28,7 +37,10 @@ export default function TeacherCourseCard({ course }: { course: Course }) {
         >
           {(course.subject?.[0] ?? "?").toUpperCase()}
         </span>
-        <span className={COVER_TAG}>{course.subject || "Course"}</span>
+        <span className={COVER_TAG}>
+          {course.subject || "Course"}
+          {group && " · Group"}
+        </span>
         <span className={COVER_TAG}>{approved ? "Approved" : "Under review"}</span>
       </div>
 

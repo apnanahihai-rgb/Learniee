@@ -2,6 +2,7 @@ import { EnrollmentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
+import { isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
 
 export interface CourseFormInput {
   category: string;
@@ -33,6 +34,9 @@ export interface CourseFormInput {
   certificateEnabled?: boolean;
   certificateSessionThreshold?: string;
 
+  /** Group classes only (type "Group"); ignored for Individual. */
+  groupMaxStudents?: string | number;
+
   thumbnailKey?: string;
   introVideoKey?: string;
 
@@ -63,6 +67,16 @@ function priceCourse(input: CourseFormInput) {
 function buildCourseData(input: CourseFormInput) {
   const { isIITian, standardPrice, price, isPriceCustomized } = priceCourse(input);
 
+  let groupMaxStudents: number | null = null;
+
+  if (isGroupType(input.type)) {
+    const group = parseGroupMaxStudents(input.groupMaxStudents);
+
+    if (!group.ok) throw new Error(group.error);
+
+    groupMaxStudents = group.value;
+  }
+
   return {
     category: input.category || null,
     timeSlot: input.timeSlot || null,
@@ -74,6 +88,7 @@ function buildCourseData(input: CourseFormInput) {
 
     duration: input.duration || null,
     type: input.type || null,
+    groupMaxStudents,
     language: input.language || null,
     frequency: input.frequency || null,
 

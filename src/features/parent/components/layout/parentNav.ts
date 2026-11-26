@@ -10,6 +10,7 @@ import {
   User,
   Newspaper,
   LifeBuoy,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,13 @@ export const PARENT_NAV: Record<string, ParentNavItem> = {
     base: "/parent/courses",
     matches: ["/parent/teachers", "/parent/request-class"],
     icon: Search,
+  },
+  groups: {
+    id: "groups",
+    label: "Group classes",
+    href: "/parent/group-classes",
+    base: "/parent/group-classes",
+    icon: UsersRound,
   },
   classes: {
     id: "classes",
@@ -108,13 +116,13 @@ export const PARENT_NAV: Record<string, ParentNavItem> = {
 
 /** Sidebar order, with separators between groups. */
 export const SIDEBAR_GROUPS: string[][] = [
-  ["home", "courses", "classes", "demos", "calendar", "reschedule", "library"],
+  ["home", "courses", "groups", "classes", "demos", "calendar", "reschedule", "library"],
   ["payments", "account"],
   ["blogs", "help"],
 ];
 
 export const BOTTOM_NAV_IDS = ["home", "courses", "classes", "calendar"];
-export const MORE_NAV_IDS = ["demos", "reschedule", "library", "payments", "blogs", "account", "help"];
+export const MORE_NAV_IDS = ["groups", "demos", "reschedule", "library", "payments", "blogs", "account", "help"];
 
 const under = (path: string, p: string) => path === p || path.startsWith(`${p}/`);
 

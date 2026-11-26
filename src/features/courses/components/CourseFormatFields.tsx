@@ -9,6 +9,11 @@ import {
   CUSTOM_OPTION,
 } from "@/features/courses/constants/courseOptions";
 import type { CourseFormData } from "@/features/courses/types/course";
+import {
+  GROUP_MAX_STUDENTS_LIMIT,
+  GROUP_MIN_STUDENTS,
+  isGroupType,
+} from "@/features/courses/utils/groupClass";
 
 const TIME_SLOT_OPTIONS = ["Morning", "Afternoon", "Evening"];
 
@@ -32,6 +37,28 @@ export default function CourseFormatFields({ formData, onChange }: Props) {
         <SelectField id="field-type" name="type" value={formData.type} onChange={onChange}
           placeholder="Select type" options={TYPE_OPTIONS} className={controlClass} />
       </FormField>
+
+      {isGroupType(formData.type) && (
+        <FormField
+          label="Maximum students in the group"
+          htmlFor="field-groupMaxStudents"
+          hint="Group class option (temporary) — more group settings will be added later."
+        >
+          <Input
+            id="field-groupMaxStudents"
+            name="groupMaxStudents"
+            type="number"
+            inputMode="numeric"
+            min={GROUP_MIN_STUDENTS}
+            max={GROUP_MAX_STUDENTS_LIMIT}
+            step={1}
+            placeholder={`e.g. ${GROUP_MIN_STUDENTS + 3}`}
+            value={formData.groupMaxStudents}
+            onChange={onChange}
+            className={controlClass}
+          />
+        </FormField>
+      )}
 
       <FormField label="Frequency" htmlFor="field-frequency">
         <div className="space-y-2">

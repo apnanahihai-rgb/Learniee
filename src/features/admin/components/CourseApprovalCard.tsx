@@ -13,6 +13,7 @@ import {
   AdminTwoCols,
 } from "@/features/admin/components/ui/queue";
 import type { AdminCourse } from "@/features/admin/types/course";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 
 interface Props {
   course: AdminCourse;
@@ -37,6 +38,7 @@ export default function CourseApprovalCard({
   onReject,
 }: Props) {
   const price = course.price ? `₹${course.price}` : "-";
+  const group = isGroupType(course.type);
 
   return (
     <AdminReviewCard
@@ -67,6 +69,7 @@ export default function CourseApprovalCard({
       tags={
         <>
           {waitingTag}
+          {group && <span className={adminTag("violet")}>Group class</span>}
           <span className={adminTag("amber")}>Under review</span>
         </>
       }
@@ -97,6 +100,9 @@ export default function CourseApprovalCard({
           { label: "Grade", value: course.grade || "-" },
           { label: "Board", value: course.board || "-" },
           { label: "Type", value: course.type || "-" },
+          ...(group
+            ? [{ label: "Max students", value: String(course.groupMaxStudents ?? "-") }]
+            : []),
           { label: "Duration", value: course.duration || "-" },
           { label: "Language", value: course.language || "-" },
           { label: "Frequency", value: course.frequency || "-" },

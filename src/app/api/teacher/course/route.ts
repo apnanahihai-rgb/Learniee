@@ -9,6 +9,7 @@ import {
 } from "@/features/courses/server/course.service";
 import { getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
 import { normalizeCourseChoices } from "@/features/courses/utils/courseInput";
+import { isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 import { prisma } from "@/lib/prisma";
@@ -150,6 +151,15 @@ export async function POST(req: Request) {
     input.grade = choices.grade;
     input.frequency = choices.frequency;
     input.modules = choices.modules;
+
+    // Group classes: the temporary group-size option is required and bounded.
+    if (isGroupType(input.type)) {
+      const group = parseGroupMaxStudents(input.groupMaxStudents);
+
+      if (!group.ok) {
+        return NextResponse.json({ error: group.error }, { status: 400 });
+      }
+    }
 
     if (input.certificateEnabled) {
       const threshold = Number(input.certificateSessionThreshold);

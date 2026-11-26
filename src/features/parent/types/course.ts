@@ -32,6 +32,8 @@ export interface ParentCourse {
   grade: string | null;
   board: string | null;
   type: string | null;
+  /** Group classes only (type "Group"). */
+  groupMaxStudents?: number | null;
 
   courseTitle: string | null;
   price: string | null;
