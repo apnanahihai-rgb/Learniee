@@ -1,15 +1,32 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { LogOut } from "lucide-react";
 
 import { adminInitials, useAdminIdentity } from "@/features/admin/components/ui/AdminIdentityContext";
 import AdminJumpSearch from "@/features/admin/components/ui/AdminJumpSearch";
 import { ADMIN_FOCUS, cx } from "@/features/admin/components/ui/adminStyles";
 import NotificationBell from "@/features/shared/components/NotificationBell";
+import { endSession } from "@/features/shared/utils/endSession";
+import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
-/** Fixed 60px top bar: logo + role pill, jump search, bell, Profile. */
+/** Fixed 60px top bar: logo + role pill, jump search, bell, Profile, Logout. */
 export default function AdminTopBar() {
   const identity = useAdminIdentity();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+
+    // Log first: the logout route needs the cookie to know who is leaving.
+    await logClientActivity("LOGOUT");
+    await endSession();
+    router.push("/login");
+  }
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 flex h-[60px] items-center gap-3 border-b border-pd-line bg-white px-4">
@@ -49,6 +66,20 @@ export default function AdminTopBar() {
           </span>
           <span className="hidden font-semibold sm:block">Profile</span>
         </Link>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          aria-label="Log out"
+          className={cx(
+            "flex min-h-11 items-center gap-2 rounded-full px-3 font-semibold text-pd-ink2 transition-colors hover:bg-pd-b50 hover:text-pd-brand disabled:opacity-60",
+            ADMIN_FOCUS,
+          )}
+        >
+          <LogOut size={18} aria-hidden="true" />
+          <span className="hidden sm:block">{loggingOut ? "Logging out…" : "Logout"}</span>
+        </button>
       </div>
     </header>
   );
