@@ -21,6 +21,12 @@ export interface Course {
   duration: string | null;
   type: string | null;
   groupMaxStudents?: number | null;
+  groupPricePerCycle?: string | null;
+  groupDays?: number[] | null;
+  groupTime?: string | null;
+  groupMode?: string | null;
+  groupStartDate?: string | null;
+  groupEndDate?: string | null;
   language: string | null;
   frequency: string | null;
   status: string | null;

@@ -12,8 +12,9 @@ import {
   AdminText,
   AdminTwoCols,
 } from "@/features/admin/components/ui/queue";
+import { formatSchedule } from "@/features/shared/utils/weekdays";
 import type { AdminCourse } from "@/features/admin/types/course";
-import { isGroupType } from "@/features/courses/utils/groupClass";
+import { groupModeLabel, isGroupType } from "@/features/courses/utils/groupClass";
 
 interface Props {
   course: AdminCourse;
@@ -37,8 +38,14 @@ export default function CourseApprovalCard({
   onApprove,
   onReject,
 }: Props) {
-  const price = course.price ? `₹${course.price}` : "-";
   const group = isGroupType(course.type);
+  const price = group
+    ? course.groupPricePerCycle
+      ? `₹${course.groupPricePerCycle} / cycle`
+      : "-"
+    : course.price
+      ? `₹${course.price}`
+      : "-";
 
   return (
     <AdminReviewCard
@@ -101,7 +108,11 @@ export default function CourseApprovalCard({
           { label: "Board", value: course.board || "-" },
           { label: "Type", value: course.type || "-" },
           ...(group
-            ? [{ label: "Max students", value: String(course.groupMaxStudents ?? "-") }]
+            ? [
+                { label: "Seat limit", value: String(course.groupMaxStudents ?? "-") },
+                { label: "Weekly days & time (IST)", value: formatSchedule(course.groupDays, course.groupTime) },
+                { label: "Group type", value: groupModeLabel(course) },
+              ]
             : []),
           { label: "Duration", value: course.duration || "-" },
           { label: "Language", value: course.language || "-" },

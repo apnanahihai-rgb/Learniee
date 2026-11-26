@@ -6,7 +6,7 @@ import { Check } from "lucide-react";
 import { COURSE_SECTIONS } from "@/features/courses/components/courseSections";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import type { CourseFormData } from "@/features/courses/types/course";
-import { isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
+import { isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
 
 interface Props {
   formData: CourseFormData;
@@ -27,8 +27,11 @@ function getCompletion(formData: CourseFormData, hasThumbnail: boolean, hasIntro
       Boolean(f.duration) &&
       Boolean(f.type) &&
       frequencyOk &&
-      (!isGroupType(f.type) || parseGroupMaxStudents(f.groupMaxStudents).ok),
-    pricing: Number(f.price) > 0,
+      (!isGroupType(f.type) ||
+        (parseGroupMaxStudents(f.groupMaxStudents).ok &&
+          // Price is judged by the Pricing section, so a dummy one is passed here.
+          parseGroupSchedule({ ...f, groupPricePerCycle: 1 }).ok)),
+    pricing: isGroupType(f.type) ? Number(f.groupPricePerCycle) > 0 : Number(f.price) > 0,
     certificate: !f.certificateEnabled || Number(f.certificateSessionThreshold) >= 1,
     media: hasThumbnail && hasIntroVideo,
   } as Record<string, boolean>;

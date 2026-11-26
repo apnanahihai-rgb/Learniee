@@ -7,7 +7,7 @@ import { SUBJECT_OPTIONS } from "@/features/courses/constants/courseOptions";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import { frequencyForDays, timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
-import { GROUP_CLASS_TYPE, isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
+import { GROUP_CLASS_TYPE, isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
 
 export function useCreateCourse() {
   const router = useRouter();
@@ -117,6 +117,13 @@ export function useCreateCourse() {
 
       if (!group.ok) {
         setError(group.error);
+        return;
+      }
+
+      const schedule = parseGroupSchedule(formData);
+
+      if (!schedule.ok) {
+        setError(schedule.error);
         return;
       }
     }

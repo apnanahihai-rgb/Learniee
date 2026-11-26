@@ -20,6 +20,12 @@ export interface AdminCourse {
   duration: string | null;
   type: string | null;
   groupMaxStudents: number | null;
+  groupPricePerCycle: string | null;
+  groupDays: number[];
+  groupTime: string | null;
+  groupMode: "TIME_BOUND" | "OPEN" | null;
+  groupStartDate: string | null;
+  groupEndDate: string | null;
   language: string | null;
   frequency: string | null;
 

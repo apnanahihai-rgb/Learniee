@@ -5,9 +5,11 @@ import CourseConfigFields from "@/features/courses/components/CourseConfigFields
 import CourseBasicsFields from "@/features/courses/components/CourseBasicsFields";
 import CourseFormatFields from "@/features/courses/components/CourseFormatFields";
 import CoursePricingFields from "@/features/courses/components/CoursePricingFields";
+import CourseGroupFields from "@/features/courses/components/CourseGroupFields";
 import CourseSection from "@/features/courses/components/CourseSection";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
 import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
+import { isGroupType, type GroupMode } from "@/features/courses/utils/groupClass";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 
@@ -146,6 +148,23 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     applyForm(next);
   }
 
+  function handleGroupDayToggle(day: number) {
+    const days = formData.groupDays.includes(day)
+      ? formData.groupDays.filter((d) => d !== day)
+      : [...formData.groupDays, day].sort((a, b) => a - b);
+
+    applyForm({ ...formData, groupDays: days });
+  }
+
+  function handleGroupModeChange(mode: GroupMode) {
+    // Open groups have no dates, so drop any that were typed.
+    applyForm({
+      ...formData,
+      groupMode: mode,
+      ...(mode === "OPEN" ? { groupStartDate: "", groupEndDate: "" } : {}),
+    });
+  }
+
   function handleCertificateToggle(checked: boolean) {
     applyForm({ ...formData, certificateEnabled: checked });
   }
@@ -167,6 +186,15 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
 
       <CourseSection id="format">
         <CourseFormatFields formData={formData} onChange={handleChange} />
+
+        {isGroupType(formData.type) && (
+          <CourseGroupFields
+            formData={formData}
+            onChange={handleChange}
+            onToggleDay={handleGroupDayToggle}
+            onModeChange={handleGroupModeChange}
+          />
+        )}
       </CourseSection>
 
       <CourseSection id="pricing">

@@ -249,6 +249,11 @@ model TeacherDocuments {
   Teacher               Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 }
 
+enum GroupClassMode {
+  TIME_BOUND
+  OPEN
+}
+
 model Course {
   id              String        @id @default(uuid())
   teacherId       String
@@ -307,6 +312,19 @@ model Course {
   /// students one group may have. Temporary single option while the group
   /// rules are being decided; null for Individual courses.
   groupMaxStudents  Int?
+  /// Group classes (Nov 2026). Price for one cycle (a month), charged per
+  /// student. `price` still holds a per-session figure derived from it so the
+  /// existing course cards keep working.
+  groupPricePerCycle Decimal?     @db.Decimal(10, 2)
+  /// Fixed weekly slot, same convention as Enrollment.scheduleDays/scheduleTime
+  /// (0 = Sunday, time "HH:mm" in IST). Empty / null on Individual courses.
+  groupDays         Int[]         @default([])
+  groupTime         String?
+  /// TIME_BOUND = fixed start and end dates; OPEN = anyone can join any time
+  /// (dates stay null). Null on Individual courses.
+  groupMode         GroupClassMode?
+  groupStartDate    DateTime?     @db.Date
+  groupEndDate      DateTime?     @db.Date
   chatRooms       ChatRoom[]
   teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   demoBookings    DemoBooking[]

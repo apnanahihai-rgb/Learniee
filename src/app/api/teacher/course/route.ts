@@ -9,7 +9,7 @@ import {
 } from "@/features/courses/server/course.service";
 import { getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
 import { normalizeCourseChoices } from "@/features/courses/utils/courseInput";
-import { isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
+import { isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 import { prisma } from "@/lib/prisma";
@@ -159,6 +159,16 @@ export async function POST(req: Request) {
       if (!group.ok) {
         return NextResponse.json({ error: group.error }, { status: 400 });
       }
+
+      // Weekly days + time, time-bound / open mode and the price per cycle.
+      const schedule = parseGroupSchedule(input);
+
+      if (!schedule.ok) {
+        return NextResponse.json({ error: schedule.error }, { status: 400 });
+      }
+
+      // Per-session price is derived from the cycle price, never client-sent.
+      input.price = String(schedule.value.pricePerSession);
     }
 
     if (input.certificateEnabled) {

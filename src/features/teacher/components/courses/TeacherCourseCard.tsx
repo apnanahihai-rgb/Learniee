@@ -4,7 +4,9 @@ import type { Course } from "@/features/courses/hooks/useTeacherCourses";
 
 import { subjectStyle } from "@/features/teacher/components/home/teacherHomeLogic";
 
-import { groupLabel, isGroupType } from "@/features/courses/utils/groupClass";
+import { groupLabel, groupModeLabel, isGroupType } from "@/features/courses/utils/groupClass";
+
+import { formatSchedule } from "@/features/shared/utils/weekdays";
 
 import { formatCreated, formatPrice, gradeLabel } from "./courseDisplay";
 
@@ -15,8 +17,9 @@ const COVER_TAG =
 export default function TeacherCourseCard({ course }: { course: Course }) {
   const { color } = subjectStyle(course.subject);
   const approved = course.status === "APPROVED";
-  const price = formatPrice(course.price);
   const group = isGroupType(course.type);
+  // Group courses are priced per cycle; `price` is only a derived per-session figure.
+  const price = formatPrice(group ? course.groupPricePerCycle ?? course.price : course.price);
   const facts = [
     gradeLabel(course.grade),
     course.board,
@@ -51,13 +54,17 @@ export default function TeacherCourseCard({ course }: { course: Course }) {
 
         <div className="flex flex-col gap-0.5 text-[13px] text-pd-ink3">
           {facts && <span>{facts}</span>}
+          {group && course.groupDays && course.groupDays.length > 0 && (
+            <span>{formatSchedule(course.groupDays, course.groupTime)}</span>
+          )}
+          {group && course.groupMode && <span>{groupModeLabel(course)}</span>}
           <span>Created {formatCreated(course.createdAt)}</span>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-2">
           <span className="text-lg font-semibold text-pd-ink">
             {price ?? "—"}
-            {price && <small className="text-xs font-bold text-pd-ink3">/session</small>}
+            {price && <small className="text-xs font-bold text-pd-ink3">{group ? "/cycle" : "/session"}</small>}
           </span>
           <span className="text-[13px] text-pd-ink3">{course.activeStudents ?? 0} active</span>
         </div>

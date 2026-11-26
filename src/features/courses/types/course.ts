@@ -36,6 +36,17 @@ export interface CourseFormData {
 
   /** Only used when `type` is "Group". */
   groupMaxStudents: string;
+  /** Group only: price for one cycle (month). */
+  groupPricePerCycle: string;
+  /** Group only: weekly class days, 0 = Sunday. */
+  groupDays: number[];
+  /** Group only: "HH:mm" (IST). */
+  groupTime: string;
+  /** Group only: "TIME_BOUND" | "OPEN" ("" until chosen). */
+  groupMode: "" | "TIME_BOUND" | "OPEN";
+  /** Group only, time-bound: "YYYY-MM-DD". */
+  groupStartDate: string;
+  groupEndDate: string;
 }
 
 export const initialCourseFormData: CourseFormData = {
@@ -71,6 +82,12 @@ export const initialCourseFormData: CourseFormData = {
   certificateSessionThreshold: "",
 
   groupMaxStudents: "",
+  groupPricePerCycle: "",
+  groupDays: [],
+  groupTime: "",
+  groupMode: "",
+  groupStartDate: "",
+  groupEndDate: "",
 };
 
 /**
@@ -85,6 +102,12 @@ export interface TeacherCourseSummary {
   board: string | null;
   type: string | null;
   groupMaxStudents?: number | null;
+  groupPricePerCycle?: string | null;
+  groupDays?: number[] | null;
+  groupTime?: string | null;
+  groupMode?: string | null;
+  groupStartDate?: string | null;
+  groupEndDate?: string | null;
   price: string | null;
   thumbnailKey: string | null;
   introVideoKey: string | null;

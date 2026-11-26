@@ -34,6 +34,12 @@ export interface ParentCourse {
   type: string | null;
   /** Group classes only (type "Group"). */
   groupMaxStudents?: number | null;
+  groupPricePerCycle?: string | null;
+  groupDays?: number[] | null;
+  groupTime?: string | null;
+  groupMode?: string | null;
+  groupStartDate?: string | null;
+  groupEndDate?: string | null;
 
   courseTitle: string | null;
   price: string | null;

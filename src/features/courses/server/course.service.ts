@@ -2,7 +2,8 @@ import { EnrollmentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
-import { isGroupType, parseGroupMaxStudents } from "@/features/courses/utils/groupClass";
+import { isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
+import { calendarDateToDate, parseDateKey } from "@/lib/platformTime";
 
 export interface CourseFormInput {
   category: string;
@@ -36,6 +37,13 @@ export interface CourseFormInput {
 
   /** Group classes only (type "Group"); ignored for Individual. */
   groupMaxStudents?: string | number;
+  /** Group classes only: price for one cycle, weekly days (0 = Sun), time (IST), mode and dates. */
+  groupPricePerCycle?: string | number;
+  groupDays?: number[];
+  groupTime?: string;
+  groupMode?: string;
+  groupStartDate?: string;
+  groupEndDate?: string;
 
   thumbnailKey?: string;
   introVideoKey?: string;
@@ -65,9 +73,23 @@ function priceCourse(input: CourseFormInput) {
 }
 
 function buildCourseData(input: CourseFormInput) {
-  const { isIITian, standardPrice, price, isPriceCustomized } = priceCourse(input);
-
   let groupMaxStudents: number | null = null;
+  let groupFields: {
+    groupPricePerCycle: number | null;
+    groupDays: number[];
+    groupTime: string | null;
+    groupMode: "TIME_BOUND" | "OPEN" | null;
+    groupStartDate: Date | null;
+    groupEndDate: Date | null;
+  } = {
+    groupPricePerCycle: null,
+    groupDays: [],
+    groupTime: null,
+    groupMode: null,
+    groupStartDate: null,
+    groupEndDate: null,
+  };
+  let priceInput = input;
 
   if (isGroupType(input.type)) {
     const group = parseGroupMaxStudents(input.groupMaxStudents);
@@ -75,7 +97,29 @@ function buildCourseData(input: CourseFormInput) {
     if (!group.ok) throw new Error(group.error);
 
     groupMaxStudents = group.value;
+
+    const schedule = parseGroupSchedule(input);
+
+    if (!schedule.ok) throw new Error(schedule.error);
+
+    const { value } = schedule;
+    const start = parseDateKey(value.startDate);
+    const end = parseDateKey(value.endDate);
+
+    groupFields = {
+      groupPricePerCycle: value.pricePerCycle,
+      groupDays: value.days,
+      groupTime: value.time,
+      groupMode: value.mode,
+      groupStartDate: start ? calendarDateToDate(start) : null,
+      groupEndDate: end ? calendarDateToDate(end) : null,
+    };
+
+    // `price` stays a per-session figure (derived) so existing cards keep working.
+    priceInput = { ...input, price: String(value.pricePerSession) };
   }
+
+  const { isIITian, standardPrice, price, isPriceCustomized } = priceCourse(priceInput);
 
   return {
     category: input.category || null,
@@ -89,6 +133,7 @@ function buildCourseData(input: CourseFormInput) {
     duration: input.duration || null,
     type: input.type || null,
     groupMaxStudents,
+    ...groupFields,
     language: input.language || null,
     frequency: input.frequency || null,
 
