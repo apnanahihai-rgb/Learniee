@@ -22,6 +22,28 @@ export type NormalizedCourseChoices =
   | { ok: true; subject: string; grade: string; frequency: string; modules: string; language: string }
   | { ok: false; error: string };
 
+export const MIN_SESSIONS_PER_WEEK = 1;
+export const MAX_SESSIONS_PER_WEEK = 7;
+
+/** Whole number of sessions a week (1-7) from the form's number input; null if invalid or empty. */
+export function parseSessionsPerWeek(raw: unknown): number | null {
+  const text = String(raw ?? "").trim();
+
+  if (!/^\d+$/.test(text)) return null;
+
+  const n = Number(text);
+
+  return n >= MIN_SESSIONS_PER_WEEK && n <= MAX_SESSIONS_PER_WEEK ? n : null;
+}
+
+/** The stored frequency text for a number of sessions a week ("Weekly", "3 Days a Week", "Daily"). */
+export function formatFrequency(sessionsPerWeek: number): string {
+  if (sessionsPerWeek === 1) return "Weekly";
+  if (sessionsPerWeek === 7) return "Daily";
+
+  return `${sessionsPerWeek} Days a Week`;
+}
+
 const MAX_SUBJECT = 80;
 const MAX_FREQUENCY = 60;
 const MAX_MODULES = 50;
@@ -54,7 +76,19 @@ export function normalizeCourseChoices(input: CourseChoiceInput): NormalizedCour
 
   let frequency = (input.frequency ?? "").trim();
 
-  if (frequency === "Custom") {
+  if (/^\d+$/.test(frequency)) {
+    // The form sends the number of sessions a week.
+    const perWeek = parseSessionsPerWeek(frequency);
+
+    if (perWeek == null) {
+      return {
+        ok: false,
+        error: `Sessions per week must be a whole number from ${MIN_SESSIONS_PER_WEEK} to ${MAX_SESSIONS_PER_WEEK}.`,
+      };
+    }
+
+    frequency = formatFrequency(perWeek);
+  } else if (frequency === "Custom") {
     frequency = (input.frequencyCustom ?? "").trim();
 
     if (!frequency) return { ok: false, error: "Please describe the custom frequency." };

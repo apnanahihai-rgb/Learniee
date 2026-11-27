@@ -1,13 +1,12 @@
 import { Input } from "@/components/ui/input";
 import FormField, { controlClass } from "@/features/courses/components/FormField";
 import {
-  GROUP_JOIN_MODES,
-  GROUP_JOIN_MODE_LABELS,
-  GROUP_MODES,
-  GROUP_MODE_LABELS,
-  type GroupJoinMode,
-  type GroupMode,
+  GROUP_FORMATS,
+  GROUP_FORMAT_INFO,
+  groupFormatOf,
+  type GroupFormat,
 } from "@/features/courses/utils/groupClass";
+import { parseSessionsPerWeek } from "@/features/courses/utils/courseInput";
 import type { CourseFormData } from "@/features/courses/types/course";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 import {
@@ -26,19 +25,8 @@ interface Props {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => void;
   onToggleDay: (day: number) => void;
-  onModeChange: (mode: GroupMode) => void;
-  onJoinModeChange: (joinMode: GroupJoinMode) => void;
+  onFormatChange: (format: GroupFormat) => void;
 }
-
-const MODE_HINTS: Record<GroupMode, string> = {
-  TIME_BOUND: "Fixed start and end dates.",
-  OPEN: "Anyone can join any time.",
-};
-
-const JOIN_MODE_HINTS: Record<GroupJoinMode, string> = {
-  MONTHLY_FIXED: "Parents join at the start of a month and wait for the next one.",
-  ANYTIME: "Parents can join on any date.",
-};
 
 /** Group-only fields: weekly days + time, time-bound / open, start and end dates. */
 export default function CourseGroupFields({
@@ -46,11 +34,13 @@ export default function CourseGroupFields({
   availability = [],
   onChange,
   onToggleDay,
-  onModeChange,
-  onJoinModeChange,
+  onFormatChange,
 }: Props) {
   const today = toDateKey(todayInPlatformTz());
   const timeBound = formData.groupMode === "TIME_BOUND";
+  const activeFormat = groupFormatOf(formData.groupMode, formData.groupJoinMode);
+  const perWeek = parseSessionsPerWeek(formData.frequency);
+  const pickedCount = formData.groupDays.length;
   const limited = availability.length > 0;
   const openDays = availableWeekdays(availability);
   const length = sessionLengthForCourse(formData.duration);
@@ -66,12 +56,18 @@ export default function CourseGroupFields({
         htmlFor="field-groupDays"
         required
         className="md:col-span-2"
-        hint="The group meets on these days every week."
+        hint={
+          perWeek == null
+            ? "Enter the sessions per week above first, then pick that many days."
+            : `Pick exactly ${perWeek} day${perWeek > 1 ? "s" : ""} (${pickedCount} of ${perWeek} picked).`
+        }
       >
         <div id="field-groupDays" className="flex flex-wrap gap-2" role="group" aria-label="Weekly days">
           {WEEKDAY_LABELS.map((label, day) => {
             const active = formData.groupDays.includes(day);
-            const blocked = limited && !openDays.includes(day);
+            // Locked until the sessions per week is set, and once that many days are picked.
+            const full = perWeek == null || (!active && pickedCount >= perWeek);
+            const blocked = (limited && !openDays.includes(day)) || full;
 
             return (
               <button
@@ -79,7 +75,15 @@ export default function CourseGroupFields({
                 type="button"
                 aria-pressed={active}
                 disabled={blocked}
-                title={blocked ? "Not in your availability — update it in Calendar" : undefined}
+                title={
+                  limited && !openDays.includes(day)
+                    ? "Not in your availability — update it in Calendar"
+                    : full && !active
+                      ? perWeek == null
+                        ? "Enter the sessions per week first"
+                        : `Already ${perWeek} day${perWeek > 1 ? "s" : ""} picked — deselect one to change`
+                      : undefined
+                }
                 onClick={() => onToggleDay(day)}
                 className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
@@ -114,62 +118,33 @@ export default function CourseGroupFields({
         />
       </FormField>
 
-      <FormField label="Group type" htmlFor="field-groupMode" required>
-        <div id="field-groupMode" className="flex flex-wrap gap-2" role="radiogroup" aria-label="Group type">
-          {GROUP_MODES.map((mode) => {
-            const active = formData.groupMode === mode;
-
-            return (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => onModeChange(mode)}
-                className={`rounded-xl border px-4 py-2 text-left text-sm transition-colors ${
-                  active
-                    ? "border-violet-600 bg-violet-50 text-violet-800"
-                    : "border-violet-200 bg-white text-gray-600 hover:bg-violet-50"
-                }`}
-              >
-                <span className="block font-semibold">{GROUP_MODE_LABELS[mode]}</span>
-                <span className="block text-xs text-gray-500">{MODE_HINTS[mode]}</span>
-              </button>
-            );
-          })}
-        </div>
-      </FormField>
-
       <FormField
-        label="Enrollment"
-        htmlFor="field-groupJoinMode"
+        label="Group type"
+        htmlFor="field-groupFormat"
         required
-        hint="When can a parent enroll a child in this group?"
+        hint="Also decides when a parent can enroll a child."
+        className="md:col-span-2"
       >
-        <div
-          id="field-groupJoinMode"
-          className="flex flex-wrap gap-2"
-          role="radiogroup"
-          aria-label="Enrollment"
-        >
-          {GROUP_JOIN_MODES.map((joinMode) => {
-            const active = formData.groupJoinMode === joinMode;
+        <div id="field-groupFormat" className="flex flex-wrap gap-2" role="radiogroup" aria-label="Group type">
+          {GROUP_FORMATS.map((format) => {
+            const info = GROUP_FORMAT_INFO[format];
+            const active = activeFormat === format;
 
             return (
               <button
-                key={joinMode}
+                key={format}
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => onJoinModeChange(joinMode)}
+                onClick={() => onFormatChange(format)}
                 className={`rounded-xl border px-4 py-2 text-left text-sm transition-colors ${
                   active
                     ? "border-violet-600 bg-violet-50 text-violet-800"
                     : "border-violet-200 bg-white text-gray-600 hover:bg-violet-50"
                 }`}
               >
-                <span className="block font-semibold">{GROUP_JOIN_MODE_LABELS[joinMode]}</span>
-                <span className="block text-xs text-gray-500">{JOIN_MODE_HINTS[joinMode]}</span>
+                <span className="block font-semibold">{info.label}</span>
+                <span className="block text-xs text-gray-500">{info.hint}</span>
               </button>
             );
           })}

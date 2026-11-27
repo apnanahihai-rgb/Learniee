@@ -69,6 +69,47 @@ export const GROUP_JOIN_MODE_LABELS: Record<GroupJoinMode, string> = {
   ANYTIME: "Anytime",
 };
 
+/**
+ * The create-course form asks ONE question ("Group type") instead of separate
+ * "group type" and "enrollment" questions. Each choice sets both stored fields.
+ * A fixed-period group lets parents join any date inside it.
+ */
+export const GROUP_FORMATS = ["TIME_BOUND", "OPEN_MONTHLY", "OPEN_ANYTIME"] as const;
+export type GroupFormat = (typeof GROUP_FORMATS)[number];
+
+export const GROUP_FORMAT_INFO: Record<
+  GroupFormat,
+  { label: string; hint: string; mode: GroupMode; joinMode: GroupJoinMode }
+> = {
+  TIME_BOUND: {
+    label: "Fixed period",
+    hint: "Set start and end dates. Parents can join on any date inside it.",
+    mode: "TIME_BOUND",
+    joinMode: "ANYTIME",
+  },
+  OPEN_MONTHLY: {
+    label: "Ongoing · monthly batches",
+    hint: "No end date. Parents join at the start of a month.",
+    mode: "OPEN",
+    joinMode: "MONTHLY_FIXED",
+  },
+  OPEN_ANYTIME: {
+    label: "Ongoing · join anytime",
+    hint: "No end date. Parents can join on any date.",
+    mode: "OPEN",
+    joinMode: "ANYTIME",
+  },
+};
+
+/** Which single choice the stored mode + join mode correspond to (null if neither is set yet). */
+export function groupFormatOf(mode: string | null | undefined, joinMode: string | null | undefined): GroupFormat | null {
+  if (mode === "TIME_BOUND") return "TIME_BOUND";
+  if (mode === "OPEN" && joinMode === "MONTHLY_FIXED") return "OPEN_MONTHLY";
+  if (mode === "OPEN" && joinMode === "ANYTIME") return "OPEN_ANYTIME";
+
+  return null;
+}
+
 export function isGroupJoinMode(value: unknown): value is GroupJoinMode {
   return typeof value === "string" && (GROUP_JOIN_MODES as readonly string[]).includes(value);
 }

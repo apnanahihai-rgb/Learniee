@@ -48,6 +48,7 @@ export function daysPerWeekForFrequency(frequency: string | null | undefined): n
 
   if (!text) return null;
   if (text in FIXED_FREQUENCY_DAYS) return FIXED_FREQUENCY_DAYS[text];
+  if (/^[1-7]$/.test(text)) return Number(text);
 
   const match = /(\d)\s*(?:days?|x|times?)/i.exec(text);
   const n = match ? Number(match[1]) : NaN;
@@ -74,7 +75,19 @@ export function checkCourseAgainstAvailability(
   const length = sessionLengthForCourse(input.duration);
   const weekdays = availableWeekdays(slots);
 
+  const needed = daysPerWeekForFrequency(input.frequency);
+
   if (isGroupType(input.type)) {
+    const pickedDays = (input.groupDays ?? []).length;
+
+    // A group meets exactly as many days a week as the sessions per week entered.
+    if (needed != null && pickedDays !== needed) {
+      return {
+        ok: false,
+        error: `Sessions per week is ${needed}, so pick exactly ${needed} weekly day${needed > 1 ? "s" : ""} for the group (you picked ${pickedDays}).`,
+      };
+    }
+
     const time = (input.groupTime ?? "").trim();
 
     for (const day of input.groupDays ?? []) {
@@ -93,8 +106,6 @@ export function checkCourseAgainstAvailability(
 
     return { ok: true };
   }
-
-  const needed = daysPerWeekForFrequency(input.frequency);
 
   if (needed != null && weekdays.length < needed) {
     return {

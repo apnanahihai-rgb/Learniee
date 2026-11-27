@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { uploadFileToS3 } from "@/lib/uploadFileToS3";
 import { LANGUAGE_OPTIONS, SUBJECT_OPTIONS } from "@/features/courses/constants/courseOptions";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
-import { frequencyForDays, timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
+import { timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 import { useTeacherAvailability } from "@/features/teacher/hooks/useAvailability";
+import { formatFrequency, parseSessionsPerWeek } from "@/features/courses/utils/courseInput";
 import { checkCourseAgainstAvailability } from "@/features/courses/utils/courseAvailability";
 import { GROUP_CLASS_TYPE, isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
 
@@ -83,7 +84,7 @@ export function useCreateCourse() {
           courseTags: v.subject ?? "",
           description: details.join("\n\n"),
           // From the parent's requested days/time.
-          frequency: frequencyForDays(days.length) ?? "",
+          frequency: days.length >= 1 && days.length <= 7 ? String(days.length) : "",
           timeSlot: timeSlotForTime(v.preferredTime) ?? "",
           // A request is for one child.
           type: "Individual",
@@ -134,6 +135,13 @@ export function useCreateCourse() {
       return;
     }
 
+    const perWeek = parseSessionsPerWeek(formData.frequency);
+
+    if (perWeek == null) {
+      setError("Enter the sessions per week as a whole number from 1 to 7.");
+      return;
+    }
+
     if (isGroupType(formData.type)) {
       const group = parseGroupMaxStudents(formData.groupMaxStudents);
 
@@ -153,8 +161,7 @@ export function useCreateCourse() {
     const fit = checkCourseAgainstAvailability(availability.slots, {
       type: formData.type,
       duration: formData.duration,
-      frequency:
-        formData.frequency === "Custom" ? formData.frequencyCustom : formData.frequency,
+      frequency: formatFrequency(perWeek),
       timeSlot: formData.timeSlot,
       groupDays: formData.groupDays,
       groupTime: formData.groupTime,

@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 
 import { COURSE_SECTIONS } from "@/features/courses/components/courseSections";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
+import { parseSessionsPerWeek } from "@/features/courses/utils/courseInput";
 import type { CourseFormData } from "@/features/courses/types/course";
 import { isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
 
@@ -17,7 +18,8 @@ interface Props {
 /** Which sections are filled in. Purely a visual aid — the API and submit handler do the real validation. */
 function getCompletion(formData: CourseFormData, hasThumbnail: boolean, hasIntroVideo: boolean) {
   const f = formData;
-  const frequencyOk = Boolean(f.frequency) && (f.frequency !== "Custom" || f.frequencyCustom.trim() !== "");
+  const perWeek = parseSessionsPerWeek(f.frequency);
+  const frequencyOk = perWeek != null;
   const subjectOk = Boolean(f.subject) && (f.subject !== "Other" || f.subjectOther.trim() !== "");
 
   return {
@@ -29,6 +31,7 @@ function getCompletion(formData: CourseFormData, hasThumbnail: boolean, hasIntro
       frequencyOk &&
       (!isGroupType(f.type) ||
         (parseGroupMaxStudents(f.groupMaxStudents).ok &&
+          f.groupDays.length === perWeek &&
           // Price is judged by the Pricing section, so a dummy one is passed here.
           parseGroupSchedule({ ...f, price: 1 }).ok)),
     pricing: Number(f.price) > 0,

@@ -9,7 +9,8 @@ import CourseGroupFields from "@/features/courses/components/CourseGroupFields";
 import CourseSection from "@/features/courses/components/CourseSection";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
 import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
-import { isGroupType, type GroupJoinMode, type GroupMode } from "@/features/courses/utils/groupClass";
+import { GROUP_FORMAT_INFO, isGroupType, type GroupFormat } from "@/features/courses/utils/groupClass";
+import { parseSessionsPerWeek } from "@/features/courses/utils/courseInput";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import type { AvailabilitySlot } from "@/features/shared/utils/availability";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
@@ -131,7 +132,24 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     // Grade and price are fixed for vacancy listings.
     if (pricingLocked && (name === "gradeFrom" || name === "gradeTo" || name === "price")) return;
 
-    let updatedData = withDerivedGrade({ ...formData, [name]: value });
+    let nextValue = value;
+
+    if (name === "frequency") {
+      // Sessions per week: digits only, kept inside 1-7.
+      const digits = value.replace(/\D/g, "").slice(0, 1);
+      nextValue = digits === "0" ? "" : digits === "8" || digits === "9" ? "7" : digits;
+    }
+
+    let updatedData = withDerivedGrade({ ...formData, [name]: nextValue });
+
+    if (name === "frequency") {
+      // A group meets on exactly this many days: drop extra days if the number went down.
+      const perWeek = parseSessionsPerWeek(nextValue);
+
+      if (perWeek != null && updatedData.groupDays.length > perWeek) {
+        updatedData = { ...updatedData, groupDays: updatedData.groupDays.slice(0, perWeek) };
+      }
+    }
 
     if (pricingLocked && (name === "gradeFrom" || name === "gradeTo" || name === "duration")) {
       // Vacancy listing: keep Price at the request's grade rate.
@@ -152,24 +170,29 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
   }
 
   function handleGroupDayToggle(day: number) {
-    const days = formData.groupDays.includes(day)
+    const perWeek = parseSessionsPerWeek(formData.frequency);
+    const picked = formData.groupDays.includes(day);
+
+    // Only as many days as sessions per week can be picked.
+    if (!picked && (perWeek == null || formData.groupDays.length >= perWeek)) return;
+
+    const days = picked
       ? formData.groupDays.filter((d) => d !== day)
       : [...formData.groupDays, day].sort((a, b) => a - b);
 
     applyForm({ ...formData, groupDays: days });
   }
 
-  function handleGroupModeChange(mode: GroupMode) {
-    // Open groups have no dates, so drop any that were typed.
+  function handleGroupFormatChange(format: GroupFormat) {
+    const { mode, joinMode } = GROUP_FORMAT_INFO[format];
+
+    // Ongoing groups have no dates, so drop any that were typed.
     applyForm({
       ...formData,
       groupMode: mode,
+      groupJoinMode: joinMode,
       ...(mode === "OPEN" ? { groupStartDate: "", groupEndDate: "" } : {}),
     });
-  }
-
-  function handleGroupJoinModeChange(joinMode: GroupJoinMode) {
-    applyForm({ ...formData, groupJoinMode: joinMode });
   }
 
   function handleCertificateToggle(checked: boolean) {
@@ -200,8 +223,7 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
             availability={availability}
             onChange={handleChange}
             onToggleDay={handleGroupDayToggle}
-            onModeChange={handleGroupModeChange}
-            onJoinModeChange={handleGroupJoinModeChange}
+            onFormatChange={handleGroupFormatChange}
           />
         )}
       </CourseSection>

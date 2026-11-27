@@ -4,10 +4,13 @@ import FormField, { controlClass } from "@/features/courses/components/FormField
 import {
   DURATION_OPTIONS,
   TYPE_OPTIONS,
-  FREQUENCY_OPTIONS,
   MODULE_OPTIONS,
   CUSTOM_OPTION,
 } from "@/features/courses/constants/courseOptions";
+import {
+  MAX_SESSIONS_PER_WEEK,
+  MIN_SESSIONS_PER_WEEK,
+} from "@/features/courses/utils/courseInput";
 import type { CourseFormData } from "@/features/courses/types/course";
 import {
   GROUP_MAX_STUDENTS_LIMIT,
@@ -24,7 +27,7 @@ interface Props {
   ) => void;
 }
 
-/** "Lecture format" section: duration, type, frequency, modules, preferred time slot. */
+/** "Lecture format" section: duration, type, sessions per week, modules, preferred time slot. */
 export default function CourseFormatFields({ formData, onChange }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -60,23 +63,29 @@ export default function CourseFormatFields({ formData, onChange }: Props) {
         </FormField>
       )}
 
-      <FormField label="Frequency" htmlFor="field-frequency">
-        <div className="space-y-2">
-          <SelectField id="field-frequency" name="frequency" value={formData.frequency} onChange={onChange}
-            placeholder="Select frequency" options={FREQUENCY_OPTIONS} className={controlClass} />
-
-          {formData.frequency === CUSTOM_OPTION && (
-            <Input
-              name="frequencyCustom"
-              placeholder="e.g. 2 days a week"
-              value={formData.frequencyCustom}
-              onChange={onChange}
-              maxLength={60}
-              aria-label="Custom frequency"
-              className={controlClass}
-            />
-          )}
-        </div>
+      <FormField
+        label="Sessions per week"
+        htmlFor="field-frequency"
+        required
+        hint={
+          isGroupType(formData.type)
+            ? "Group classes meet on exactly this many days a week."
+            : `Whole number, ${MIN_SESSIONS_PER_WEEK} to ${MAX_SESSIONS_PER_WEEK}.`
+        }
+      >
+        <Input
+          id="field-frequency"
+          name="frequency"
+          type="number"
+          inputMode="numeric"
+          min={MIN_SESSIONS_PER_WEEK}
+          max={MAX_SESSIONS_PER_WEEK}
+          step={1}
+          placeholder="e.g. 3"
+          value={formData.frequency}
+          onChange={onChange}
+          className={controlClass}
+        />
       </FormField>
 
       <FormField label="Modules" htmlFor="field-modules">
