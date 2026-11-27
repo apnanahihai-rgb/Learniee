@@ -13,7 +13,15 @@ import { useTeacherClasses } from "@/features/teacher/hooks/useMyClasses";
 import type { TeacherClassSummary } from "@/features/teacher/types/myClasses";
 import { TD_CARD } from "./TeacherUi";
 
-function ClassRow({ c, now }: { c: TeacherClassSummary; now: Date }) {
+function ClassRow({
+  c,
+  now,
+  onManageGroup,
+}: {
+  c: TeacherClassSummary;
+  now: Date;
+  onManageGroup?: (courseId: string) => void;
+}) {
   const color = subjectTheme(c.subject).color;
   const next = c.nextSessionAt ? new Date(c.nextSessionAt) : null;
   const today = next ? dayDiff(next, now) === 0 : false;
@@ -62,7 +70,12 @@ function ClassRow({ c, now }: { c: TeacherClassSummary; now: Date }) {
         <small className="text-xs text-pd-ink3">{pct}%</small>
       </div>
 
-      <div className="relative z-[2] flex min-w-0 items-center justify-end max-[760px]:absolute max-[760px]:right-2.5 max-[760px]:top-2.5">
+      <div className="relative z-[2] flex min-w-0 flex-wrap items-center justify-end gap-2 max-[760px]:absolute max-[760px]:right-2.5 max-[760px]:top-2.5">
+        {onManageGroup && c.isGroup && (
+          <button type="button" className={PD_BTN_SEC_SM} onClick={() => onManageGroup(c.courseId)}>
+            Homework &amp; announcements
+          </button>
+        )}
         <Link href={`/teacher/my-classes?tab=students&course=${c.courseId}`} className={PD_BTN_SEC_SM}>
           Students
         </Link>
@@ -75,7 +88,13 @@ function ClassRow({ c, now }: { c: TeacherClassSummary; now: Date }) {
  * My classes > Classes / Group classes: one row per course with next class
  * and average progress. Group courses are listed apart from individual ones.
  */
-export default function ClassesTab({ groupOnly = false }: { groupOnly?: boolean }) {
+export default function ClassesTab({
+  groupOnly = false,
+  onManageGroup,
+}: {
+  groupOnly?: boolean;
+  onManageGroup?: (courseId: string) => void;
+}) {
   const { classes: allClasses, loading, error } = useTeacherClasses();
   const classes = allClasses.filter((c) => c.isGroup === groupOnly);
   const now = new Date();
@@ -109,7 +128,7 @@ export default function ClassesTab({ groupOnly = false }: { groupOnly?: boolean 
             <span />
           </div>
           {classes.map((c) => (
-            <ClassRow key={c.courseId} c={c} now={now} />
+            <ClassRow key={c.courseId} c={c} now={now} onManageGroup={onManageGroup} />
           ))}
         </div>
       )}
