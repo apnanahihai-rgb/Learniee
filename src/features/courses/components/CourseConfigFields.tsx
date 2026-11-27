@@ -5,9 +5,10 @@ import {
   CATEGORY_OPTIONS,
   SUBJECT_OPTIONS,
   GRADE_OPTIONS,
-  BOARD_OPTIONS,
+  COURSE_BOARD_OPTIONS,
   EXPERIENCE_OPTIONS,
-  LANGUAGE_OPTIONS,
+  COURSE_LANGUAGE_OPTIONS,
+  OTHER_LANGUAGE,
   OTHER_SUBJECT,
 } from "@/features/courses/constants/courseOptions";
 import type { CourseFormData } from "@/features/courses/types/course";
@@ -110,7 +111,7 @@ export default function CourseConfigFields({ formData, onChange, gradeLocked, on
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label="Board" htmlFor="field-board">
           <SelectField id="field-board" name="board" value={formData.board} onChange={onChange}
-            placeholder="Select board" options={BOARD_OPTIONS} className={controlClass} />
+            placeholder="Select board" options={COURSE_BOARD_OPTIONS} className={controlClass} />
         </FormField>
 
         <FormField label="Level" htmlFor="field-experience">
@@ -119,8 +120,22 @@ export default function CourseConfigFields({ formData, onChange, gradeLocked, on
         </FormField>
 
         <FormField label="Language" htmlFor="field-language">
-          <SelectField id="field-language" name="language" value={formData.language} onChange={onChange}
-            placeholder="Select language" options={LANGUAGE_OPTIONS} className={controlClass} />
+          <div className="space-y-2">
+            <SelectField id="field-language" name="language" value={formData.language} onChange={onChange}
+              placeholder="Select language" options={COURSE_LANGUAGE_OPTIONS} className={controlClass} />
+
+            {formData.language === OTHER_LANGUAGE && (
+              <Input
+                name="languageOther"
+                placeholder="Write the language"
+                value={formData.languageOther}
+                onChange={onChange}
+                maxLength={40}
+                aria-label="Language name"
+                className={controlClass}
+              />
+            )}
+          </div>
         </FormField>
       </div>
     </>

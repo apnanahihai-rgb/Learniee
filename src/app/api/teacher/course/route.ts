@@ -151,6 +151,7 @@ export async function POST(req: Request) {
     input.grade = choices.grade;
     input.frequency = choices.frequency;
     input.modules = choices.modules;
+    input.language = choices.language;
 
     // Group classes: the temporary group-size option is required and bounded.
     if (isGroupType(input.type)) {

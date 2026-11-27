@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadFileToS3 } from "@/lib/uploadFileToS3";
-import { SUBJECT_OPTIONS } from "@/features/courses/constants/courseOptions";
+import { LANGUAGE_OPTIONS, SUBJECT_OPTIONS } from "@/features/courses/constants/courseOptions";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import { frequencyForDays, timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
@@ -73,7 +73,10 @@ export function useCreateCourse() {
           gradeFrom: v.grade ?? "",
           grade: v.grade ?? "",
           board: v.board ?? "",
-          language: v.language ?? "",
+          // A requested language outside the list goes in via "Other" + the written name.
+          ...((LANGUAGE_OPTIONS as readonly string[]).includes(v.language ?? "") || !v.language
+            ? { language: v.language ?? "" }
+            : { language: "Other", languageOther: v.language }),
           courseTags: v.subject ?? "",
           description: details.join("\n\n"),
           // From the parent's requested days/time.

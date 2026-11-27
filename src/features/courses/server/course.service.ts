@@ -19,6 +19,8 @@ export interface CourseFormInput {
   duration: string;
   type: string;
   language: string;
+  /** Typed language when `language` is "Other" (resolved by the route). */
+  languageOther?: string;
   frequency: string;
   frequencyCustom?: string;
 

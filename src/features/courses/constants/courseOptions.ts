@@ -35,6 +35,10 @@ export const BOARD_OPTIONS = [
   "IGCSE",
 ] as const;
 
+/** Course form only: "All Boards" is for subjects that don't follow one board (craft, music, ...). */
+export const ALL_BOARDS = "All Boards";
+export const COURSE_BOARD_OPTIONS = [...BOARD_OPTIONS, ALL_BOARDS] as const;
+
 export const EXPERIENCE_OPTIONS = [
   "Beginner",
   "Intermediate",
@@ -60,6 +64,10 @@ export const LANGUAGE_OPTIONS = [
   "Marathi",
 ] as const;
 
+/** Course form only: "Other" reveals a field to write the language. */
+export const OTHER_LANGUAGE = "Other";
+export const COURSE_LANGUAGE_OPTIONS = [...LANGUAGE_OPTIONS, OTHER_LANGUAGE] as const;
+
 export const FREQUENCY_OPTIONS = [
   "Daily",
   "3 Days a Week",
@@ -75,6 +83,7 @@ export const MODULE_OPTIONS = [
   "4 Modules",
   "5 Modules",
   "All",
+  "No Modules",
   "Custom",
 ] as const;
 
@@ -84,3 +93,5 @@ export const MODULE_OPTIONS = [
 export const OTHER_SUBJECT = "Other";
 export const CUSTOM_OPTION = "Custom";
 export const ALL_MODULES = "All";
+/** The subject has no modules, so nothing is stored. */
+export const NO_MODULES = "No Modules";

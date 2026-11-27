@@ -16,6 +16,8 @@ export interface CourseFormData {
   duration: string;
   type: string;
   language: string;
+  /** Free text, used when `language` is "Other". */
+  languageOther: string;
   frequency: string;
   /** Used when `frequency` is "Custom". */
   frequencyCustom: string;
@@ -65,6 +67,7 @@ export const initialCourseFormData: CourseFormData = {
   duration: "",
   type: "",
   language: "",
+  languageOther: "",
   frequency: "",
   frequencyCustom: "",
 

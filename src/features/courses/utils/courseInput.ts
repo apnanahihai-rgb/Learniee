@@ -12,17 +12,20 @@ export interface CourseChoiceInput {
   grade?: string;
   frequency?: string;
   frequencyCustom?: string;
+  language?: string;
+  languageOther?: string;
   modules?: string;
   moduleCustom?: string;
 }
 
 export type NormalizedCourseChoices =
-  | { ok: true; subject: string; grade: string; frequency: string; modules: string }
+  | { ok: true; subject: string; grade: string; frequency: string; modules: string; language: string }
   | { ok: false; error: string };
 
 const MAX_SUBJECT = 80;
 const MAX_FREQUENCY = 60;
 const MAX_MODULES = 50;
+const MAX_LANGUAGE = 40;
 
 export function normalizeCourseChoices(input: CourseChoiceInput): NormalizedCourseChoices {
   let subject = (input.subject ?? "").trim();
@@ -60,9 +63,23 @@ export function normalizeCourseChoices(input: CourseChoiceInput): NormalizedCour
     }
   }
 
+  let language = (input.language ?? "").trim();
+
+  if (language === "Other") {
+    language = (input.languageOther ?? "").trim();
+
+    if (!language) return { ok: false, error: "Please write the language name." };
+    if (language.length > MAX_LANGUAGE) {
+      return { ok: false, error: `Language must be ${MAX_LANGUAGE} characters or fewer.` };
+    }
+  }
+
   let modules = (input.modules ?? "").trim();
 
-  if (modules === "All") {
+  if (modules === "No Modules") {
+    // Nothing to store: the course simply has no modules.
+    modules = "";
+  } else if (modules === "All") {
     modules = "All Modules";
   } else if (modules === "Custom") {
     const count = Number(input.moduleCustom);
@@ -74,5 +91,5 @@ export function normalizeCourseChoices(input: CourseChoiceInput): NormalizedCour
     modules = count === 1 ? "1 Module" : `${count} Modules`;
   }
 
-  return { ok: true, subject, grade, frequency, modules };
+  return { ok: true, subject, grade, frequency, modules, language };
 }
