@@ -12,6 +12,7 @@ import {
   type PlanType,
 } from "@/features/shared/utils/cyclePlan";
 import { toggleWeekday } from "@/features/shared/utils/weekdays";
+import type { GroupBookingInfo } from "@/features/courses/utils/groupClass";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 import { useWalletBalance } from "@/features/parent/hooks/useWalletBalance";
 
@@ -32,6 +33,12 @@ interface Args {
   teacherId: string;
   courseId: string;
   subject: string | null;
+  /**
+   * Group class: the teacher fixes the weekdays, time, price and (for a
+   * time-bound group) the start date, so the parent only picks a child
+   * (and, for an open group, a start date).
+   */
+  group?: GroupBookingInfo | null;
 }
 
 /** Cycle plan form state, the client-side price preview and the paid enrollment flow. */
@@ -41,20 +48,26 @@ export function useEnrollment({
   teacherId,
   courseId,
   subject,
+  group = null,
 }: Args) {
   // Enroll — separate from the demo-booking state above since a
   // parent may enroll without booking another demo first (they
   // might already be past their demos for this teacher/subject).
   // Cycle start date ("YYYY-MM-DD", platform timezone) — defaults to today.
   const [startDate, setStartDate] = useState(() =>
-    toDateKey(todayInPlatformTz()),
+    group?.mode === "TIME_BOUND" && group.startDate
+      ? group.startDate
+      : toDateKey(todayInPlatformTz()),
   );
   // Recurring weekly schedule — required before enrolling so the
   // teacher/parent calendar can actually show something real.
-  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("WEEKDAYS");
+  const [scheduleModeState, setScheduleMode] = useState<ScheduleMode>("WEEKDAYS");
+  // A group class always repeats the teacher's weekdays.
+  const scheduleMode: ScheduleMode = group ? "WEEKDAYS" : scheduleModeState;
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [customDates, setCustomDates] = useState<string[]>([]);
-  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleTimeState, setScheduleTime] = useState("");
+  const scheduleTime = group ? group.time : scheduleTimeState;
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState("");
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
@@ -83,13 +96,21 @@ export function useEnrollment({
     return customDates.filter((key) => key >= first && key <= last).sort();
   }, [scheduleMode, cycleWindow, customDates]);
 
-  const effectiveScheduleDays =
-    scheduleMode === "DATES" ? weekdaysOfDateKeys(activeCustomDates) : scheduleDays;
-  const scheduleReady =
-    scheduleMode === "DATES" ? activeCustomDates.length > 0 : scheduleDays.length > 0;
+  const effectiveScheduleDays = group
+    ? group.days
+    : scheduleMode === "DATES"
+      ? weekdaysOfDateKeys(activeCustomDates)
+      : scheduleDays;
+  const scheduleReady = group
+    ? true
+    : scheduleMode === "DATES"
+      ? activeCustomDates.length > 0
+      : scheduleDays.length > 0;
 
   const cyclePlan = useMemo(() => {
     if (!startDate) return null;
+
+    if (group) return buildCyclePlan(startDate, group.days, planType);
 
     if (scheduleMode === "DATES") {
       return activeCustomDates.length > 0
@@ -100,17 +121,24 @@ export function useEnrollment({
     return scheduleDays.length > 0
       ? buildCyclePlan(startDate, scheduleDays, planType)
       : null;
-  }, [startDate, scheduleMode, scheduleDays, activeCustomDates]);
+  }, [startDate, group, scheduleMode, scheduleDays, activeCustomDates]);
   const planProblem = cyclePlan ? getCyclePlanProblem(cyclePlan) : null;
 
   const pricePreview = useMemo(() => {
-    if (!ratePerSession || !cyclePlan || planProblem) return null;
+    if (!cyclePlan || planProblem) return null;
+
+    // Group classes charge one flat price per cycle.
+    if (group) {
+      return { sessionCount: cyclePlan.sessionCount, totalAmount: group.pricePerCycle };
+    }
+
+    if (!ratePerSession) return null;
 
     return {
       sessionCount: cyclePlan.sessionCount,
       totalAmount: priceForSessions(ratePerSession, cyclePlan.sessionCount),
     };
-  }, [ratePerSession, cyclePlan, planProblem]);
+  }, [ratePerSession, cyclePlan, planProblem, group]);
 
   function toggleScheduleDay(day: number) {
     setScheduleDays((current) => toggleWeekday(current, day));

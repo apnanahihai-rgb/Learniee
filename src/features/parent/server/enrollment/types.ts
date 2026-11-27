@@ -115,6 +115,8 @@ export interface PriceOptions {
   enforceStartNotPast: boolean;
   /** True only when the order is first created: every class day/time must sit inside the teacher's weekly availability. Never on verify/webhook (money already taken). */
   enforceAvailability?: boolean;
+  /** True only when the order is first created: a group class must have a free seat, the student must not already be in it, and a time-bound group must not have started. Never on verify/webhook (money already taken). */
+  enforceGroupRules?: boolean;
   /** Session length recorded in the order's notes, so a later course edit can't change what was booked. */
   lockedSessionLengthMinutes?: number | null;
 }

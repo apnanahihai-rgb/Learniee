@@ -67,6 +67,7 @@ export async function payEnrollmentWithWallet(
     model: "CYCLE_V1",
     enforceStartNotPast: true,
     enforceAvailability: true,
+    enforceGroupRules: true,
   });
 
   const walletPriced = {

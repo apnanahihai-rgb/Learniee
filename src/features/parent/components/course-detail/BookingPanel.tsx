@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import ChildPicker from "./booking/ChildPicker";
 import DemoBookingSection from "./booking/DemoBookingSection";
 import EnrollSection from "./booking/EnrollSection";
+import GroupEnrollSection from "./booking/GroupEnrollSection";
+import type { GroupBookingInfo } from "@/features/courses/utils/groupClass";
 import { useDemoBooking } from "./booking/useDemoBooking";
 import { useEnrollment } from "./booking/useEnrollment";
 import { useTeacherAvailabilityForBooking } from "@/features/parent/hooks/useTeacherAvailability";
@@ -20,6 +22,8 @@ interface Props {
   subject: string | null;
   /** Course duration text (e.g. "1 Hour") — sets how long each class is. */
   duration?: string | null;
+  /** Set for a group class: fixed days, time and price chosen by the teacher. */
+  group?: GroupBookingInfo | null;
 }
 
 /**
@@ -54,6 +58,7 @@ export default function BookingPanel({
   courseId,
   subject,
   duration,
+  group = null,
 }: Props) {
   // Pre-fill from the post-demo survey: /parent/courses/<id>?mode=enroll
   // &studentId=<child>&from=demo-survey opens the Enroll tab with the child
@@ -102,6 +107,7 @@ export default function BookingPanel({
     teacherId,
     courseId,
     subject,
+    group,
   });
 
   const [mode, setMode] = useState<"demo" | "enroll">(
@@ -117,7 +123,7 @@ export default function BookingPanel({
     {
       value: "enroll" as const,
       title: "Enroll",
-      sub: "Regular classes",
+      sub: group ? "Join the group" : "Regular classes",
     },
   ];
 
@@ -199,27 +205,38 @@ export default function BookingPanel({
         </div>
       ) : (
         <div role="tabpanel">
-          <div className="rounded-xl bg-violet-50 px-3 py-2.5 mb-4 text-xs text-gray-600 leading-relaxed">
-            <p className="font-bold text-gray-800">
-              Regular classes
-              {price && (
-                <span className="font-semibold text-gray-600">
-                  {" "}
-                  · ₹{price}/session
-                </span>
-              )}
-            </p>
-            <p>Pick your days and time. Total is shown before you pay.</p>
-          </div>
+          {group ? (
+            <GroupEnrollSection
+              enroll={enroll}
+              group={group}
+              studentsLoading={studentsLoading}
+              studentCount={students.length}
+            />
+          ) : (
+            <>
+              <div className="rounded-xl bg-violet-50 px-3 py-2.5 mb-4 text-xs text-gray-600 leading-relaxed">
+                <p className="font-bold text-gray-800">
+                  Regular classes
+                  {price && (
+                    <span className="font-semibold text-gray-600">
+                      {" "}
+                      · ₹{price}/session
+                    </span>
+                  )}
+                </p>
+                <p>Pick your days and time. Total is shown before you pay.</p>
+              </div>
 
-          <EnrollSection
-            enroll={enroll}
-            studentsLoading={studentsLoading}
-            studentCount={students.length}
-            availability={availability}
-            availabilityLoading={availabilityLoading}
-            sessionLengthMinutes={sessionLengthForCourse(duration ?? null)}
-          />
+              <EnrollSection
+                enroll={enroll}
+                studentsLoading={studentsLoading}
+                studentCount={students.length}
+                availability={availability}
+                availabilityLoading={availabilityLoading}
+                sessionLengthMinutes={sessionLengthForCourse(duration ?? null)}
+              />
+            </>
+          )}
         </div>
       )}
     </div>

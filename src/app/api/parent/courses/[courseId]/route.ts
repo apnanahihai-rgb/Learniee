@@ -8,6 +8,8 @@ import {
   getApprovedCourseById,
   getOtherApprovedCoursesByTeacher,
 } from "@/features/parent/server/course.service";
+import { countGroupSeats } from "@/features/parent/server/enrollment/group";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { getTeacherRatingSummary } from "@/features/shared/server/review.service";
 
 type CourseDetailRow = NonNullable<
@@ -62,9 +64,13 @@ export async function GET(
       ),
     ]);
 
+    const groupSeatsTaken = isGroupType(course.type)
+      ? await countGroupSeats(course.id)
+      : undefined;
+
     return NextResponse.json({
       success: true,
-      course: courseWithMedia,
+      course: { ...courseWithMedia, groupSeatsTaken },
       otherCourses,
     });
   } catch (error) {

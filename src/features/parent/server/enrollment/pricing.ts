@@ -11,6 +11,7 @@ import { getTeacherAvailability } from "@/features/shared/server/teacherAvailabi
 import { fitsAvailability } from "@/features/shared/utils/availability";
 import { WEEKDAY_LABELS_FULL } from "@/features/shared/utils/weekdays";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import {
     isInternationalParent,
     priceWithInternationalSurcharge,
@@ -22,6 +23,7 @@ import {
     todayInPlatformTz,
 } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
+import { countGroupSeats, isStudentInGroup } from './group';
 import { CreateEnrollmentInput, EnrollmentError, MAX_NO_OF_MONTHS, MAX_SESSIONS_PER_MONTH, MIN_SESSIONS_PER_MONTH, PriceOptions, PricedEnrollment, SCHEDULE_TIME_PATTERN } from './types';
 
 /**
@@ -182,6 +184,161 @@ async function priceLegacyEnrollment(
   };
 }
 /**
+ * Group-class pricing (Nov 2026). A group course fixes its own weekdays,
+ * time, start rule and price, so none of that is taken from the request:
+ *
+ *   schedule       = Course.groupDays / groupTime (always a MONTHLY cycle)
+ *   start date     = TIME_BOUND: Course.groupStartDate (joining closes once
+ *                    it has passed); OPEN: the parent's pick, not in the past
+ *   totalAmount    = Course.groupPricePerCycle — the same flat price for
+ *                    every student, whatever the month's session count
+ *   ratePerSession = totalAmount / session count (kept so renewals, the
+ *                    ledger and every screen reading it keep working)
+ *
+ * With `options.enforceGroupRules` (order creation only) it also refuses a
+ * full group and a student who already holds a seat. Verify and the webhook
+ * skip those checks: the money is already taken by then.
+ */
+async function priceGroupEnrollment(
+  parentId: string,
+  input: CreateEnrollmentInput,
+  options: PriceOptions,
+  course: {
+    id: string;
+    subject: string | null;
+    duration: string | null;
+    groupMaxStudents: number | null;
+    groupPricePerCycle: { toString(): string } | null;
+    groupDays: number[];
+    groupTime: string | null;
+    groupMode: "TIME_BOUND" | "OPEN" | null;
+    groupStartDate: Date | null;
+  },
+): Promise<PricedEnrollment> {
+  const groupPrice = course.groupPricePerCycle == null ? NaN : Number(course.groupPricePerCycle);
+  const scheduleDays = [...new Set(course.groupDays)].sort((a, b) => a - b);
+
+  if (
+    !Number.isFinite(groupPrice) ||
+    groupPrice <= 0 ||
+    scheduleDays.length === 0 ||
+    !isValidTimeOfDay(course.groupTime) ||
+    !course.groupMode
+  ) {
+    throw new EnrollmentError(
+      "This group class isn't fully set up yet — please check back soon.",
+      409,
+    );
+  }
+
+  const scheduleTime = course.groupTime as string;
+  const today = todayInPlatformTz();
+  let startKey: string;
+
+  if (course.groupMode === "TIME_BOUND") {
+    if (!course.groupStartDate) {
+      throw new EnrollmentError(
+        "This group class isn't fully set up yet — please check back soon.",
+        409,
+      );
+    }
+
+    startKey = course.groupStartDate.toISOString().slice(0, 10);
+  } else {
+    startKey = input.cycleStartDate?.trim() || toDateKey(today);
+  }
+
+  const plan = buildCyclePlan(startKey, scheduleDays, "MONTHLY", []);
+
+  if (!plan) {
+    throw new EnrollmentError(
+      "That doesn't look like a valid start date — pick again.",
+    );
+  }
+
+  if (options.enforceStartNotPast && isStartDateInPast(plan.startDate, today)) {
+    throw new EnrollmentError(
+      course.groupMode === "TIME_BOUND"
+        ? "This group has already started, so new students can't join."
+        : "The start date can't be in the past.",
+      course.groupMode === "TIME_BOUND" ? 409 : 400,
+    );
+  }
+
+  const planProblem = getCyclePlanProblem(plan);
+
+  if (planProblem) {
+    throw new EnrollmentError(planProblem);
+  }
+
+  const student = await prisma.student.findFirst({
+    where: { id: input.studentId, parentId },
+    select: { id: true },
+  });
+
+  if (!student) {
+    throw new EnrollmentError(
+      "This child profile doesn't belong to your account.",
+      404,
+    );
+  }
+
+  if (options.enforceGroupRules) {
+    if (await isStudentInGroup(course.id, input.studentId)) {
+      throw new EnrollmentError("This child is already in this group.", 409);
+    }
+
+    if (
+      course.groupMaxStudents != null &&
+      (await countGroupSeats(course.id)) >= course.groupMaxStudents
+    ) {
+      throw new EnrollmentError("This group is full.", 409);
+    }
+  }
+
+  const totalAmount = Math.round(groupPrice * 100) / 100;
+  const ratePerSession = Math.round((totalAmount / plan.sessionCount) * 100) / 100;
+  const subject = (input.subject ?? course.subject ?? "").trim() || null;
+
+  const parent = await prisma.parentProfile.findUnique({
+    where: { id: parentId },
+    select: { nriOrIndian: true, country: true },
+  });
+
+  const { isInternationalPayment, surchargeAmount, gstAmount, amountPayable } =
+    priceWithInternationalSurcharge(
+      totalAmount,
+      parent ? isInternationalParent(parent) : false,
+    );
+
+  return {
+    studentId: input.studentId,
+    subject,
+    sessionsPerMonth: plan.sessionCount,
+    noOfMonths: 1,
+    ratePerSession,
+    monthlyRate: totalAmount,
+    totalAmount,
+    isInternationalPayment,
+    internationalSurchargeAmount: surchargeAmount,
+    gstAmount,
+    transactionChargeAmount: 0,
+    amountPayable,
+    cycleStartDate: calendarDateToDate(plan.startDate),
+    dueDate: calendarDateToDate(plan.nextCycleStart),
+    scheduleDays,
+    scheduleTime,
+    planType: "MONTHLY",
+    customDateKeys: [],
+    model: "CYCLE_V1",
+    cycleStartKey: toDateKey(plan.startDate),
+    cycleEndDate: calendarDateToDate(plan.endDate),
+    sessionLengthMinutes:
+      options.lockedSessionLengthMinutes ??
+      sessionLengthForCourse(course.duration),
+  };
+}
+/**
  * Cycle-model pricing (Part 1A). Same server-side-only trust rules
  * as the legacy function: the client's preview is never used for the
  * charge.
@@ -202,6 +359,27 @@ async function priceCycleEnrollment(
   input: CreateEnrollmentInput,
   options: PriceOptions,
 ): Promise<PricedEnrollment> {
+  // Group classes fix their own schedule, start rule and price.
+  const groupCourse = await prisma.course.findFirst({
+    where: { id: input.courseId, teacherId: input.teacherId, status: "APPROVED" },
+    select: {
+      id: true,
+      type: true,
+      subject: true,
+      duration: true,
+      groupMaxStudents: true,
+      groupPricePerCycle: true,
+      groupDays: true,
+      groupTime: true,
+      groupMode: true,
+      groupStartDate: true,
+    },
+  });
+
+  if (groupCourse && isGroupType(groupCourse.type)) {
+    return priceGroupEnrollment(parentId, input, options, groupCourse);
+  }
+
   // "Complete month plan": exact dates. When present they replace the
   // weekday pattern and the weekdays are derived from them below.
   const customDateKeys = normalizeCustomDateKeys(input.customDates);

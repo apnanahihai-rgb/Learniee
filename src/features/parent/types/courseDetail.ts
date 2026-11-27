@@ -41,6 +41,16 @@ export interface ParentCourseDetail {
   modules: string | null;
   courseTags: string | null;
   price: string | null;
+  /** Group classes only (type "Group"). */
+  groupMaxStudents?: number | null;
+  groupPricePerCycle?: string | null;
+  groupDays?: number[] | null;
+  groupTime?: string | null;
+  groupMode?: string | null;
+  groupStartDate?: string | null;
+  groupEndDate?: string | null;
+  /** Seats already taken in the group (added by the detail API). */
+  groupSeatsTaken?: number;
 
   thumbnailUrl: string | null;
   introVideoUrl: string | null;

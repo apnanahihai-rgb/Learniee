@@ -32,6 +32,7 @@ export async function createEnrollmentOrder(
     model: "CYCLE_V1",
     enforceStartNotPast: true,
     enforceAvailability: true,
+    enforceGroupRules: true,
   });
 
   // Part payment (06 #44): the Wallet pays as much as it can and the card

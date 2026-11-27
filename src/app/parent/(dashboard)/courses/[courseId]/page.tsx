@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { groupBookingFromCourse } from "@/features/courses/utils/groupClass";
 import { useCourseDetail } from "@/features/parent/hooks/useCourseDetail";
 import CourseMediaPanel from "@/features/parent/components/course-detail/CourseMediaPanel";
 import CourseInfoSection from "@/features/parent/components/course-detail/CourseInfoSection";
@@ -37,6 +38,8 @@ export default function CourseDetailPage() {
   const { course, otherCourses, loading, error } = useCourseDetail(
     params.courseId,
   );
+  // Group classes fix their own days, time and price (null for a normal course).
+  const group = useMemo(() => (course ? groupBookingFromCourse(course) : null), [course]);
 
   if (loading) {
     return (
@@ -108,6 +111,7 @@ export default function CourseDetailPage() {
               courseId={course.id}
               subject={course.subject}
               duration={course.duration}
+              group={group}
             />
           </Suspense>
         </div>

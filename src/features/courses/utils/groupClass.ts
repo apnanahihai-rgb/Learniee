@@ -184,3 +184,63 @@ export function groupModeLabel(course: GroupDisplayFields): string {
 
   return "-";
 }
+
+/* ── Parent booking ─────────────────────────────────────────────────── */
+
+/** What the parent's booking panel needs about a group course. */
+export interface GroupBookingInfo {
+  days: number[];
+  /** "HH:mm", IST. */
+  time: string;
+  mode: GroupMode;
+  /** "YYYY-MM-DD" for TIME_BOUND, otherwise null. */
+  startDate: string | null;
+  endDate: string | null;
+  pricePerCycle: number;
+  maxStudents: number | null;
+  seatsTaken: number;
+}
+
+interface GroupBookingSource {
+  type?: string | null;
+  groupDays?: number[] | null;
+  groupTime?: string | null;
+  groupMode?: string | null;
+  groupStartDate?: string | Date | null;
+  groupEndDate?: string | Date | null;
+  groupPricePerCycle?: string | number | null;
+  groupMaxStudents?: number | null;
+  groupSeatsTaken?: number | null;
+}
+
+const toDay = (v: string | Date | null | undefined) =>
+  v ? new Date(v).toISOString().slice(0, 10) : null;
+
+/** Null unless the course is a fully set-up group course. */
+export function groupBookingFromCourse(course: GroupBookingSource): GroupBookingInfo | null {
+  if (!isGroupType(course.type)) return null;
+
+  const pricePerCycle = Number(course.groupPricePerCycle);
+  const days = course.groupDays ?? [];
+
+  if (
+    !isGroupMode(course.groupMode) ||
+    !course.groupTime ||
+    days.length === 0 ||
+    !Number.isFinite(pricePerCycle) ||
+    pricePerCycle <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    days,
+    time: course.groupTime,
+    mode: course.groupMode,
+    startDate: toDay(course.groupStartDate),
+    endDate: toDay(course.groupEndDate),
+    pricePerCycle,
+    maxStudents: course.groupMaxStudents ?? null,
+    seatsTaken: course.groupSeatsTaken ?? 0,
+  };
+}
