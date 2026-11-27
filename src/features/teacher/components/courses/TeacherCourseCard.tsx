@@ -4,7 +4,7 @@ import type { Course } from "@/features/courses/hooks/useTeacherCourses";
 
 import { subjectStyle } from "@/features/teacher/components/home/teacherHomeLogic";
 
-import { groupLabel, groupModeLabel, isGroupType } from "@/features/courses/utils/groupClass";
+import { groupJoinLabel, groupLabel, groupModeLabel, isGroupType } from "@/features/courses/utils/groupClass";
 
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 
@@ -58,6 +58,7 @@ export default function TeacherCourseCard({ course }: { course: Course }) {
             <span>{formatSchedule(course.groupDays, course.groupTime)}</span>
           )}
           {group && course.groupMode && <span>{groupModeLabel(course)}</span>}
+          {group && groupJoinLabel(course) && <span>{groupJoinLabel(course)}</span>}
           <span>Created {formatCreated(course.createdAt)}</span>
         </div>
 

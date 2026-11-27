@@ -24,6 +24,7 @@ export interface AdminCourse {
   groupDays: number[];
   groupTime: string | null;
   groupMode: "TIME_BOUND" | "OPEN" | null;
+  groupJoinMode: "MONTHLY_FIXED" | "ANYTIME" | null;
   groupStartDate: string | null;
   groupEndDate: string | null;
   language: string | null;

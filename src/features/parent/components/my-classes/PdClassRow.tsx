@@ -11,6 +11,7 @@ import { subjectTheme, firstWord } from "@/features/parent/components/my-classes
 import { PD_BTN_SEC_SM } from "@/features/parent/components/courses/pdUi";
 import type { ParentEnrollment } from "@/features/parent/hooks/useEnrollments";
 import { displayName } from "@/features/shared/utils/displayName";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { SESSION_POLICY } from "@/lib/platformConfig";
 
 /** Shared column layout: class | next | progress | actions. */
@@ -152,6 +153,7 @@ export default function PdClassRow({ enrollment: e, kind, kids, now }: Props) {
 
   const titleClass =
     "text-left text-[15px] font-semibold leading-[1.3] text-pd-ink";
+  const isGroup = isGroupType(e.course.type);
 
   return (
     <article
@@ -172,6 +174,11 @@ export default function PdClassRow({ enrollment: e, kind, kids, now }: Props) {
           >
             {title}
           </Link>
+        )}
+        {isGroup && (
+          <small className="w-fit rounded-full bg-pd-bg px-2 py-0.5 text-[11px] font-semibold text-pd-brand">
+            Group class
+          </small>
         )}
         <small className="flex items-center gap-1.5 text-[13px] text-pd-ink3">
           <span className="truncate">{teacherName}</span> ·

@@ -9,7 +9,7 @@ import CourseGroupFields from "@/features/courses/components/CourseGroupFields";
 import CourseSection from "@/features/courses/components/CourseSection";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
 import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
-import { isGroupType, type GroupMode } from "@/features/courses/utils/groupClass";
+import { isGroupType, type GroupJoinMode, type GroupMode } from "@/features/courses/utils/groupClass";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 
@@ -165,6 +165,10 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     });
   }
 
+  function handleGroupJoinModeChange(joinMode: GroupJoinMode) {
+    applyForm({ ...formData, groupJoinMode: joinMode });
+  }
+
   function handleCertificateToggle(checked: boolean) {
     applyForm({ ...formData, certificateEnabled: checked });
   }
@@ -193,6 +197,7 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
             onChange={handleChange}
             onToggleDay={handleGroupDayToggle}
             onModeChange={handleGroupModeChange}
+            onJoinModeChange={handleGroupJoinModeChange}
           />
         )}
       </CourseSection>

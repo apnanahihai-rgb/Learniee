@@ -25,6 +25,7 @@ export interface Course {
   groupDays?: number[] | null;
   groupTime?: string | null;
   groupMode?: string | null;
+  groupJoinMode?: string | null;
   groupStartDate?: string | null;
   groupEndDate?: string | null;
   language: string | null;

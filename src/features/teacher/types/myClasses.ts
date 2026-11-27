@@ -9,6 +9,10 @@ export interface TeacherClassSummary {
   courseId: string;
   courseTitle: string | null;
   subject: string | null;
+  /** Group class (Nov 2026): shown under "Group classes", not "Classes". */
+  isGroup: boolean;
+  /** Seat limit of a group class; null for individual courses. */
+  groupMaxStudents: number | null;
   studentCount: number;
   activeStudentCount: number;
   /** Students with a class joinable (Start/Join open) right now. */

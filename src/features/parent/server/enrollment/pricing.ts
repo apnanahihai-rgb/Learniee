@@ -11,7 +11,7 @@ import { getTeacherAvailability } from "@/features/shared/server/teacherAvailabi
 import { fitsAvailability } from "@/features/shared/utils/availability";
 import { WEEKDAY_LABELS_FULL } from "@/features/shared/utils/weekdays";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
-import { isGroupType } from "@/features/courses/utils/groupClass";
+import { isGroupType, resolveGroupStartDate } from "@/features/courses/utils/groupClass";
 import {
     isInternationalParent,
     priceWithInternationalSurcharge,
@@ -212,7 +212,9 @@ async function priceGroupEnrollment(
     groupDays: number[];
     groupTime: string | null;
     groupMode: "TIME_BOUND" | "OPEN" | null;
+    groupJoinMode: "MONTHLY_FIXED" | "ANYTIME" | null;
     groupStartDate: Date | null;
+    groupEndDate: Date | null;
   },
 ): Promise<PricedEnrollment> {
   const groupPrice = course.groupPricePerCycle == null ? NaN : Number(course.groupPricePerCycle);
@@ -233,20 +235,24 @@ async function priceGroupEnrollment(
 
   const scheduleTime = course.groupTime as string;
   const today = todayInPlatformTz();
-  let startKey: string;
+  const toKey = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
-  if (course.groupMode === "TIME_BOUND") {
-    if (!course.groupStartDate) {
-      throw new EnrollmentError(
-        "This group class isn't fully set up yet — please check back soon.",
-        409,
-      );
-    }
+  const resolved = resolveGroupStartDate({
+    mode: course.groupMode,
+    joinMode: course.groupJoinMode,
+    groupStartDate: toKey(course.groupStartDate),
+    groupEndDate: toKey(course.groupEndDate),
+    requested: input.cycleStartDate?.trim() || null,
+    today,
+    // Verify / webhook: the money is taken, keep the date stamped on the order.
+    trustRequested: !options.enforceStartNotPast,
+  });
 
-    startKey = course.groupStartDate.toISOString().slice(0, 10);
-  } else {
-    startKey = input.cycleStartDate?.trim() || toDateKey(today);
+  if (!resolved.ok) {
+    throw new EnrollmentError(resolved.error, resolved.status);
   }
+
+  const startKey = resolved.startKey;
 
   const plan = buildCyclePlan(startKey, scheduleDays, "MONTHLY", []);
 
@@ -257,11 +263,14 @@ async function priceGroupEnrollment(
   }
 
   if (options.enforceStartNotPast && isStartDateInPast(plan.startDate, today)) {
+    // Only groups from before the joining option existed close once started.
+    const closedOnStart = course.groupMode === "TIME_BOUND" && !course.groupJoinMode;
+
     throw new EnrollmentError(
-      course.groupMode === "TIME_BOUND"
+      closedOnStart
         ? "This group has already started, so new students can't join."
         : "The start date can't be in the past.",
-      course.groupMode === "TIME_BOUND" ? 409 : 400,
+      closedOnStart ? 409 : 400,
     );
   }
 
@@ -372,7 +381,9 @@ async function priceCycleEnrollment(
       groupDays: true,
       groupTime: true,
       groupMode: true,
+      groupJoinMode: true,
       groupStartDate: true,
+      groupEndDate: true,
     },
   });
 

@@ -73,7 +73,9 @@ export const enrollmentListInclude = {
   teacher: {
     select: { id: true, firstName: true, lastName: true, visibleName: true },
   },
-  course: { select: { id: true, courseTitle: true, subject: true } },
+  course: {
+    select: { id: true, courseTitle: true, subject: true, type: true, groupMaxStudents: true },
+  },
   chatRoom: { select: { id: true } },
   // Newest cycle only — the approval screens need its hand-picked dates
   // ("Complete month plan"), if any, to show the right session count.

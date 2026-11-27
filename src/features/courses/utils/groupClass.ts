@@ -6,6 +6,7 @@
 
 import {
   compareDates,
+  daysInMonth,
   isValidTimeOfDay,
   parseDateKey,
   toDateKey,
@@ -53,6 +54,25 @@ export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
   OPEN: "Open",
 };
 
+/**
+ * How a parent may join a group:
+ *  - MONTHLY_FIXED: only at the start of a monthly batch — a parent who is
+ *    late waits for the next one.
+ *  - ANYTIME: any date from today on.
+ * Null on groups created before this option existed (old behaviour).
+ */
+export const GROUP_JOIN_MODES = ["MONTHLY_FIXED", "ANYTIME"] as const;
+export type GroupJoinMode = (typeof GROUP_JOIN_MODES)[number];
+
+export const GROUP_JOIN_MODE_LABELS: Record<GroupJoinMode, string> = {
+  MONTHLY_FIXED: "Monthly fixed",
+  ANYTIME: "Anytime",
+};
+
+export function isGroupJoinMode(value: unknown): value is GroupJoinMode {
+  return typeof value === "string" && (GROUP_JOIN_MODES as readonly string[]).includes(value);
+}
+
 /** Sessions assumed per cycle (one month ≈ 4 weeks) to derive a per-session price. */
 const WEEKS_PER_CYCLE = 4;
 
@@ -60,6 +80,7 @@ export interface GroupScheduleInput {
   groupDays?: unknown;
   groupTime?: unknown;
   groupMode?: unknown;
+  groupJoinMode?: unknown;
   groupStartDate?: unknown;
   groupEndDate?: unknown;
   groupPricePerCycle?: unknown;
@@ -69,6 +90,7 @@ export interface GroupSchedule {
   days: number[];
   time: string;
   mode: GroupMode;
+  joinMode: GroupJoinMode;
   /** "YYYY-MM-DD" (IST calendar date) for TIME_BOUND, otherwise null. */
   startDate: string | null;
   endDate: string | null;
@@ -120,6 +142,10 @@ export function parseGroupSchedule(
     return { ok: false, error: "Choose whether the group is time-bound or open." };
   }
 
+  if (!isGroupJoinMode(input.groupJoinMode)) {
+    return { ok: false, error: "Choose how parents can join: monthly fixed or anytime." };
+  }
+
   let startDate: string | null = null;
   let endDate: string | null = null;
 
@@ -149,6 +175,7 @@ export function parseGroupSchedule(
       days,
       time,
       mode: input.groupMode,
+      joinMode: input.groupJoinMode,
       startDate,
       endDate,
       pricePerCycle: Math.round(pricePerCycle * 100) / 100,
@@ -161,8 +188,17 @@ interface GroupDisplayFields {
   groupDays?: number[] | null;
   groupTime?: string | null;
   groupMode?: string | null;
+  groupJoinMode?: string | null;
   groupStartDate?: string | Date | null;
   groupEndDate?: string | Date | null;
+}
+
+/** "Monthly fixed — join at the start of a month" / "Anytime — join on any date"; null on older groups. */
+export function groupJoinLabel(course: { groupJoinMode?: string | null }): string | null {
+  if (course.groupJoinMode === "MONTHLY_FIXED") return "Monthly fixed — join at the start of a month";
+  if (course.groupJoinMode === "ANYTIME") return "Anytime — join on any date";
+
+  return null;
 }
 
 /** "Open — anyone can join any time" / "Time-bound · 1 Dec 2026 – 28 Feb 2027". */
@@ -193,6 +229,8 @@ export interface GroupBookingInfo {
   /** "HH:mm", IST. */
   time: string;
   mode: GroupMode;
+  /** Null on groups created before the joining option existed. */
+  joinMode: GroupJoinMode | null;
   /** "YYYY-MM-DD" for TIME_BOUND, otherwise null. */
   startDate: string | null;
   endDate: string | null;
@@ -206,6 +244,7 @@ interface GroupBookingSource {
   groupDays?: number[] | null;
   groupTime?: string | null;
   groupMode?: string | null;
+  groupJoinMode?: string | null;
   groupStartDate?: string | Date | null;
   groupEndDate?: string | Date | null;
   groupPricePerCycle?: string | number | null;
@@ -237,10 +276,118 @@ export function groupBookingFromCourse(course: GroupBookingSource): GroupBooking
     days,
     time: course.groupTime,
     mode: course.groupMode,
+    joinMode: isGroupJoinMode(course.groupJoinMode) ? course.groupJoinMode : null,
     startDate: toDay(course.groupStartDate),
     endDate: toDay(course.groupEndDate),
     pricePerCycle,
     maxStudents: course.groupMaxStudents ?? null,
     seatsTaken: course.groupSeatsTaken ?? 0,
   };
+}
+
+/* ── When a new student's first cycle starts ────────────────────────── */
+
+/** `anchor` moved forward by `n` months, keeping its day (clamped to the month's length). */
+function addMonthsFromAnchor(anchor: CalendarDate, n: number): CalendarDate {
+  const index = anchor.year * 12 + (anchor.month - 1) + n;
+  const year = Math.floor(index / 12);
+  const month = (index % 12) + 1;
+
+  return { year, month, day: Math.min(anchor.day, daysInMonth(year, month)) };
+}
+
+export interface ResolveGroupStartInput {
+  mode: GroupMode;
+  /** Null on groups created before the joining option existed. */
+  joinMode: GroupJoinMode | null;
+  /** "YYYY-MM-DD" of the group's own start / end (TIME_BOUND only). */
+  groupStartDate: string | null;
+  groupEndDate: string | null;
+  /** The date the parent asked for, if any ("YYYY-MM-DD"). */
+  requested: string | null;
+  today: CalendarDate;
+  /**
+   * Verify / webhook: the order already exists and the money is taken, so
+   * the date stamped on it is used as it is.
+   */
+  trustRequested?: boolean;
+}
+
+export type ResolveGroupStartResult =
+  | { ok: true; startKey: string }
+  | { ok: false; error: string; status: number };
+
+const GROUP_NOT_READY: ResolveGroupStartResult = {
+  ok: false,
+  error: "This group class isn't fully set up yet — please check back soon.",
+  status: 409,
+};
+
+/**
+ * The start date of a new student's first cycle in a group. Pure — the
+ * booking panel (to show the date) and the server (to price and charge)
+ * share it, and the server is authoritative.
+ *
+ *  - ANYTIME: the date the parent picks (today if none). In a time-bound
+ *    group never before the group's start; never after its end.
+ *  - MONTHLY_FIXED: the next monthly batch start, the parent's date is
+ *    ignored. Open group: the 1st of the month (today if it is the 1st).
+ *    Time-bound group: the group's start day each month.
+ *  - No join mode (older groups): time-bound starts with the group; open
+ *    uses the parent's date.
+ */
+export function resolveGroupStartDate(input: ResolveGroupStartInput): ResolveGroupStartResult {
+  const { mode, joinMode, today } = input;
+  const requestedRaw = input.requested?.trim() || null;
+  const groupStart = parseDateKey(input.groupStartDate);
+  const groupEnd = parseDateKey(input.groupEndDate);
+
+  const finish = (start: CalendarDate): ResolveGroupStartResult => {
+    if (groupEnd && compareDates(start, groupEnd) > 0) {
+      return { ok: false, error: "This group has ended, so new students can't join.", status: 409 };
+    }
+
+    return { ok: true, startKey: toDateKey(start) };
+  };
+
+  if (mode === "TIME_BOUND") {
+    if (!groupStart) return GROUP_NOT_READY;
+
+    // Older groups: the batch starts with the group.
+    if (!joinMode) return { ok: true, startKey: toDateKey(groupStart) };
+
+    if (input.trustRequested && requestedRaw) return { ok: true, startKey: requestedRaw };
+
+    if (joinMode === "ANYTIME") {
+      const wanted = requestedRaw ? parseDateKey(requestedRaw) : today;
+
+      if (!wanted) {
+        return { ok: false, error: "That doesn't look like a valid start date — pick again.", status: 400 };
+      }
+
+      return finish(compareDates(wanted, groupStart) < 0 ? groupStart : wanted);
+    }
+
+    // MONTHLY_FIXED: the first monthly batch start on or after today.
+    let batch = groupStart;
+
+    for (let n = 1; compareDates(batch, today) < 0 && n <= 600; n += 1) {
+      batch = addMonthsFromAnchor(groupStart, n);
+    }
+
+    return finish(batch);
+  }
+
+  // OPEN group.
+  if (joinMode !== "MONTHLY_FIXED") {
+    return { ok: true, startKey: requestedRaw ?? toDateKey(today) };
+  }
+
+  if (input.trustRequested && requestedRaw) return { ok: true, startKey: requestedRaw };
+
+  if (today.day === 1) return { ok: true, startKey: toDateKey(today) };
+
+  const next = today.month === 12 ? { year: today.year + 1, month: 1 } : { year: today.year, month: today.month + 1 };
+
+  return { ok: true, startKey: toDateKey({ ...next, day: 1 }) };
 }

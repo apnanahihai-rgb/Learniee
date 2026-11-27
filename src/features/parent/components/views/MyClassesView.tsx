@@ -13,6 +13,7 @@ import { toHomeKids } from "@/features/parent/components/my-classes/pdClassesUi"
 import EnrollmentStatusCard from "@/features/parent/components/enrollments/EnrollmentStatusCard";
 import { PD_BTN_PRI, PD_BTN_SEC_SM, GridSkeleton, PdEmpty } from "@/features/parent/components/courses/pdUi";
 import { usesClassView } from "@/features/parent/utils/classView";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 /** Enrollments waiting for approval (shown as "Waiting for approval" rows). */
@@ -36,6 +37,8 @@ interface Props {
   error: string;
   onConfirmRevision: (id: string) => void;
   onDeclineRevision: (id: string) => void;
+  /** Show only group classes (the "Group classes" tab); otherwise only individual ones. */
+  groupOnly?: boolean;
 }
 
 function Group({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
@@ -61,6 +64,7 @@ export default function MyClassesView({
   error,
   onConfirmRevision,
   onDeclineRevision,
+  groupOnly = false,
 }: Props) {
   const { students } = useStudents();
   const [filter, setFilter] = useState<LearnerFilter>("all");
@@ -68,7 +72,9 @@ export default function MyClassesView({
   const [now] = useState(() => new Date());
 
   const kids = toHomeKids(students);
-  const mine = enrollments.filter((e) => inKid(filter, e.student.id));
+  const mine = enrollments.filter(
+    (e) => isGroupType(e.course.type) === groupOnly && inKid(filter, e.student.id),
+  );
 
   const active = mine.filter((e) => usesClassView(e) && e.status === "ACTIVE").sort(byNextClass);
   const waiting = mine.filter((e) => !e.isLegacy && WAITING.has(e.status));
@@ -80,7 +86,11 @@ export default function MyClassesView({
   return (
     <div>
       <div className="mb-[18px] mt-[22px] flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-pd-ink3">Everything your children are enrolled in.</p>
+        <p className="text-[13px] text-pd-ink3">
+          {groupOnly
+            ? "Group classes your children have joined."
+            : "Everything your children are enrolled in, one to one."}
+        </p>
         <div className="[&>div]:mt-0!">
           <HomeLearnerSwitcher kids={kids} active={filter} onSelect={setFilter} />
         </div>
@@ -133,11 +143,11 @@ export default function MyClassesView({
             <div className="rounded-2xl border border-pd-line bg-white">
               <PdEmpty
                 icon={BookOpen}
-                title="No active classes"
-                text="Find a course to get started."
+                title={groupOnly ? "No group classes yet" : "No active classes"}
+                text={groupOnly ? "Join a group class to see it here." : "Find a course to get started."}
                 action={
-                  <Link href="/parent/courses" className={PD_BTN_PRI}>
-                    Find a course
+                  <Link href={groupOnly ? "/parent/group-classes" : "/parent/courses"} className={PD_BTN_PRI}>
+                    {groupOnly ? "Browse group classes" : "Find a course"}
                   </Link>
                 }
               />

@@ -1,8 +1,11 @@
 import { Input } from "@/components/ui/input";
 import FormField, { controlClass } from "@/features/courses/components/FormField";
 import {
+  GROUP_JOIN_MODES,
+  GROUP_JOIN_MODE_LABELS,
   GROUP_MODES,
   GROUP_MODE_LABELS,
+  type GroupJoinMode,
   type GroupMode,
 } from "@/features/courses/utils/groupClass";
 import type { CourseFormData } from "@/features/courses/types/course";
@@ -16,6 +19,7 @@ interface Props {
   ) => void;
   onToggleDay: (day: number) => void;
   onModeChange: (mode: GroupMode) => void;
+  onJoinModeChange: (joinMode: GroupJoinMode) => void;
 }
 
 const MODE_HINTS: Record<GroupMode, string> = {
@@ -23,8 +27,19 @@ const MODE_HINTS: Record<GroupMode, string> = {
   OPEN: "Anyone can join any time.",
 };
 
+const JOIN_MODE_HINTS: Record<GroupJoinMode, string> = {
+  MONTHLY_FIXED: "Parents join at the start of a month and wait for the next one.",
+  ANYTIME: "Parents can join on any date.",
+};
+
 /** Group-only fields: weekly days + time, time-bound / open, start and end dates. */
-export default function CourseGroupFields({ formData, onChange, onToggleDay, onModeChange }: Props) {
+export default function CourseGroupFields({
+  formData,
+  onChange,
+  onToggleDay,
+  onModeChange,
+  onJoinModeChange,
+}: Props) {
   const today = toDateKey(todayInPlatformTz());
   const timeBound = formData.groupMode === "TIME_BOUND";
 
@@ -91,6 +106,42 @@ export default function CourseGroupFields({ formData, onChange, onToggleDay, onM
               >
                 <span className="block font-semibold">{GROUP_MODE_LABELS[mode]}</span>
                 <span className="block text-xs text-gray-500">{MODE_HINTS[mode]}</span>
+              </button>
+            );
+          })}
+        </div>
+      </FormField>
+
+      <FormField
+        label="Enrollment"
+        htmlFor="field-groupJoinMode"
+        required
+        hint="When can a parent enroll a child in this group?"
+      >
+        <div
+          id="field-groupJoinMode"
+          className="flex flex-wrap gap-2"
+          role="radiogroup"
+          aria-label="Enrollment"
+        >
+          {GROUP_JOIN_MODES.map((joinMode) => {
+            const active = formData.groupJoinMode === joinMode;
+
+            return (
+              <button
+                key={joinMode}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => onJoinModeChange(joinMode)}
+                className={`rounded-xl border px-4 py-2 text-left text-sm transition-colors ${
+                  active
+                    ? "border-violet-600 bg-violet-50 text-violet-800"
+                    : "border-violet-200 bg-white text-gray-600 hover:bg-violet-50"
+                }`}
+              >
+                <span className="block font-semibold">{GROUP_JOIN_MODE_LABELS[joinMode]}</span>
+                <span className="block text-xs text-gray-500">{JOIN_MODE_HINTS[joinMode]}</span>
               </button>
             );
           })}

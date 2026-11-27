@@ -17,6 +17,7 @@ import {
   type CycleInput,
   type SessionInput,
 } from "@/features/parent/utils/classProgress";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { usesClassView } from "@/features/parent/utils/classView";
 import type { ParentClassSummary } from "@/features/parent/types/myClasses";
 import type {
@@ -199,7 +200,16 @@ export async function getTeacherClasses(
     now,
   );
 
-  const byCourse = new Map<string, { courseTitle: string | null; subject: string | null; enrollments: typeof enrollments }>();
+  const byCourse = new Map<
+    string,
+    {
+      courseTitle: string | null;
+      subject: string | null;
+      isGroup: boolean;
+      groupMaxStudents: number | null;
+      enrollments: typeof enrollments;
+    }
+  >();
 
   for (const enrollment of enrollments) {
     const entry = byCourse.get(enrollment.course.id);
@@ -210,6 +220,8 @@ export async function getTeacherClasses(
       byCourse.set(enrollment.course.id, {
         courseTitle: enrollment.course.courseTitle,
         subject: enrollment.course.subject,
+        isGroup: isGroupType(enrollment.course.type),
+        groupMaxStudents: enrollment.course.groupMaxStudents ?? null,
         enrollments: [enrollment],
       });
     }
@@ -217,7 +229,10 @@ export async function getTeacherClasses(
 
   const classes: TeacherClassSummary[] = [];
 
-  for (const [courseId, { courseTitle, subject, enrollments: courseEnrollments }] of byCourse) {
+  for (const [
+    courseId,
+    { courseTitle, subject, isGroup, groupMaxStudents, enrollments: courseEnrollments },
+  ] of byCourse) {
     let activeStudentCount = 0;
     let liveNowCount = 0;
     let nextSessionAt: number | null = null;
@@ -247,6 +262,8 @@ export async function getTeacherClasses(
       courseId,
       courseTitle,
       subject,
+      isGroup,
+      groupMaxStudents,
       studentCount: courseEnrollments.length,
       activeStudentCount,
       liveNowCount,

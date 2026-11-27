@@ -12,7 +12,7 @@ import {
   type PlanType,
 } from "@/features/shared/utils/cyclePlan";
 import { toggleWeekday } from "@/features/shared/utils/weekdays";
-import type { GroupBookingInfo } from "@/features/courses/utils/groupClass";
+import { resolveGroupStartDate, type GroupBookingInfo } from "@/features/courses/utils/groupClass";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 import { useWalletBalance } from "@/features/parent/hooks/useWalletBalance";
 
@@ -54,11 +54,26 @@ export function useEnrollment({
   // parent may enroll without booking another demo first (they
   // might already be past their demos for this teacher/subject).
   // Cycle start date ("YYYY-MM-DD", platform timezone) — defaults to today.
-  const [startDate, setStartDate] = useState(() =>
-    group?.mode === "TIME_BOUND" && group.startDate
-      ? group.startDate
-      : toDateKey(todayInPlatformTz()),
-  );
+  const [startDate, setStartDate] = useState(() => {
+    const today = todayInPlatformTz();
+
+    if (!group) return toDateKey(today);
+
+    // Group: the first start the group's joining rule allows. If it can't
+    // be worked out (e.g. the group has ended) the booking panel says so.
+    const first = resolveGroupStartDate({
+      mode: group.mode,
+      joinMode: group.joinMode,
+      groupStartDate: group.startDate,
+      groupEndDate: group.endDate,
+      requested: null,
+      today,
+    });
+
+    if (first.ok) return first.startKey;
+
+    return group.mode === "TIME_BOUND" && group.startDate ? group.startDate : toDateKey(today);
+  });
   // Recurring weekly schedule — required before enrolling so the
   // teacher/parent calendar can actually show something real.
   const [scheduleModeState, setScheduleMode] = useState<ScheduleMode>("WEEKDAYS");

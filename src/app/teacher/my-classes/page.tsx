@@ -19,6 +19,7 @@ export default function TeacherMyClassesHubPage() {
         defaultTab="classes"
         tabs={[
           { key: "classes", label: "Classes", content: <ClassesTab /> },
+          { key: "groups", label: "Group classes", content: <ClassesTab groupOnly /> },
           { key: "students", label: "Students", content: <StudentsTab /> },
           { key: "homework", label: "Homework", content: <HomeworkTab /> },
           { key: "resources", label: "Resources", content: <ResourcesTab /> },

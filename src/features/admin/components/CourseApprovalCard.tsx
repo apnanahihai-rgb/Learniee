@@ -14,7 +14,7 @@ import {
 } from "@/features/admin/components/ui/queue";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import type { AdminCourse } from "@/features/admin/types/course";
-import { groupModeLabel, isGroupType } from "@/features/courses/utils/groupClass";
+import { groupJoinLabel, groupModeLabel, isGroupType } from "@/features/courses/utils/groupClass";
 
 interface Props {
   course: AdminCourse;
@@ -112,6 +112,7 @@ export default function CourseApprovalCard({
                 { label: "Seat limit", value: String(course.groupMaxStudents ?? "-") },
                 { label: "Weekly days & time (IST)", value: formatSchedule(course.groupDays, course.groupTime) },
                 { label: "Group type", value: groupModeLabel(course) },
+                { label: "Enrollment", value: groupJoinLabel(course) ?? "-" },
               ]
             : []),
           { label: "Duration", value: course.duration || "-" },

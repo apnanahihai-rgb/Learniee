@@ -3,10 +3,11 @@
 import { CheckCircle2, Info, Loader2, MessageCircle, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import type { GroupBookingInfo } from "@/features/courses/utils/groupClass";
+import { resolveGroupStartDate, type GroupBookingInfo } from "@/features/courses/utils/groupClass";
 import { formatTime12 } from "@/features/shared/utils/availability";
 import { formatCycleSummary } from "@/features/shared/utils/cyclePlan";
 import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
+import { todayInPlatformTz } from "@/lib/platformTime";
 import type { useEnrollment } from "./useEnrollment";
 
 interface Props {
@@ -58,10 +59,26 @@ export default function GroupEnrollSection({
   } = enroll;
 
   const timeBound = group.mode === "TIME_BOUND";
+  const monthlyFixed = group.joinMode === "MONTHLY_FIXED";
+  const anytime = group.joinMode === "ANYTIME";
   const seatsLeft = group.maxStudents === null ? null : Math.max(group.maxStudents - group.seatsTaken, 0);
   const full = seatsLeft === 0;
-  // A time-bound group closes to new students once it has started.
-  const closed = timeBound && startInPast;
+  // Groups from before the joining option existed close once started; the
+  // newer ones close only when their last batch is over.
+  const joinCheck = resolveGroupStartDate({
+    mode: group.mode,
+    joinMode: group.joinMode,
+    groupStartDate: group.startDate,
+    groupEndDate: group.endDate,
+    requested: startDate,
+    today: todayInPlatformTz(),
+  });
+  const ended = !!group.joinMode && !joinCheck.ok;
+  const closed = (timeBound && !group.joinMode && startInPast) || ended;
+  // Earliest date the date picker allows (a time-bound group can't be joined before it starts).
+  const pickerMin = timeBound && group.startDate && group.startDate > minStartDate ? group.startDate : minStartDate;
+  // The parent picks the date for an open group, and for any "anytime" group.
+  const showDatePicker = anytime || (!timeBound && !group.joinMode);
 
   const cannotPay =
     enrolling ||
@@ -93,8 +110,11 @@ export default function GroupEnrollSection({
         <p>
           {timeBound
             ? `Fixed batch: ${formatDay(group.startDate)} – ${formatDay(group.endDate)}`
-            : "Open group — join any time"}
+            : "Open group"}
         </p>
+        {monthlyFixed && <p>Monthly fixed — you join at the start of a monthly batch.</p>}
+        {anytime && <p>Anytime — join on any date you choose.</p>}
+        {!group.joinMode && !timeBound && <p>Join any time.</p>}
         <p>
           <span className="font-bold text-gray-800">₹{group.pricePerCycle.toLocaleString("en-IN")}</span> per
           month, same for every student
@@ -109,20 +129,30 @@ export default function GroupEnrollSection({
 
       {closed && (
         <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
-          This group has already started, so new students can&apos;t join.
+          {ended
+            ? "This group has ended, so new students can't join."
+            : "This group has already started, so new students can't join."}
         </p>
       )}
 
-      {!timeBound && (
+      {monthlyFixed && !closed && (
+        <p className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3">
+          Your child joins the next batch, starting{" "}
+          <span className="font-bold text-gray-800">{formatDay(startDate)}</span>. Classes begin on that date.
+        </p>
+      )}
+
+      {showDatePicker && (
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
             Start date
           </label>
           <input
             type="date"
-            min={minStartDate}
+            min={pickerMin}
+            max={timeBound && group.endDate ? group.endDate : undefined}
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => setStartDate(e.target.value && e.target.value < pickerMin ? pickerMin : e.target.value)}
             className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
           />
           {startInPast && <p className="text-xs text-red-600 mt-1">The start date can&apos;t be in the past.</p>}

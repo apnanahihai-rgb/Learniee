@@ -42,6 +42,7 @@ export interface CourseFormInput {
   groupDays?: number[];
   groupTime?: string;
   groupMode?: string;
+  groupJoinMode?: string;
   groupStartDate?: string;
   groupEndDate?: string;
 
@@ -79,6 +80,7 @@ function buildCourseData(input: CourseFormInput) {
     groupDays: number[];
     groupTime: string | null;
     groupMode: "TIME_BOUND" | "OPEN" | null;
+    groupJoinMode: "MONTHLY_FIXED" | "ANYTIME" | null;
     groupStartDate: Date | null;
     groupEndDate: Date | null;
   } = {
@@ -86,6 +88,7 @@ function buildCourseData(input: CourseFormInput) {
     groupDays: [],
     groupTime: null,
     groupMode: null,
+    groupJoinMode: null,
     groupStartDate: null,
     groupEndDate: null,
   };
@@ -111,6 +114,7 @@ function buildCourseData(input: CourseFormInput) {
       groupDays: value.days,
       groupTime: value.time,
       groupMode: value.mode,
+      groupJoinMode: value.joinMode,
       groupStartDate: start ? calendarDateToDate(start) : null,
       groupEndDate: end ? calendarDateToDate(end) : null,
     };

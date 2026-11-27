@@ -37,7 +37,14 @@ function ClassRow({ c, now }: { c: TeacherClassSummary; now: Date }) {
           {c.courseTitle ?? "Untitled course"}
         </Link>
         <small className="text-[13px] text-pd-ink3">
-          {c.activeStudentCount} active · {c.studentCount} total
+          {c.isGroup && (
+            <span className="mr-1.5 rounded-full bg-pd-bg px-2 py-0.5 text-[11px] font-semibold text-pd-brand">
+              Group class
+            </span>
+          )}
+          {c.isGroup && c.groupMaxStudents
+            ? `${c.activeStudentCount} of ${c.groupMaxStudents} seats filled · ${c.studentCount} total`
+            : `${c.activeStudentCount} active · ${c.studentCount} total`}
           {c.liveNowCount > 0 && <span className="font-semibold text-pd-green"> · {c.liveNowCount} live now</span>}
         </small>
       </div>
@@ -64,9 +71,13 @@ function ClassRow({ c, now }: { c: TeacherClassSummary; now: Date }) {
   );
 }
 
-/** My classes > Classes: one row per course with next class and average progress. */
-export default function ClassesTab() {
-  const { classes, loading, error } = useTeacherClasses();
+/**
+ * My classes > Classes / Group classes: one row per course with next class
+ * and average progress. Group courses are listed apart from individual ones.
+ */
+export default function ClassesTab({ groupOnly = false }: { groupOnly?: boolean }) {
+  const { classes: allClasses, loading, error } = useTeacherClasses();
+  const classes = allClasses.filter((c) => c.isGroup === groupOnly);
   const now = new Date();
 
   return (
@@ -77,7 +88,15 @@ export default function ClassesTab() {
         <div aria-busy="true" aria-label="Loading" className="h-[220px] animate-pulse rounded-2xl bg-[#eeeaf7]" />
       ) : classes.length === 0 ? (
         <div className={TD_CARD}>
-          <PdEmpty icon={BookOpen} title="No classes yet" text="Courses with enrolled students appear here." />
+          <PdEmpty
+            icon={BookOpen}
+            title={groupOnly ? "No group classes yet" : "No classes yet"}
+            text={
+              groupOnly
+                ? "Group courses with enrolled students appear here."
+                : "Courses with enrolled students appear here."
+            }
+          />
         </div>
       ) : (
         <div className={TD_CARD}>

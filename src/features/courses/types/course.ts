@@ -44,6 +44,8 @@ export interface CourseFormData {
   groupTime: string;
   /** Group only: "TIME_BOUND" | "OPEN" ("" until chosen). */
   groupMode: "" | "TIME_BOUND" | "OPEN";
+  /** Group only: how parents may join — "MONTHLY_FIXED" | "ANYTIME" ("" until chosen). */
+  groupJoinMode: "" | "MONTHLY_FIXED" | "ANYTIME";
   /** Group only, time-bound: "YYYY-MM-DD". */
   groupStartDate: string;
   groupEndDate: string;
@@ -86,6 +88,7 @@ export const initialCourseFormData: CourseFormData = {
   groupDays: [],
   groupTime: "",
   groupMode: "",
+  groupJoinMode: "",
   groupStartDate: "",
   groupEndDate: "",
 };
@@ -106,6 +109,7 @@ export interface TeacherCourseSummary {
   groupDays?: number[] | null;
   groupTime?: string | null;
   groupMode?: string | null;
+  groupJoinMode?: string | null;
   groupStartDate?: string | null;
   groupEndDate?: string | null;
   price: string | null;

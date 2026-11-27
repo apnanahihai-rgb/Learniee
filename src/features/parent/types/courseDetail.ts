@@ -47,6 +47,7 @@ export interface ParentCourseDetail {
   groupDays?: number[] | null;
   groupTime?: string | null;
   groupMode?: string | null;
+  groupJoinMode?: string | null;
   groupStartDate?: string | null;
   groupEndDate?: string | null;
   /** Seats already taken in the group (added by the detail API). */

@@ -254,6 +254,14 @@ enum GroupClassMode {
   OPEN
 }
 
+/// How a parent may join a group (Nov 2026). MONTHLY_FIXED = only at the
+/// next monthly batch start (the parent waits for it); ANYTIME = any date
+/// from today on. Null on older groups, which keep their old behaviour.
+enum GroupJoinMode {
+  MONTHLY_FIXED
+  ANYTIME
+}
+
 model Course {
   id              String        @id @default(uuid())
   teacherId       String
@@ -323,6 +331,7 @@ model Course {
   /// TIME_BOUND = fixed start and end dates; OPEN = anyone can join any time
   /// (dates stay null). Null on Individual courses.
   groupMode         GroupClassMode?
+  groupJoinMode     GroupJoinMode?
   groupStartDate    DateTime?     @db.Date
   groupEndDate      DateTime?     @db.Date
   chatRooms       ChatRoom[]
