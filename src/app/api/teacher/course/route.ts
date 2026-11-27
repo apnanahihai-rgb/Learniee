@@ -14,8 +14,13 @@ import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 import { prisma } from "@/lib/prisma";
 import {
+  AVAILABILITY_MISMATCH_CODE,
+  checkCourseAgainstAvailability,
+} from "@/features/courses/utils/courseAvailability";
+import {
   AvailabilityError,
   assertTeacherHasAvailability,
+  getTeacherAvailability,
 } from "@/features/shared/server/teacherAvailability.service";
 import {
   ClassRequestError,
@@ -170,6 +175,27 @@ export async function POST(req: Request) {
 
       // Per-session price, validated by parseGroupSchedule.
       input.price = String(schedule.value.pricePerSession);
+    }
+
+    // Days / time must sit inside the Teacher's weekly availability. To
+    // offer other times they update Calendar and create the course again.
+    const fit = checkCourseAgainstAvailability(
+      await getTeacherAvailability(teacher.id),
+      {
+        type: input.type,
+        duration: input.duration,
+        frequency: input.frequency,
+        timeSlot: input.timeSlot,
+        groupDays: input.groupDays,
+        groupTime: input.groupTime,
+      },
+    );
+
+    if (!fit.ok) {
+      return NextResponse.json(
+        { error: fit.error, code: AVAILABILITY_MISMATCH_CODE },
+        { status: 422 },
+      );
     }
 
     if (input.certificateEnabled) {

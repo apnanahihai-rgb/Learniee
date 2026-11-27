@@ -9,6 +9,7 @@ import CourseMediaUpload from "@/features/courses/components/CourseMediaUpload";
 import CourseSection from "@/features/courses/components/CourseSection";
 import CourseFormSidebar, { CourseSectionPills } from "@/features/courses/components/CourseFormSidebar";
 import { useCreateCourse } from "@/features/courses/hooks/useCreateCourse";
+import CourseAvailabilityNotice from "@/features/courses/components/CourseAvailabilityNotice";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 export default function NewCoursePage() {
@@ -26,6 +27,10 @@ export default function NewCoursePage() {
     initialValues,
     pricingLocked,
     classRequestId,
+    availabilitySlots,
+    availabilityLoading,
+    availabilityLoadFailed,
+    canCreate,
   } = useCreateCourse();
 
   // Validation messages arrive after the teacher has scrolled down the long
@@ -92,6 +97,12 @@ export default function NewCoursePage() {
         </div>
       )}
 
+      <CourseAvailabilityNotice
+        slots={availabilitySlots}
+        loading={availabilityLoading}
+        loadFailed={availabilityLoadFailed}
+      />
+
       <div ref={errorRef}>{error && <ErrorBanner>{error}</ErrorBanner>}</div>
 
       <form onSubmit={handleSubmit} noValidate>
@@ -103,6 +114,7 @@ export default function NewCoursePage() {
               onChange={setFormData}
               initialValues={initialValues}
               pricingLocked={pricingLocked}
+              availability={availabilitySlots}
             />
 
             <CourseSection id="media">
@@ -132,7 +144,7 @@ export default function NewCoursePage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !canCreate}
               className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
             >
               {saving && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}

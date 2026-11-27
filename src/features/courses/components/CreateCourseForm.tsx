@@ -11,6 +11,7 @@ import CourseCertificateFields from "@/features/courses/components/CourseCertifi
 import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
 import { isGroupType, type GroupJoinMode, type GroupMode } from "@/features/courses/utils/groupClass";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
+import type { AvailabilitySlot } from "@/features/shared/utils/availability";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
    * the request's grade (the server enforces this too), so both are read-only.
    */
   pricingLocked?: boolean;
+  /** The Teacher's weekly availability; group days / time are limited to it. */
+  availability?: AvailabilitySlot[];
 }
 
 /**
@@ -50,7 +53,7 @@ function withDerivedGrade(data: CourseFormData): CourseFormData {
   return { ...data, grade: to ? formatGradeRange(from, to) ?? "" : "" };
 }
 
-export default function CreateCourseForm({ onChange, initialValues, pricingLocked = false }: Props) {
+export default function CreateCourseForm({ onChange, initialValues, pricingLocked = false, availability = [] }: Props) {
   const [formData, setFormData] = useState<CourseFormData>(initialCourseFormData);
   // Latest form state for the async effects below, so they can compute the
   // next value outside a setState updater and call onChange (a parent
@@ -194,6 +197,7 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
         {isGroupType(formData.type) && (
           <CourseGroupFields
             formData={formData}
+            availability={availability}
             onChange={handleChange}
             onToggleDay={handleGroupDayToggle}
             onModeChange={handleGroupModeChange}

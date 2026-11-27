@@ -10,10 +10,18 @@ import {
 } from "@/features/courses/utils/groupClass";
 import type { CourseFormData } from "@/features/courses/types/course";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
+import {
+  availableWeekdays,
+  fitsAvailability,
+  type AvailabilitySlot,
+} from "@/features/shared/utils/availability";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
 
 interface Props {
   formData: CourseFormData;
+  /** Teacher's weekly availability. Days outside it can't be picked. */
+  availability?: AvailabilitySlot[];
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => void;
@@ -35,6 +43,7 @@ const JOIN_MODE_HINTS: Record<GroupJoinMode, string> = {
 /** Group-only fields: weekly days + time, time-bound / open, start and end dates. */
 export default function CourseGroupFields({
   formData,
+  availability = [],
   onChange,
   onToggleDay,
   onModeChange,
@@ -42,6 +51,13 @@ export default function CourseGroupFields({
 }: Props) {
   const today = toDateKey(todayInPlatformTz());
   const timeBound = formData.groupMode === "TIME_BOUND";
+  const limited = availability.length > 0;
+  const openDays = availableWeekdays(availability);
+  const length = sessionLengthForCourse(formData.duration);
+  const timeMisfit =
+    limited && formData.groupTime
+      ? formData.groupDays.filter((d) => !fitsAvailability(availability, d, formData.groupTime, length))
+      : [];
 
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 border-t border-violet-100 pt-4 md:grid-cols-2">
@@ -55,14 +71,17 @@ export default function CourseGroupFields({
         <div id="field-groupDays" className="flex flex-wrap gap-2" role="group" aria-label="Weekly days">
           {WEEKDAY_LABELS.map((label, day) => {
             const active = formData.groupDays.includes(day);
+            const blocked = limited && !openDays.includes(day);
 
             return (
               <button
                 key={label}
                 type="button"
                 aria-pressed={active}
+                disabled={blocked}
+                title={blocked ? "Not in your availability — update it in Calendar" : undefined}
                 onClick={() => onToggleDay(day)}
-                className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
                     ? "border-violet-600 bg-violet-600 text-white"
                     : "border-violet-200 bg-white text-gray-600 hover:bg-violet-50"
@@ -75,7 +94,16 @@ export default function CourseGroupFields({
         </div>
       </FormField>
 
-      <FormField label="Class time (IST)" htmlFor="field-groupTime" required>
+      <FormField
+        label="Class time (IST)"
+        htmlFor="field-groupTime"
+        required
+        hint={
+          timeMisfit.length
+            ? `Outside your availability on ${timeMisfit.map((d) => WEEKDAY_LABELS[d]).join(", ")} — pick a time inside it or update Calendar.`
+            : undefined
+        }
+      >
         <Input
           id="field-groupTime"
           name="groupTime"

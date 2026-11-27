@@ -7,10 +7,13 @@ import { LANGUAGE_OPTIONS, SUBJECT_OPTIONS } from "@/features/courses/constants/
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import { frequencyForDays, timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
+import { useTeacherAvailability } from "@/features/teacher/hooks/useAvailability";
+import { checkCourseAgainstAvailability } from "@/features/courses/utils/courseAvailability";
 import { GROUP_CLASS_TYPE, isGroupType, parseGroupMaxStudents, parseGroupSchedule } from "@/features/courses/utils/groupClass";
 
 export function useCreateCourse() {
   const router = useRouter();
+  const availability = useTeacherAvailability();
 
   const [formData, setFormData] = useState<CourseFormData>(initialCourseFormData);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
@@ -110,6 +113,22 @@ export function useCreateCourse() {
     e.preventDefault();
     setError("");
 
+    // Availability first: the server enforces this too.
+    if (availability.loading) {
+      setError("Still loading your availability — try again in a moment.");
+      return;
+    }
+
+    if (availability.loadFailed) {
+      setError("We couldn't load your availability. Refresh the page and try again.");
+      return;
+    }
+
+    if (availability.slots.length === 0) {
+      setError("Set your weekly availability in Calendar before creating a course.");
+      return;
+    }
+
     if (!formData.courseTitle.trim()) {
       setError("Course title is required.");
       return;
@@ -129,6 +148,21 @@ export function useCreateCourse() {
         setError(schedule.error);
         return;
       }
+    }
+
+    const fit = checkCourseAgainstAvailability(availability.slots, {
+      type: formData.type,
+      duration: formData.duration,
+      frequency:
+        formData.frequency === "Custom" ? formData.frequencyCustom : formData.frequency,
+      timeSlot: formData.timeSlot,
+      groupDays: formData.groupDays,
+      groupTime: formData.groupTime,
+    });
+
+    if (!fit.ok) {
+      setError(fit.error);
+      return;
     }
 
     if (!thumbnail) {
@@ -192,5 +226,10 @@ export function useCreateCourse() {
     initialValues,
     classRequestId,
     pricingLocked,
+    availabilitySlots: availability.slots,
+    availabilityLoading: availability.loading,
+    availabilityLoadFailed: availability.loadFailed,
+    canCreate:
+      !availability.loading && !availability.loadFailed && availability.slots.length > 0,
   };
 }
