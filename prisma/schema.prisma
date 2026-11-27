@@ -794,6 +794,11 @@ model ChatMessage {
   containsPhoneNumber Boolean @default(false)
   originalBody        String?
 
+  /// Group classes (Nov 2026): true when the Teacher sent this as an
+  /// announcement to the whole group. One copy per student's room; replies
+  /// stay private in each student's own room.
+  isBroadcast Boolean @default(false)
+
   @@index([chatRoomId, createdAt])
   @@index([chatRoomId, containsPhoneNumber])
 }

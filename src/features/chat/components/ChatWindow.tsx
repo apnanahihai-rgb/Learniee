@@ -183,6 +183,11 @@ export default function ChatWindow({
                       ⚠ Possible phone number — hidden from the other party
                     </p>
                   )}
+                  {message.isBroadcast && (
+                    <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70 mb-0.5">
+                      📢 Announcement to the whole group
+                    </p>
+                  )}
                   <p className="whitespace-pre-wrap break-words">{message.body}</p>
                   {message.containsPhoneNumber && isAdminView && message.originalBody && (
                     <p className="whitespace-pre-wrap break-words text-xs text-amber-800 mt-1 border-t border-amber-200 pt-1">

@@ -32,6 +32,8 @@ export interface ChatMessage {
   createdAt: string;
   /** True when `body` had a phone number masked out of it (06 #31). */
   containsPhoneNumber: boolean;
+  /** Group classes: the Teacher sent this to the whole group as an announcement. */
+  isBroadcast?: boolean;
   /**
    * The unmasked text — only ever present on the Admin messages route
    * (`/api/admin/chat/[roomId]/messages`), and only when the message

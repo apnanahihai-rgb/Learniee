@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { UsersRound } from "lucide-react";
 
 import TeacherCourseCard from "@/features/teacher/components/courses/TeacherCourseCard";
@@ -52,7 +53,15 @@ export default function GroupClassesView() {
         ) : (
           <div className={GRID}>
             {approved.map((course) => (
-              <TeacherCourseCard key={course.id} course={course} />
+              <div key={course.id} className="flex flex-col gap-2">
+                <TeacherCourseCard course={course} />
+                <Link
+                  href={`/teacher/group-classes/${course.id}`}
+                  className="rounded-xl bg-pd-b50 px-3 py-2 text-center text-[13px] font-semibold text-pd-brand-d hover:bg-pd-b100"
+                >
+                  Homework &amp; announcements
+                </Link>
+              </div>
             ))}
           </div>
         )}
