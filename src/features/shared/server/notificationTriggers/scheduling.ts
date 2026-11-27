@@ -139,6 +139,9 @@ export function notifyGroupClassMoved(requestId: string) {
       where: { id: requestId },
       select: {
         parentId: true,
+        classSessionId: true,
+        originalScheduledDate: true,
+        originalScheduledTime: true,
         proposedDate: true,
         proposedTime: true,
         enrollment: { select: { course: { select: { courseTitle: true } } } },
@@ -147,20 +150,21 @@ export function notifyGroupClassMoved(requestId: string) {
     if (!request) return;
 
     const courseTitle = request.enrollment.course.courseTitle || "the class";
-    const dateLabel = request.proposedDate.toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
-    });
+    const dayLabel = (d: Date) =>
+      d.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
+    const dateLabel = dayLabel(request.proposedDate);
     const timeLabel = request.proposedTime ? ` at ${request.proposedTime}` : "";
+    const wasLabel = `${dayLabel(request.originalScheduledDate)}${
+      request.originalScheduledTime ? ` at ${request.originalScheduledTime}` : ""
+    }`;
 
     await createNotification({
       recipientId: request.parentId,
       recipientRole: R.PARENT,
       type: T.RESCHEDULE_APPROVED,
       title: "Group class rescheduled",
-      message: `The teacher moved the "${courseTitle}" group class to ${dateLabel}${timeLabel}.`,
-      link: "/parent/calendar",
+      message: `The teacher moved the "${courseTitle}" group class from ${wasLabel} to ${dateLabel}${timeLabel}. The join link is on the class page.`,
+      link: `/parent/classes/${request.classSessionId}/join`,
     });
   });
 }

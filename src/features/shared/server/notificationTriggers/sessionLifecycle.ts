@@ -2,6 +2,7 @@ import {
     createNotification,
     createNotifications
 } from "@/features/shared/server/notification.service";
+import { countGroupClassStudents } from "@/features/shared/server/groupClass.service";
 import { prisma } from "@/lib/prisma";
 import "server-only";
 import { R, T, displayName, safe } from './shared';
@@ -64,17 +65,27 @@ export function notifyClassSessionCompleted(sessionId: string) {
 export function notifyClassSessionStartingSoon(
   sessionId: string,
   minutesUntil: number,
+  options: {
+    /**
+     * Group class: the teacher holds ONE class for every student, so the
+     * reminder job tells the teacher once and sets this for the rest.
+     */
+    skipTeacher?: boolean;
+  } = {},
 ) {
   return safe("class session reminder", async () => {
     const session = await prisma.classSession.findUnique({
       where: { id: sessionId },
       select: {
+        id: true,
         parentId: true,
         teacherId: true,
         scheduledTime: true,
+        startsAt: true,
         enrollment: {
           select: {
-            course: { select: { courseTitle: true } },
+            courseId: true,
+            course: { select: { courseTitle: true, type: true } },
             student: { select: { firstName: true, visibleName: true } },
           },
         },
@@ -88,24 +99,39 @@ export function notifyClassSessionStartingSoon(
       visibleName: session.enrollment.student.visibleName,
     });
     const timeLabel = session.scheduledTime ? ` at ${session.scheduledTime}` : "";
+    const group = await countGroupClassStudents(session);
 
-    await createNotifications([
+    // The links open the class page, where the Join / Start button opens the
+    // shared Google Meet room (the room itself is made on the first Start/Join).
+    const parentLink = `/parent/classes/${sessionId}/join`;
+    const teacherLink = `/teacher/classes/${sessionId}/start`;
+
+    const items: Parameters<typeof createNotifications>[0] = [
       {
         recipientId: session.parentId,
         recipientRole: R.PARENT,
         type: T.CLASS_SESSION_REMINDER,
-        title: "Class starting soon",
-        message: `${studentName}'s "${courseTitle}" class starts in about ${minutesUntil} minutes${timeLabel}.`,
-        link: "/parent/calendar",
+        title: group ? "Group class starting soon" : "Class starting soon",
+        message: group
+          ? `${studentName}'s "${courseTitle}" group class starts in about ${minutesUntil} minutes${timeLabel}. Open this to join.`
+          : `${studentName}'s "${courseTitle}" class starts in about ${minutesUntil} minutes${timeLabel}. Open this to join.`,
+        link: parentLink,
       },
-      {
+    ];
+
+    if (!options.skipTeacher) {
+      items.push({
         recipientId: session.teacherId,
         recipientRole: R.TEACHER,
         type: T.CLASS_SESSION_REMINDER,
-        title: "Class starting soon",
-        message: `Your "${courseTitle}" class with ${studentName} starts in about ${minutesUntil} minutes${timeLabel}.`,
-        link: "/teacher/classes",
-      },
-    ]);
+        title: group ? "Group class starting soon" : "Class starting soon",
+        message: group
+          ? `Your "${courseTitle}" group class (${group.size} ${group.size === 1 ? "student" : "students"}) starts in about ${minutesUntil} minutes${timeLabel}. Open this to start the shared class.`
+          : `Your "${courseTitle}" class with ${studentName} starts in about ${minutesUntil} minutes${timeLabel}. Open this to start the class.`,
+        link: teacherLink,
+      });
+    }
+
+    await createNotifications(items);
   });
 }

@@ -69,6 +69,7 @@ export function useEnrollment({
       requested: null,
       today,
       days: group.days,
+      registrationEnd: group.regEndDate,
     });
 
     if (first.ok) return first.startKey;

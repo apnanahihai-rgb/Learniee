@@ -253,6 +253,8 @@ async function priceGroupEnrollment(
     groupEndDate: toKey(course.groupEndDate),
     requested: input.cycleStartDate?.trim() || null,
     today,
+    // Classes start after registration closes.
+    registrationEnd: toKey(course.groupRegEndDate),
     // Mid-way joining: refuses a start date that leaves fewer than 4 classes.
     days: scheduleDays,
     // Verify / webhook: the money is taken, keep the date stamped on the order.

@@ -272,7 +272,7 @@ export default function CourseGroupFields({
             label="Allow joining after the group has started?"
             htmlFor="field-groupAllowMidwayJoin"
             required
-            hint="If yes, a parent who joins late pays only for the classes still left. Nobody can join when fewer than 4 classes are left — registration closes automatically the day before the last 4 classes. If no, registration must end on or before the class start date."
+            hint="If yes, a parent who joins late pays only for the classes still left. Nobody can join when fewer than 4 classes are left — registration closes automatically the day before the last 4 classes. If no, registration must end before the class start date — classes begin after registration closes."
             className="md:col-span-2"
           >
             <div id="field-groupAllowMidwayJoin" className="flex flex-wrap gap-2" role="radiogroup" aria-label="Allow mid-way joining">

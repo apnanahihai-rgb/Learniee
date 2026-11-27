@@ -2,6 +2,7 @@ import {
     createNotification,
     notifyAllAdmins
 } from "@/features/shared/server/notification.service";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { formatPlatformTime } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
 import "server-only";
@@ -38,11 +39,12 @@ export function notifySessionFollowUp(notice: SessionFollowUpNotice) {
     const session = await prisma.classSession.findUnique({
       where: { id: notice.sessionId },
       select: {
+        id: true,
         parentId: true,
         teacherId: true,
         startsAt: true,
         scheduledDate: true,
-        enrollment: { select: { course: { select: { courseTitle: true } } } },
+        enrollment: { select: { courseId: true, course: { select: { courseTitle: true, type: true } } } },
         student: { select: { firstName: true, visibleName: true } },
         teacher: { select: { firstName: true, lastName: true, visibleName: true } },
       },
@@ -50,6 +52,25 @@ export function notifySessionFollowUp(notice: SessionFollowUpNotice) {
     if (!session) return;
 
     const courseTitle = session.enrollment.course.courseTitle || "the course";
+    const isGroup = isGroupType(session.enrollment.course.type) && session.startsAt !== null;
+    const classNoun = isGroup ? "group class" : "class";
+
+    // Group class: the teacher holds ONE class for the whole group, so they
+    // are told about its make-up once, not once per student. The follow-ups
+    // run one after another; every one but the first stays quiet. (A student
+    // whose follow-up isn't applied yet never silences the others, so the
+    // worst case is a repeat, never a missing notice.)
+    const teacherAlreadyTold =
+      isGroup && session.startsAt
+        ? (await prisma.classSession.count({
+            where: {
+              id: { lt: session.id },
+              startsAt: session.startsAt,
+              enrollment: { courseId: session.enrollment.courseId },
+              followUpAppliedAt: { not: null },
+            },
+          })) > 0
+        : false;
     const classWhen = session.startsAt
       ? formatPlatformTime(session.startsAt, true)
       : session.scheduledDate.toISOString().slice(0, 10);
@@ -87,13 +108,15 @@ export function notifySessionFollowUp(notice: SessionFollowUpNotice) {
         link: "/parent/calendar",
       });
 
-      if (makeupWhen) {
+      if (makeupWhen && !teacherAlreadyTold) {
         await createNotification({
           recipientId: session.teacherId,
           recipientRole: R.TEACHER,
           type: T.SESSION_MAKEUP_SCHEDULED,
           title: "Make-up class scheduled",
-          message: `A make-up class for "${courseTitle}" (${studentName}) is scheduled for ${makeupWhen}.`,
+          message: isGroup
+            ? `A make-up class for your "${courseTitle}" group is scheduled for ${makeupWhen}.`
+            : `A make-up class for "${courseTitle}" (${studentName}) is scheduled for ${makeupWhen}.`,
           link: "/teacher/calendar",
         });
       }
@@ -103,10 +126,10 @@ export function notifySessionFollowUp(notice: SessionFollowUpNotice) {
 
     const parentMessage =
       notice.outcome === "TEACHER_NO_SHOW"
-        ? `${teacherName} did not join the ${classWhen} class for "${courseTitle}".${makeupLine}`
+        ? `${teacherName} did not join the ${classWhen} ${classNoun} for "${courseTitle}".${makeupLine}`
         : notice.outcome === "NOBODY_JOINED"
-          ? `Nobody joined the ${classWhen} class for "${courseTitle}", so it was cancelled.${makeupLine}`
-          : `${teacherName} cancelled the ${classWhen} class for "${courseTitle}".${makeupLine}`;
+          ? `Nobody joined the ${classWhen} ${classNoun} for "${courseTitle}", so it was cancelled.${makeupLine}`
+          : `${teacherName} cancelled the ${classWhen} ${classNoun} for "${courseTitle}".${makeupLine}`;
 
     await createNotification({
       recipientId: session.parentId,
@@ -117,13 +140,15 @@ export function notifySessionFollowUp(notice: SessionFollowUpNotice) {
       link: "/parent/calendar",
     });
 
-    if (makeupWhen) {
+    if (makeupWhen && !teacherAlreadyTold) {
       await createNotification({
         recipientId: session.teacherId,
         recipientRole: R.TEACHER,
         type: T.SESSION_MAKEUP_SCHEDULED,
         title: "Make-up class scheduled",
-        message: `A make-up class for "${courseTitle}" (${studentName}) is scheduled for ${makeupWhen}.`,
+        message: isGroup
+          ? `A make-up class for your "${courseTitle}" group is scheduled for ${makeupWhen}.`
+          : `A make-up class for "${courseTitle}" (${studentName}) is scheduled for ${makeupWhen}.`,
         link: "/teacher/calendar",
       });
     }

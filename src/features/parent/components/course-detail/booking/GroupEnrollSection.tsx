@@ -7,6 +7,7 @@ import {
   ageFitsGroup,
   GROUP_MIN_CLASSES_LEFT,
   groupClassesLeft,
+  groupFirstClassKey,
   groupRegistrationState,
   resolveGroupStartDate,
   type GroupBookingInfo,
@@ -90,6 +91,13 @@ export default function GroupEnrollSection({
     requested: startDate,
     today: todayInPlatformTz(),
     days: group.days,
+    registrationEnd: group.regEndDate,
+  });
+  // Classes start after registration closes.
+  const firstClassKey = groupFirstClassKey({
+    mode: group.mode,
+    joinMode: group.joinMode,
+    registrationEnd: group.regEndDate,
   });
   const joinFailed = !!group.joinMode && !joinCheck.ok;
   // Mid-way joining: fewer than 4 classes left from the chosen start date.
@@ -105,7 +113,8 @@ export default function GroupEnrollSection({
     group.lastRegistrationDate !== group.regEndDate &&
     group.lastRegistrationDate >= (group.regStartDate ?? "");
   // Earliest date the date picker allows (a time-bound group can't be joined before it starts).
-  const pickerMin = timeBound && group.startDate && group.startDate > minStartDate ? group.startDate : minStartDate;
+  const basePickerMin = timeBound && group.startDate && group.startDate > minStartDate ? group.startDate : minStartDate;
+  const pickerMin = firstClassKey && firstClassKey > basePickerMin ? firstClassKey : basePickerMin;
   // Latest start that still leaves 4 classes (mid-way joining), else the group's end.
   const pickerMax = timeBound && group.endDate ? (group.lastStartDate ?? group.endDate) : undefined;
   // The parent picks the date for an open group, and for any "anytime" group.
@@ -158,6 +167,7 @@ export default function GroupEnrollSection({
             ? `Fixed batch: ${formatDay(group.startDate)} – ${formatDay(group.endDate)}`
             : "Open group"}
         </p>
+        {firstClassKey && <p>Classes begin after registration closes (from {formatDay(firstClassKey)}).</p>}
         {monthlyFixed && <p>Monthly fixed — you join at the start of a monthly batch.</p>}
         {anytime && !midwayJoin && <p>Anytime — join on any date you choose.</p>}
         {midwayJoin && (

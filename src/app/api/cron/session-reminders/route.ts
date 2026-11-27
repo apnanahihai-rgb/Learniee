@@ -3,6 +3,7 @@ import { requireCronAuth } from "@/lib/cronAuth";
 
 import { prisma } from "@/lib/prisma";
 import { ClassSessionStatus } from "@prisma/client";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { notifyClassSessionStartingSoon } from "@/features/shared/server/notificationTriggers.service";
 import { PLATFORM_UTC_OFFSET_MINUTES } from "@/lib/platformConfig";
 
@@ -92,19 +93,48 @@ export async function GET(req: Request) {
         scheduledDate: { gte: dayStart, lt: dayEnd },
         scheduledTime: { not: null },
       },
-      select: { id: true, scheduledDate: true, scheduledTime: true },
+      select: {
+        id: true,
+        scheduledDate: true,
+        scheduledTime: true,
+        // Cycle sessions carry the exact start; a group class is found from
+        // its course + start (see groupClass.service.ts).
+        startsAt: true,
+        enrollment: { select: { courseId: true, course: { select: { type: true } } } },
+      },
     });
 
+    const startOf = (session: (typeof candidates)[number]) =>
+      session.startsAt ?? computeSessionStartUtc(session.scheduledDate, session.scheduledTime);
+
     const due = candidates.filter((session) => {
-      const startsAt = computeSessionStartUtc(session.scheduledDate, session.scheduledTime);
+      const startsAt = startOf(session);
       return startsAt !== null && startsAt >= now && startsAt <= windowEnd;
     });
 
     for (const session of due) {
-      const startsAt = computeSessionStartUtc(session.scheduledDate, session.scheduledTime)!;
+      const startsAt = startOf(session)!;
       const minutesUntil = Math.max(1, Math.round((startsAt.getTime() - now.getTime()) / 60_000));
 
-      await notifyClassSessionStartingSoon(session.id, minutesUntil);
+      // Group class: every student's session gets its own parent reminder,
+      // but the teacher holds ONE class — so they are told only by the first
+      // student's session. The others see a sibling already marked as sent.
+      let skipTeacher = false;
+
+      if (session.startsAt && isGroupType(session.enrollment.course.type)) {
+        const alreadySent = await prisma.classSession.count({
+          where: {
+            id: { not: session.id },
+            startsAt: session.startsAt,
+            enrollment: { courseId: session.enrollment.courseId },
+            reminderSentAt: { not: null },
+          },
+        });
+
+        skipTeacher = alreadySent > 0;
+      }
+
+      await notifyClassSessionStartingSoon(session.id, minutesUntil, { skipTeacher });
 
       // Marked immediately after sending (not batched at the end) so
       // a mid-run crash still leaves already-sent sessions correctly

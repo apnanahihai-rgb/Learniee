@@ -353,12 +353,14 @@ export function parseGroupSchedule(
     };
   }
 
-  if (compareDates(regEnd, allowMidwayJoin ? end : start) > 0) {
+  // Classes start after registration closes. With mid-way joining the group
+  // runs while registration is still open, so it only has to close by the end.
+  if (allowMidwayJoin ? compareDates(regEnd, end) > 0 : compareDates(regEnd, start) >= 0) {
     return {
       ok: false,
       error: allowMidwayJoin
         ? "Registration must end on or before the class end date."
-        : "Registration must end on or before the class start date (no mid-way joining).",
+        : "Registration must end before the class start date — classes begin after registration closes.",
     };
   }
 
@@ -693,6 +695,26 @@ function addMonthsFromAnchor(anchor: CalendarDate, n: number): CalendarDate {
   return { year, month, day: Math.min(anchor.day, daysInMonth(year, month)) };
 }
 
+/**
+ * The earliest day a class of the group may be held: the day after
+ * registration closes. Null when there is no such limit — an open-ended
+ * group (no registration end) or a one-time group with mid-way joining,
+ * which runs while registration is still open.
+ */
+export function groupFirstClassKey(input: {
+  mode: GroupMode | null | undefined;
+  joinMode: GroupJoinMode | null | undefined;
+  registrationEnd: string | null | undefined;
+}): string | null {
+  if (!input.registrationEnd) return null;
+
+  if (input.mode === "TIME_BOUND" && input.joinMode) return null;
+
+  const end = parseDateKey(input.registrationEnd);
+
+  return end ? toDateKey(addDays(end, 1)) : null;
+}
+
 export interface ResolveGroupStartInput {
   mode: GroupMode;
   /** Null on groups created before the joining option existed. */
@@ -708,6 +730,11 @@ export interface ResolveGroupStartInput {
    * date that leaves fewer than `GROUP_MIN_CLASSES_LEFT` classes.
    */
   days?: readonly number[];
+  /**
+   * The teacher's registration end date ("YYYY-MM-DD"). Classes never start
+   * before the day after it (see `groupFirstClassKey`).
+   */
+  registrationEnd?: string | null;
   /**
    * Verify / webhook: the order already exists and the money is taken, so
    * the date stamped on it is used as it is.
@@ -744,6 +771,16 @@ export function resolveGroupStartDate(input: ResolveGroupStartInput): ResolveGro
   const groupStart = parseDateKey(input.groupStartDate);
   const groupEnd = parseDateKey(input.groupEndDate);
 
+  // Classes start after registration closes: never earlier than this day.
+  // Skipped when the money is already taken (the stamped date stands).
+  const earliest = input.trustRequested
+    ? null
+    : parseDateKey(
+        groupFirstClassKey({ mode, joinMode, registrationEnd: input.registrationEnd ?? null }),
+      );
+  const notBefore = (date: CalendarDate): CalendarDate =>
+    earliest && compareDates(date, earliest) < 0 ? earliest : date;
+
   const finish = (start: CalendarDate): ResolveGroupStartResult => {
     if (groupEnd && compareDates(start, groupEnd) > 0) {
       return { ok: false, error: "This group has ended, so new students can't join.", status: 409, reason: "ENDED" };
@@ -765,7 +802,7 @@ export function resolveGroupStartDate(input: ResolveGroupStartInput): ResolveGro
     if (!groupStart) return GROUP_NOT_READY;
 
     // Older groups: the batch starts with the group.
-    if (!joinMode) return { ok: true, startKey: toDateKey(groupStart) };
+    if (!joinMode) return { ok: true, startKey: toDateKey(notBefore(groupStart)) };
 
     if (input.trustRequested && requestedRaw) return { ok: true, startKey: requestedRaw };
 
@@ -791,14 +828,25 @@ export function resolveGroupStartDate(input: ResolveGroupStartInput): ResolveGro
 
   // OPEN group.
   if (joinMode !== "MONTHLY_FIXED") {
-    return { ok: true, startKey: requestedRaw ?? toDateKey(today) };
+    if (!earliest) return { ok: true, startKey: requestedRaw ?? toDateKey(today) };
+
+    const wanted = requestedRaw ? parseDateKey(requestedRaw) : today;
+
+    if (!wanted) {
+      return { ok: false, error: "That doesn't look like a valid start date — pick again.", status: 400 };
+    }
+
+    return { ok: true, startKey: toDateKey(notBefore(wanted)) };
   }
 
   if (input.trustRequested && requestedRaw) return { ok: true, startKey: requestedRaw };
 
-  if (today.day === 1) return { ok: true, startKey: toDateKey(today) };
+  // The first monthly batch start on or after today and after registration closes.
+  const ref = notBefore(today);
 
-  const next = today.month === 12 ? { year: today.year + 1, month: 1 } : { year: today.year, month: today.month + 1 };
+  if (ref.day === 1) return { ok: true, startKey: toDateKey(ref) };
+
+  const next = ref.month === 12 ? { year: ref.year + 1, month: 1 } : { year: ref.year, month: ref.month + 1 };
 
   return { ok: true, startKey: toDateKey({ ...next, day: 1 }) };
 }
