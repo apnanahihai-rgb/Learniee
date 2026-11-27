@@ -2,27 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ArrowLeft, BookOpen, Megaphone, MessageCircle, UsersRound } from "lucide-react";
 
 import { PD_BTN_PRI, PD_INPUT, PdEmpty, pillFilter } from "@/features/parent/components/courses/pdUi";
 import PdErrorState from "@/features/shared/components/PdErrorState";
 import TeacherHomeworkPanel from "@/features/teacher/components/homework/TeacherHomeworkPanel";
 import { useGroupClass } from "@/features/teacher/hooks/useGroupClass";
+import { TD_CARD } from "./TeacherUi";
 
 type Tab = "homework" | "announcements" | "students";
 
 const TABS: { id: Tab; label: string; icon: typeof BookOpen }[] = [
   { id: "homework", label: "Homework", icon: BookOpen },
   { id: "announcements", label: "Announcements", icon: Megaphone },
-  { id: "students", label: "Students", icon: UsersRound },
+  { id: "students", label: "Students & chat", icon: UsersRound },
 ];
 
-/** Teacher → one group class: homework for everyone, announcements, and 1:1 chat per student. */
-export default function TeacherGroupClassPage() {
-  const { courseId } = useParams<{ courseId: string }>();
-  const { title, students, announcements, loading, error, broadcast, reload } =
-    useGroupClass(courseId);
+/**
+ * My classes > Group classes > one group: homework for everyone, announcements
+ * to the whole group, and a private 1:1 chat per student.
+ */
+export default function GroupWorkspace({ courseId, onBack }: { courseId: string; onBack: () => void }) {
+  const { title, students, announcements, loading, error, broadcast, reload } = useGroupClass(courseId);
 
   const [tab, setTab] = useState<Tab>("homework");
   const [viewing, setViewing] = useState("");
@@ -49,28 +50,27 @@ export default function TeacherGroupClassPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[900px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
-      <Link
-        href="/teacher/group-classes"
+    <div className="mt-5">
+      <button
+        type="button"
+        onClick={onBack}
         className="inline-flex items-center gap-1 text-sm font-semibold text-pd-brand"
       >
-        <ArrowLeft size={14} /> Group classes
-      </Link>
+        <ArrowLeft size={14} /> All group classes
+      </button>
 
-      <h1 className="mt-2 font-heading text-[26px] font-semibold leading-[1.15] text-pd-ink sm:text-[32px]">
-        {title || "Group class"}
-      </h1>
+      <h2 className="mt-2 font-heading text-[22px] font-semibold text-pd-ink">{title || "Group class"}</h2>
       <p className="text-sm text-pd-ink3">
         {loading ? "Loading…" : `${students.length} student${students.length === 1 ? "" : "s"} enrolled`}
       </p>
 
       {error && !loading ? (
-        <div className="mt-6">
+        <div className="mt-4">
           <PdErrorState message={error} onRetry={reload} />
         </div>
       ) : (
         <>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -84,7 +84,7 @@ export default function TeacherGroupClassPage() {
             ))}
           </div>
 
-          <div className="mt-5 rounded-2xl border border-pd-line bg-white p-4 sm:p-5">
+          <div className={`${TD_CARD} mt-4 p-4 sm:p-5`}>
             {tab === "homework" &&
               (students.length === 0 ? (
                 <PdEmpty
@@ -95,7 +95,7 @@ export default function TeacherGroupClassPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-pd-ink3">
-                    Anything you assign here goes to every student in this group. Each student
+                    Homework you assign here goes to every student in this group. Each student
                     submits their own work — pick a student to see their submission.
                   </p>
                   <select
@@ -146,9 +146,7 @@ export default function TeacherGroupClassPage() {
                     announcements.map((a) => (
                       <div key={a.id} className="rounded-xl bg-pd-b50 px-3 py-2">
                         <p className="whitespace-pre-wrap break-words text-sm text-pd-ink">{a.body}</p>
-                        <p className="mt-1 text-[11px] text-pd-ink3">
-                          {new Date(a.createdAt).toLocaleString()}
-                        </p>
+                        <p className="mt-1 text-[11px] text-pd-ink3">{new Date(a.createdAt).toLocaleString()}</p>
                       </div>
                     ))
                   )}
