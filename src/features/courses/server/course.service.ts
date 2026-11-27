@@ -46,6 +46,14 @@ export interface CourseFormInput {
   groupJoinMode?: string;
   groupStartDate?: string;
   groupEndDate?: string;
+  groupKind?: string;
+  groupRecurrence?: string;
+  groupAllowMidwayJoin?: string | boolean;
+  groupRegStartDate?: string;
+  groupRegEndDate?: string;
+  groupAgeMin?: string | number;
+  groupAgeMax?: string | number;
+  groupTermsAccepted?: boolean;
 
   thumbnailKey?: string;
   introVideoKey?: string;
@@ -84,6 +92,13 @@ function buildCourseData(input: CourseFormInput) {
     groupJoinMode: "MONTHLY_FIXED" | "ANYTIME" | null;
     groupStartDate: Date | null;
     groupEndDate: Date | null;
+    groupKind: "ONE_TIME" | "RECURRING" | null;
+    groupRecurrence: "WEEKLY" | "MONTHLY" | null;
+    groupAllowMidwayJoin: boolean | null;
+    groupRegStartDate: Date | null;
+    groupRegEndDate: Date | null;
+    groupAgeMin: number | null;
+    groupAgeMax: number | null;
   } = {
     groupPricePerCycle: null,
     groupDays: [],
@@ -92,6 +107,13 @@ function buildCourseData(input: CourseFormInput) {
     groupJoinMode: null,
     groupStartDate: null,
     groupEndDate: null,
+    groupKind: null,
+    groupRecurrence: null,
+    groupAllowMidwayJoin: null,
+    groupRegStartDate: null,
+    groupRegEndDate: null,
+    groupAgeMin: null,
+    groupAgeMax: null,
   };
   let priceInput = input;
 
@@ -109,6 +131,8 @@ function buildCourseData(input: CourseFormInput) {
     const { value } = schedule;
     const start = parseDateKey(value.startDate);
     const end = parseDateKey(value.endDate);
+    const regStart = parseDateKey(value.regStartDate);
+    const regEnd = parseDateKey(value.regEndDate);
 
     groupFields = {
       // Group classes are charged per session (Course.price), not a flat cycle price.
@@ -119,6 +143,13 @@ function buildCourseData(input: CourseFormInput) {
       groupJoinMode: value.joinMode,
       groupStartDate: start ? calendarDateToDate(start) : null,
       groupEndDate: end ? calendarDateToDate(end) : null,
+      groupKind: value.kind,
+      groupRecurrence: value.recurrence,
+      groupAllowMidwayJoin: value.allowMidwayJoin,
+      groupRegStartDate: regStart ? calendarDateToDate(regStart) : null,
+      groupRegEndDate: regEnd ? calendarDateToDate(regEnd) : null,
+      groupAgeMin: value.ageMin,
+      groupAgeMax: value.ageMax,
     };
 
     // The teacher enters the per-session price; the parent pays it x the sessions in the cycle.

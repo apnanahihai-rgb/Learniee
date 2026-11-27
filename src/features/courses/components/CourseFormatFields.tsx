@@ -45,7 +45,7 @@ export default function CourseFormatFields({ formData, onChange }: Props) {
         <FormField
           label="Maximum students in the group"
           htmlFor="field-groupMaxStudents"
-          hint="Group class option (temporary) — more group settings will be added later."
+          hint="There is no minimum — the group runs even with one student."
         >
           <Input
             id="field-groupMaxStudents"

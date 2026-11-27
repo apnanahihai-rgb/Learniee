@@ -42,13 +42,23 @@ export interface CourseFormData {
   groupDays: number[];
   /** Group only: "HH:mm" (IST). */
   groupTime: string;
-  /** Group only: "TIME_BOUND" | "OPEN" ("" until chosen). */
-  groupMode: "" | "TIME_BOUND" | "OPEN";
-  /** Group only: how parents may join — "MONTHLY_FIXED" | "ANYTIME" ("" until chosen). */
-  groupJoinMode: "" | "MONTHLY_FIXED" | "ANYTIME";
-  /** Group only, time-bound: "YYYY-MM-DD". */
+  /** Group only: "ONE_TIME" | "RECURRING" ("" until chosen). */
+  groupKind: "" | "ONE_TIME" | "RECURRING";
+  /** Group only, recurring: "WEEKLY" | "MONTHLY". */
+  groupRecurrence: "" | "WEEKLY" | "MONTHLY";
+  /** Group only, one-time: may parents join after it has started? */
+  groupAllowMidwayJoin: "" | "YES" | "NO";
+  /** Group only, one-time: class period "YYYY-MM-DD". */
   groupStartDate: string;
   groupEndDate: string;
+  /** Group only: registration window "YYYY-MM-DD" (end is optional for recurring). */
+  groupRegStartDate: string;
+  groupRegEndDate: string;
+  /** Group only: student age range. */
+  groupAgeMin: string;
+  groupAgeMax: string;
+  /** Group only: the Teacher accepted the notices. */
+  groupTermsAccepted: boolean;
 }
 
 export const initialCourseFormData: CourseFormData = {
@@ -87,10 +97,16 @@ export const initialCourseFormData: CourseFormData = {
   groupMaxStudents: "",
   groupDays: [],
   groupTime: "",
-  groupMode: "",
-  groupJoinMode: "",
+  groupKind: "",
+  groupRecurrence: "",
+  groupAllowMidwayJoin: "",
   groupStartDate: "",
   groupEndDate: "",
+  groupRegStartDate: "",
+  groupRegEndDate: "",
+  groupAgeMin: "",
+  groupAgeMax: "",
+  groupTermsAccepted: false,
 };
 
 /**

@@ -262,6 +262,17 @@ enum GroupJoinMode {
   ANYTIME
 }
 
+/// Group classes (Nov 2026): what the Teacher chose on the create-course form.
+enum GroupKind {
+  ONE_TIME
+  RECURRING
+}
+
+enum GroupRecurrence {
+  WEEKLY
+  MONTHLY
+}
+
 model Course {
   id              String        @id @default(uuid())
   teacherId       String
@@ -334,6 +345,17 @@ model Course {
   groupJoinMode     GroupJoinMode?
   groupStartDate    DateTime?     @db.Date
   groupEndDate      DateTime?     @db.Date
+  /// ONE_TIME or RECURRING; `groupRecurrence` only for RECURRING. Null on older groups.
+  groupKind         GroupKind?
+  groupRecurrence   GroupRecurrence?
+  /// One-time only: may parents join after the group has started? Null otherwise.
+  groupAllowMidwayJoin Boolean?
+  /// Registration window (IST calendar dates). The end is null for an open-ended recurring group.
+  groupRegStartDate DateTime?     @db.Date
+  groupRegEndDate   DateTime?     @db.Date
+  /// Student age range the group is meant for.
+  groupAgeMin       Int?
+  groupAgeMax       Int?
   chatRooms       ChatRoom[]
   teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   demoBookings    DemoBooking[]

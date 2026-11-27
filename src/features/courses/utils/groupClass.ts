@@ -114,6 +114,53 @@ export function isGroupJoinMode(value: unknown): value is GroupJoinMode {
   return typeof value === "string" && (GROUP_JOIN_MODES as readonly string[]).includes(value);
 }
 
+/**
+ * Group type chosen by the Teacher (Nov 2026):
+ *  - ONE_TIME: a fixed run of classes between a start and an end date.
+ *  - RECURRING: no end date; renews every week (WEEKLY) or month (MONTHLY).
+ * These map onto the stored `groupMode` / `groupJoinMode` so the parent
+ * booking and enrollment code keeps working unchanged:
+ *   ONE_TIME + mid-way joining  -> TIME_BOUND / ANYTIME
+ *   ONE_TIME + no mid-way       -> TIME_BOUND / null (starts with the group)
+ *   RECURRING weekly            -> OPEN / ANYTIME
+ *   RECURRING monthly           -> OPEN / MONTHLY_FIXED
+ */
+export const GROUP_KINDS = ["ONE_TIME", "RECURRING"] as const;
+export type GroupKind = (typeof GROUP_KINDS)[number];
+
+export const GROUP_KIND_INFO: Record<GroupKind, { label: string; hint: string }> = {
+  ONE_TIME: { label: "One-time", hint: "A fixed set of classes between a start and an end date." },
+  RECURRING: { label: "Recurring", hint: "Continues every week or month until the parent ends it." },
+};
+
+export const GROUP_RECURRENCES = ["WEEKLY", "MONTHLY"] as const;
+export type GroupRecurrence = (typeof GROUP_RECURRENCES)[number];
+
+export const GROUP_RECURRENCE_LABELS: Record<GroupRecurrence, string> = {
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+};
+
+export const GROUP_MIN_AGE = 3;
+export const GROUP_MAX_AGE = 18;
+
+export function isGroupKind(value: unknown): value is GroupKind {
+  return typeof value === "string" && (GROUP_KINDS as readonly string[]).includes(value);
+}
+
+export function isGroupRecurrence(value: unknown): value is GroupRecurrence {
+  return typeof value === "string" && (GROUP_RECURRENCES as readonly string[]).includes(value);
+}
+
+/** Notices the Teacher must accept before listing a group (shown on the form). */
+export const GROUP_TEACHER_NOTICES = [
+  "There is no minimum number of students. Once a group is listed, you must hold every lecture as stated, even if only one student enrolls.",
+  "No refunds and no drop-outs: once a parent enrolls, they are committed for that time — every selected session of a one-time group, or the full week / month of a recurring group.",
+] as const;
+
+export const GROUP_RECURRING_NOTICE =
+  "Recurring groups: the next week (or month) is already committed. Parents must take the same group again the following week (or month) and can only end it after that. Parents who don't want that should choose a one-time group.";
+
 export interface GroupScheduleInput {
   groupDays?: unknown;
   groupTime?: unknown;
@@ -121,6 +168,19 @@ export interface GroupScheduleInput {
   groupJoinMode?: unknown;
   groupStartDate?: unknown;
   groupEndDate?: unknown;
+  /** ONE_TIME | RECURRING. */
+  groupKind?: unknown;
+  /** WEEKLY | MONTHLY — recurring only. */
+  groupRecurrence?: unknown;
+  /** One-time only: "YES" | "NO" (or a boolean) — may parents join after it has started? */
+  groupAllowMidwayJoin?: unknown;
+  /** Registration window, "YYYY-MM-DD" (IST). */
+  groupRegStartDate?: unknown;
+  groupRegEndDate?: unknown;
+  groupAgeMin?: unknown;
+  groupAgeMax?: unknown;
+  /** The Teacher accepted the notices on the form. */
+  groupTermsAccepted?: unknown;
   /** Price the teacher charges for ONE session (the course `price` field). */
   price?: unknown;
 }
@@ -129,7 +189,18 @@ export interface GroupSchedule {
   days: number[];
   time: string;
   mode: GroupMode;
-  joinMode: GroupJoinMode;
+  /** Null for a one-time group that does not allow mid-way joining. */
+  joinMode: GroupJoinMode | null;
+  kind: GroupKind;
+  /** Recurring only. */
+  recurrence: GroupRecurrence | null;
+  /** One-time only (null for recurring). */
+  allowMidwayJoin: boolean | null;
+  /** "YYYY-MM-DD" registration window; the end is null for an open-ended recurring group. */
+  regStartDate: string;
+  regEndDate: string | null;
+  ageMin: number;
+  ageMax: number;
   /** "YYYY-MM-DD" (IST calendar date) for TIME_BOUND, otherwise null. */
   startDate: string | null;
   endDate: string | null;
@@ -176,47 +247,121 @@ export function parseGroupSchedule(
     return { ok: false, error: "Enter a price per session greater than 0." };
   }
 
-  if (!isGroupMode(input.groupMode)) {
-    return { ok: false, error: "Choose whether the group is time-bound or open." };
+  if (input.groupTermsAccepted !== true) {
+    return { ok: false, error: "Please accept the group class notices before listing." };
   }
 
-  if (!isGroupJoinMode(input.groupJoinMode)) {
-    return { ok: false, error: "Choose how parents can join: monthly fixed or anytime." };
+  const ageMin = Number(input.groupAgeMin);
+  const ageMax = Number(input.groupAgeMax);
+
+  if (
+    !Number.isInteger(ageMin) ||
+    !Number.isInteger(ageMax) ||
+    ageMin < GROUP_MIN_AGE ||
+    ageMax > GROUP_MAX_AGE ||
+    ageMin > ageMax
+  ) {
+    return {
+      ok: false,
+      error: `Enter an age range between ${GROUP_MIN_AGE} and ${GROUP_MAX_AGE}, with the minimum not above the maximum.`,
+    };
   }
 
-  let startDate: string | null = null;
-  let endDate: string | null = null;
+  if (!isGroupKind(input.groupKind)) {
+    return { ok: false, error: "Choose whether the group is one-time or recurring." };
+  }
 
-  if (input.groupMode === "TIME_BOUND") {
-    const start = parseDateKey(typeof input.groupStartDate === "string" ? input.groupStartDate : null);
-    const end = parseDateKey(typeof input.groupEndDate === "string" ? input.groupEndDate : null);
+  const regStart = parseDateKey(typeof input.groupRegStartDate === "string" ? input.groupRegStartDate : null);
+  const regEndRaw = typeof input.groupRegEndDate === "string" ? input.groupRegEndDate.trim() : "";
+  const regEnd = regEndRaw ? parseDateKey(regEndRaw) : null;
 
-    if (!start || !end) {
-      return { ok: false, error: "A time-bound group needs a start date and an end date." };
+  if (!regStart) {
+    return { ok: false, error: "Enter the registration start date." };
+  }
+
+  if (compareDates(regStart, today) < 0) {
+    return { ok: false, error: "The registration start date can't be in the past." };
+  }
+
+  if (regEndRaw && !regEnd) {
+    return { ok: false, error: "The registration end date isn't a valid date." };
+  }
+
+  if (regEnd && compareDates(regEnd, regStart) < 0) {
+    return { ok: false, error: "The registration end date must be on or after the registration start date." };
+  }
+
+  const base = { days, time, pricePerSession, ageMin, ageMax, regStartDate: toDateKey(regStart) };
+
+  if (input.groupKind === "RECURRING") {
+    if (!isGroupRecurrence(input.groupRecurrence)) {
+      return { ok: false, error: "Choose whether the recurring group is weekly or monthly." };
     }
 
-    if (compareDates(start, today) < 0) {
-      return { ok: false, error: "The start date can't be in the past." };
-    }
+    return {
+      ok: true,
+      value: {
+        ...base,
+        mode: "OPEN",
+        joinMode: input.groupRecurrence === "WEEKLY" ? "ANYTIME" : "MONTHLY_FIXED",
+        kind: "RECURRING",
+        recurrence: input.groupRecurrence,
+        allowMidwayJoin: null,
+        regEndDate: regEnd ? toDateKey(regEnd) : null,
+        startDate: null,
+        endDate: null,
+      },
+    };
+  }
 
-    if (compareDates(end, start) < 0) {
-      return { ok: false, error: "The end date must be on or after the start date." };
-    }
+  // ONE_TIME
+  const allowRaw = input.groupAllowMidwayJoin;
+  const allowMidwayJoin = allowRaw === true || allowRaw === "YES" ? true : allowRaw === false || allowRaw === "NO" ? false : null;
 
-    startDate = toDateKey(start);
-    endDate = toDateKey(end);
+  if (allowMidwayJoin === null) {
+    return { ok: false, error: "Choose whether parents can join after the group has started." };
+  }
+
+  if (!regEnd) {
+    return { ok: false, error: "Enter the registration end date for a one-time group." };
+  }
+
+  const start = parseDateKey(typeof input.groupStartDate === "string" ? input.groupStartDate : null);
+  const end = parseDateKey(typeof input.groupEndDate === "string" ? input.groupEndDate : null);
+
+  if (!start || !end) {
+    return { ok: false, error: "A one-time group needs a class start date and a class end date." };
+  }
+
+  if (compareDates(start, today) < 0) {
+    return { ok: false, error: "The class start date can't be in the past." };
+  }
+
+  if (compareDates(end, start) < 0) {
+    return { ok: false, error: "The class end date must be on or after the class start date." };
+  }
+
+  if (compareDates(regEnd, allowMidwayJoin ? end : start) > 0) {
+    return {
+      ok: false,
+      error: allowMidwayJoin
+        ? "Registration must end on or before the class end date."
+        : "Registration must end on or before the class start date (no mid-way joining).",
+    };
   }
 
   return {
     ok: true,
     value: {
-      days,
-      time,
-      mode: input.groupMode,
-      joinMode: input.groupJoinMode,
-      startDate,
-      endDate,
-      pricePerSession,
+      ...base,
+      mode: "TIME_BOUND",
+      joinMode: allowMidwayJoin ? "ANYTIME" : null,
+      kind: "ONE_TIME",
+      recurrence: null,
+      allowMidwayJoin,
+      regEndDate: toDateKey(regEnd),
+      startDate: toDateKey(start),
+      endDate: toDateKey(end),
     },
   };
 }

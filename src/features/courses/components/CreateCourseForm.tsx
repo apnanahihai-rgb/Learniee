@@ -9,7 +9,7 @@ import CourseGroupFields from "@/features/courses/components/CourseGroupFields";
 import CourseSection from "@/features/courses/components/CourseSection";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
 import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
-import { GROUP_FORMAT_INFO, isGroupType, type GroupFormat } from "@/features/courses/utils/groupClass";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { parseSessionsPerWeek } from "@/features/courses/utils/courseInput";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import type { AvailabilitySlot } from "@/features/shared/utils/availability";
@@ -183,15 +183,15 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     applyForm({ ...formData, groupDays: days });
   }
 
-  function handleGroupFormatChange(format: GroupFormat) {
-    const { mode, joinMode } = GROUP_FORMAT_INFO[format];
-
-    // Ongoing groups have no dates, so drop any that were typed.
+  function handleGroupKindChange(kind: "ONE_TIME" | "RECURRING") {
+    // Each type has its own fields, so clear the other type's answers.
     applyForm({
       ...formData,
-      groupMode: mode,
-      groupJoinMode: joinMode,
-      ...(mode === "OPEN" ? { groupStartDate: "", groupEndDate: "" } : {}),
+      groupKind: kind,
+      groupRecurrence: kind === "RECURRING" ? formData.groupRecurrence : "",
+      groupAllowMidwayJoin: kind === "ONE_TIME" ? formData.groupAllowMidwayJoin : "",
+      groupStartDate: kind === "ONE_TIME" ? formData.groupStartDate : "",
+      groupEndDate: kind === "ONE_TIME" ? formData.groupEndDate : "",
     });
   }
 
@@ -223,7 +223,8 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
             availability={availability}
             onChange={handleChange}
             onToggleDay={handleGroupDayToggle}
-            onFormatChange={handleGroupFormatChange}
+            onKindChange={handleGroupKindChange}
+            onTermsChange={(accepted) => applyForm({ ...formData, groupTermsAccepted: accepted })}
           />
         )}
       </CourseSection>
