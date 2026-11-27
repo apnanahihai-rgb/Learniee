@@ -1,19 +1,29 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import {
-  buildTabUrl,
-  type RawSearchParams,
-} from "@/features/shared/utils/tabRedirect";
+import { Suspense } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
-/**
- * Kept so old links and bookmarks keep working. A teacher's group classes now
- * live in the "Group classes" tab of /teacher/my-classes (create one from
- * Courses → Create course, class type "Group").
- */
-export default async function TeacherGroupClassesRedirectPage({
-  searchParams,
-}: {
-  searchParams: Promise<RawSearchParams>;
-}) {
-  redirect(buildTabUrl("/teacher/my-classes", "groups", await searchParams));
+import PdHubTabs from "@/features/parent/components/PdHubTabs";
+import { PD_BTN_PRI } from "@/features/parent/components/courses/pdUi";
+import GroupClassesTab from "@/features/teacher/components/my-classes/GroupClassesTab";
+
+/** Teacher → Group classes: manage the group classes that are running (classes, join link, homework, announcements). */
+export default function TeacherGroupClassesPage() {
+  return (
+    <Suspense fallback={null}>
+      <PdHubTabs
+        title="Group classes"
+        subtitle="Manage your running group classes: next class, students, homework and announcements."
+        action={
+          <Link href="/teacher/course-management/new?type=group" className={PD_BTN_PRI}>
+            <Plus size={16} />
+            Create group class
+          </Link>
+        }
+        tabs={[{ key: "groups", label: "Group classes", content: <GroupClassesTab /> }]}
+        defaultTab="groups"
+      />
+    </Suspense>
+  );
 }

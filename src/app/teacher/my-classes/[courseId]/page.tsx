@@ -62,7 +62,7 @@ export default function TeacherClassRosterPage({
         {roster.course.subject && <p className="text-sm text-gray-500 mt-0.5">{roster.course.subject}</p>}
         {roster.course.isGroup && (
           <Link
-            href={`/teacher/my-classes?tab=groups&group=${courseId}`}
+            href={`/teacher/group-classes?group=${courseId}`}
             className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-full transition-colors"
           >
             Open group class — classes, join link &amp; homework

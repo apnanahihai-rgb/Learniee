@@ -37,7 +37,7 @@ interface Props {
   error: string;
   onConfirmRevision: (id: string) => void;
   onDeclineRevision: (id: string) => void;
-  /** Show only group classes (the "Group classes" tab); otherwise only individual ones. */
+  /** Show only group classes (the Group classes page); otherwise only one-on-one ones. */
   groupOnly?: boolean;
 }
 
@@ -53,7 +53,7 @@ function Group({ title, count, children }: { title: string; count: number; child
 }
 
 /**
- * My Classes > Classes tab (Parent design). Active classes, classes
+ * My Classes > Classes tab and the Group classes page (Parent design). Active classes, classes
  * waiting for approval, and a toggle for completed ones. Enrollments
  * that need the parent's answer (revised by the teacher) or that keep
  * the old legacy view stay on the existing status card.
@@ -146,7 +146,7 @@ export default function MyClassesView({
                 title={groupOnly ? "No group classes yet" : "No active classes"}
                 text={groupOnly ? "Join a group class to see it here." : "Find a course to get started."}
                 action={
-                  <Link href={groupOnly ? "/parent/group-classes" : "/parent/courses"} className={PD_BTN_PRI}>
+                  <Link href={groupOnly ? "/parent/courses?type=group" : "/parent/courses"} className={PD_BTN_PRI}>
                     {groupOnly ? "Browse group classes" : "Find a course"}
                   </Link>
                 }

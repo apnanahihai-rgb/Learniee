@@ -7,7 +7,7 @@ import ClassesTab from "./ClassesTab";
 import GroupWorkspace from "./GroupWorkspace";
 
 /**
- * My classes > Group classes: one row per group course (next class with a
+ * Teacher > Group classes page: one row per group course (next class with a
  * Start / Join button), and a group page — classes with their join link,
  * homework, announcements and private chats. `?group=<courseId>` opens a
  * group page directly.

@@ -24,7 +24,6 @@ export default function ParentMyClassesHubPage() {
   );
   const isWaiting = (e: (typeof enrollments)[number]) => !e.isLegacy && WAITING.has(e.status);
   const waitingCount = enrollments.filter((e) => !isGroupType(e.course.type) && isWaiting(e)).length;
-  const groupWaitingCount = enrollments.filter((e) => isGroupType(e.course.type) && isWaiting(e)).length;
 
   return (
     <Suspense fallback={null}>
@@ -45,21 +44,6 @@ export default function ParentMyClassesHubPage() {
             badge: waitingCount,
             content: (
               <MyClassesView
-                enrollments={enrollments}
-                loading={loading}
-                error={error}
-                onConfirmRevision={(id) => respondToRevision(id, "CONFIRM")}
-                onDeclineRevision={(id) => respondToRevision(id, "DECLINE")}
-              />
-            ),
-          },
-          {
-            key: "groups",
-            label: "Group classes",
-            badge: groupWaitingCount,
-            content: (
-              <MyClassesView
-                groupOnly
                 enrollments={enrollments}
                 loading={loading}
                 error={error}

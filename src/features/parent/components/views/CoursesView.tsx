@@ -77,15 +77,32 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
   );
 }
 
-/** "Courses" tab — approved courses, searchable (also by `?q=` from the top bar) and filterable by subject. */
-export default function CoursesView({ groupOnly = false }: { groupOnly?: boolean }) {
+type KindFilter = "all" | "single" | "group";
+
+const KIND_OPTIONS: { key: KindFilter; label: string }[] = [
+  { key: "all", label: "All classes" },
+  { key: "single", label: "One-on-one" },
+  { key: "group", label: "Group classes" },
+];
+
+/**
+ * "Courses" tab — approved courses (one-on-one and group together), searchable
+ * (also by `?q=` from the top bar) and filterable by class type and subject.
+ * `?type=group` opens with the group filter on.
+ */
+export default function CoursesView() {
   const { courses: allCourses, loading, error } = useApprovedCourses();
-  // Group courses show with the normal ones (marked "Group"); the Group classes page shows only them.
+  const searchParams = useSearchParams();
+  const urlQ = searchParams.get("q") ?? "";
+  const [kind, setKind] = useState<KindFilter>(searchParams.get("type") === "group" ? "group" : "all");
+  const groupOnly = kind === "group";
   const courses = useMemo(
-    () => (groupOnly ? allCourses.filter((c) => isGroupType(c.type)) : allCourses),
-    [allCourses, groupOnly],
+    () =>
+      kind === "all"
+        ? allCourses
+        : allCourses.filter((c) => isGroupType(c.type) === (kind === "group")),
+    [allCourses, kind],
   );
-  const urlQ = useSearchParams().get("q") ?? "";
 
   // The top-bar search can change `?q=` while this tab is open: follow it.
   const [query, setQuery] = useState(urlQ);
@@ -138,6 +155,20 @@ export default function CoursesView({ groupOnly = false }: { groupOnly?: boolean
         />
       </div>
 
+      <div role="group" aria-label="Class type" className="mb-3 flex flex-wrap gap-2">
+        {KIND_OPTIONS.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            aria-pressed={kind === o.key}
+            onClick={() => setKind(o.key)}
+            className={pillFilter(kind === o.key)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
       {subjects.length > 1 && (
         <div role="group" aria-label="Subject" className="mb-4 flex flex-wrap gap-2">
           {subjects.map((s) => (
@@ -177,7 +208,7 @@ export default function CoursesView({ groupOnly = false }: { groupOnly?: boolean
               ? groupOnly
                 ? "Group classes appear here once teachers publish them and our team approves them."
                 : "Courses appear here once teachers publish them and our team approves them. You can also request a custom class."
-              : "Try another subject or search term, or request a custom class."
+              : "Try another class type, subject or search term, or request a custom class."
           }
           action={
             <Link href="/parent/courses?tab=request" className={PD_BTN_SEC}>
