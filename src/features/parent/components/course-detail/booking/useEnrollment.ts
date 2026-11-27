@@ -142,9 +142,12 @@ export function useEnrollment({
   const pricePreview = useMemo(() => {
     if (!cyclePlan || planProblem) return null;
 
-    // Group classes charge one flat price per cycle.
+    // Group classes are charged per session, like any course.
     if (group) {
-      return { sessionCount: cyclePlan.sessionCount, totalAmount: group.pricePerCycle };
+      return {
+        sessionCount: cyclePlan.sessionCount,
+        totalAmount: priceForSessions(group.pricePerSession, cyclePlan.sessionCount),
+      };
     }
 
     if (!ratePerSession) return null;

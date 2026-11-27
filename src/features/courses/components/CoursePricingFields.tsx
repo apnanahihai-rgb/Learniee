@@ -33,20 +33,20 @@ export default function CoursePricingFields({ formData, onChange, iitianEligible
   if (isGroupType(formData.type)) {
     return (
       <>
-        <FormField label="Price per cycle" htmlFor="field-groupPricePerCycle" required hint="What each student pays for one cycle (a month) of this group class.">
+        <FormField label="Price per session" htmlFor="field-price" required hint="What each student pays for one session of this group class. Parents are charged this for every session in their cycle.">
           <div className="relative max-w-xs">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-gray-500">
               ₹
             </span>
             <Input
-              id="field-groupPricePerCycle"
-              name="groupPricePerCycle"
+              id="field-price"
+              name="price"
               type="number"
               min={1}
               step={1}
               inputMode="numeric"
               placeholder="Enter price"
-              value={formData.groupPricePerCycle}
+              value={formData.price}
               onChange={onChange}
               className={`${controlClass} pl-7 font-semibold`}
             />

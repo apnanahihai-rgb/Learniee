@@ -167,7 +167,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: schedule.error }, { status: 400 });
       }
 
-      // Per-session price is derived from the cycle price, never client-sent.
+      // Per-session price, validated by parseGroupSchedule.
       input.price = String(schedule.value.pricePerSession);
     }
 

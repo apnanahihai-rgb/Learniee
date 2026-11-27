@@ -38,7 +38,6 @@ export interface CourseFormInput {
   /** Group classes only (type "Group"); ignored for Individual. */
   groupMaxStudents?: string | number;
   /** Group classes only: price for one cycle, weekly days (0 = Sun), time (IST), mode and dates. */
-  groupPricePerCycle?: string | number;
   groupDays?: number[];
   groupTime?: string;
   groupMode?: string;
@@ -110,7 +109,8 @@ function buildCourseData(input: CourseFormInput) {
     const end = parseDateKey(value.endDate);
 
     groupFields = {
-      groupPricePerCycle: value.pricePerCycle,
+      // Group classes are charged per session (Course.price), not a flat cycle price.
+      groupPricePerCycle: null,
       groupDays: value.days,
       groupTime: value.time,
       groupMode: value.mode,
@@ -119,7 +119,7 @@ function buildCourseData(input: CourseFormInput) {
       groupEndDate: end ? calendarDateToDate(end) : null,
     };
 
-    // `price` stays a per-session figure (derived) so existing cards keep working.
+    // The teacher enters the per-session price; the parent pays it x the sessions in the cycle.
     priceInput = { ...input, price: String(value.pricePerSession) };
   }
 

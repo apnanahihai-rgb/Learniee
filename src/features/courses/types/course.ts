@@ -36,8 +36,6 @@ export interface CourseFormData {
 
   /** Only used when `type` is "Group". */
   groupMaxStudents: string;
-  /** Group only: price for one cycle (month). */
-  groupPricePerCycle: string;
   /** Group only: weekly class days, 0 = Sunday. */
   groupDays: number[];
   /** Group only: "HH:mm" (IST). */
@@ -84,7 +82,6 @@ export const initialCourseFormData: CourseFormData = {
   certificateSessionThreshold: "",
 
   groupMaxStudents: "",
-  groupPricePerCycle: "",
   groupDays: [],
   groupTime: "",
   groupMode: "",

@@ -91,7 +91,7 @@ export default function GroupEnrollSection({
     !cyclePlan ||
     !!planProblem;
 
-  const total = pricePreview?.totalAmount ?? group.pricePerCycle;
+  const total = pricePreview?.totalAmount ?? group.pricePerSession;
 
   return (
     <div>
@@ -116,8 +116,8 @@ export default function GroupEnrollSection({
         {anytime && <p>Anytime — join on any date you choose.</p>}
         {!group.joinMode && !timeBound && <p>Join any time.</p>}
         <p>
-          <span className="font-bold text-gray-800">₹{group.pricePerCycle.toLocaleString("en-IN")}</span> per
-          month, same for every student
+          <span className="font-bold text-gray-800">₹{group.pricePerSession.toLocaleString("en-IN")}</span> per
+          session, charged for the sessions in your cycle
         </p>
       </div>
 

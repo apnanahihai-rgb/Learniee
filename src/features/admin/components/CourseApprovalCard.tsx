@@ -39,13 +39,7 @@ export default function CourseApprovalCard({
   onReject,
 }: Props) {
   const group = isGroupType(course.type);
-  const price = group
-    ? course.groupPricePerCycle
-      ? `₹${course.groupPricePerCycle} / cycle`
-      : "-"
-    : course.price
-      ? `₹${course.price}`
-      : "-";
+  const price = course.price ? `₹${course.price}${group ? " / session" : ""}` : "-";
 
   return (
     <AdminReviewCard

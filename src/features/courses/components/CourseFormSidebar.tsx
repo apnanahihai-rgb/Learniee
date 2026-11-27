@@ -30,8 +30,8 @@ function getCompletion(formData: CourseFormData, hasThumbnail: boolean, hasIntro
       (!isGroupType(f.type) ||
         (parseGroupMaxStudents(f.groupMaxStudents).ok &&
           // Price is judged by the Pricing section, so a dummy one is passed here.
-          parseGroupSchedule({ ...f, groupPricePerCycle: 1 }).ok)),
-    pricing: isGroupType(f.type) ? Number(f.groupPricePerCycle) > 0 : Number(f.price) > 0,
+          parseGroupSchedule({ ...f, price: 1 }).ok)),
+    pricing: Number(f.price) > 0,
     certificate: !f.certificateEnabled || Number(f.certificateSessionThreshold) >= 1,
     media: hasThumbnail && hasIntroVideo,
   } as Record<string, boolean>;

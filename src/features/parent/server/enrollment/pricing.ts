@@ -190,10 +190,8 @@ async function priceLegacyEnrollment(
  *   schedule       = Course.groupDays / groupTime (always a MONTHLY cycle)
  *   start date     = TIME_BOUND: Course.groupStartDate (joining closes once
  *                    it has passed); OPEN: the parent's pick, not in the past
- *   totalAmount    = Course.groupPricePerCycle — the same flat price for
- *                    every student, whatever the month's session count
- *   ratePerSession = totalAmount / session count (kept so renewals, the
- *                    ledger and every screen reading it keep working)
+ *   ratePerSession = Course.price — charged PER SESSION, like any course
+ *   totalAmount    = ratePerSession x the cycle's session count
  *
  * With `options.enforceGroupRules` (order creation only) it also refuses a
  * full group and a student who already holds a seat. Verify and the webhook
@@ -208,7 +206,7 @@ async function priceGroupEnrollment(
     subject: string | null;
     duration: string | null;
     groupMaxStudents: number | null;
-    groupPricePerCycle: { toString(): string } | null;
+    price: { toString(): string } | null;
     groupDays: number[];
     groupTime: string | null;
     groupMode: "TIME_BOUND" | "OPEN" | null;
@@ -217,7 +215,7 @@ async function priceGroupEnrollment(
     groupEndDate: Date | null;
   },
 ): Promise<PricedEnrollment> {
-  const groupPrice = course.groupPricePerCycle == null ? NaN : Number(course.groupPricePerCycle);
+  const groupPrice = course.price == null ? NaN : Number(course.price);
   const scheduleDays = [...new Set(course.groupDays)].sort((a, b) => a - b);
 
   if (
@@ -305,8 +303,8 @@ async function priceGroupEnrollment(
     }
   }
 
-  const totalAmount = Math.round(groupPrice * 100) / 100;
-  const ratePerSession = Math.round((totalAmount / plan.sessionCount) * 100) / 100;
+  const ratePerSession = Math.round(groupPrice * 100) / 100;
+  const totalAmount = priceForSessions(ratePerSession, plan.sessionCount);
   const subject = (input.subject ?? course.subject ?? "").trim() || null;
 
   const parent = await prisma.parentProfile.findUnique({
@@ -377,7 +375,7 @@ async function priceCycleEnrollment(
       subject: true,
       duration: true,
       groupMaxStudents: true,
-      groupPricePerCycle: true,
+      price: true,
       groupDays: true,
       groupTime: true,
       groupMode: true,

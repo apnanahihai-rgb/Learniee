@@ -73,9 +73,6 @@ export function isGroupJoinMode(value: unknown): value is GroupJoinMode {
   return typeof value === "string" && (GROUP_JOIN_MODES as readonly string[]).includes(value);
 }
 
-/** Sessions assumed per cycle (one month ≈ 4 weeks) to derive a per-session price. */
-const WEEKS_PER_CYCLE = 4;
-
 export interface GroupScheduleInput {
   groupDays?: unknown;
   groupTime?: unknown;
@@ -83,7 +80,8 @@ export interface GroupScheduleInput {
   groupJoinMode?: unknown;
   groupStartDate?: unknown;
   groupEndDate?: unknown;
-  groupPricePerCycle?: unknown;
+  /** Price the teacher charges for ONE session (the course `price` field). */
+  price?: unknown;
 }
 
 export interface GroupSchedule {
@@ -94,8 +92,7 @@ export interface GroupSchedule {
   /** "YYYY-MM-DD" (IST calendar date) for TIME_BOUND, otherwise null. */
   startDate: string | null;
   endDate: string | null;
-  pricePerCycle: number;
-  /** Derived: price per cycle ÷ (days per week × 4), 2 decimals. */
+  /** What each student pays per session; the parent is charged this × the sessions in the cycle. */
   pricePerSession: number;
 }
 
@@ -126,16 +123,16 @@ export function parseGroupSchedule(
     return { ok: false, error: "Enter the class time (IST) for the group class." };
   }
 
-  const pricePerCycle = Number(input.groupPricePerCycle);
+  const rawPrice = Number(input.price);
 
-  if (!Number.isFinite(pricePerCycle) || pricePerCycle <= 0) {
-    return { ok: false, error: "Enter a price per cycle greater than 0." };
+  if (!Number.isFinite(rawPrice) || rawPrice <= 0) {
+    return { ok: false, error: "Enter a price per session greater than 0." };
   }
 
-  const pricePerSession = Math.round((pricePerCycle / (days.length * WEEKS_PER_CYCLE)) * 100) / 100;
+  const pricePerSession = Math.round(rawPrice * 100) / 100;
 
   if (pricePerSession <= 0) {
-    return { ok: false, error: "The price per cycle is too low for this many sessions." };
+    return { ok: false, error: "Enter a price per session greater than 0." };
   }
 
   if (!isGroupMode(input.groupMode)) {
@@ -178,7 +175,6 @@ export function parseGroupSchedule(
       joinMode: input.groupJoinMode,
       startDate,
       endDate,
-      pricePerCycle: Math.round(pricePerCycle * 100) / 100,
       pricePerSession,
     },
   };
@@ -234,7 +230,8 @@ export interface GroupBookingInfo {
   /** "YYYY-MM-DD" for TIME_BOUND, otherwise null. */
   startDate: string | null;
   endDate: string | null;
-  pricePerCycle: number;
+  /** Per session, from `Course.price`. */
+  pricePerSession: number;
   maxStudents: number | null;
   seatsTaken: number;
 }
@@ -247,7 +244,7 @@ interface GroupBookingSource {
   groupJoinMode?: string | null;
   groupStartDate?: string | Date | null;
   groupEndDate?: string | Date | null;
-  groupPricePerCycle?: string | number | null;
+  price?: string | number | null;
   groupMaxStudents?: number | null;
   groupSeatsTaken?: number | null;
 }
@@ -259,15 +256,15 @@ const toDay = (v: string | Date | null | undefined) =>
 export function groupBookingFromCourse(course: GroupBookingSource): GroupBookingInfo | null {
   if (!isGroupType(course.type)) return null;
 
-  const pricePerCycle = Number(course.groupPricePerCycle);
+  const pricePerSession = Number(course.price);
   const days = course.groupDays ?? [];
 
   if (
     !isGroupMode(course.groupMode) ||
     !course.groupTime ||
     days.length === 0 ||
-    !Number.isFinite(pricePerCycle) ||
-    pricePerCycle <= 0
+    !Number.isFinite(pricePerSession) ||
+    pricePerSession <= 0
   ) {
     return null;
   }
@@ -279,7 +276,7 @@ export function groupBookingFromCourse(course: GroupBookingSource): GroupBooking
     joinMode: isGroupJoinMode(course.groupJoinMode) ? course.groupJoinMode : null,
     startDate: toDay(course.groupStartDate),
     endDate: toDay(course.groupEndDate),
-    pricePerCycle,
+    pricePerSession,
     maxStudents: course.groupMaxStudents ?? null,
     seatsTaken: course.groupSeatsTaken ?? 0,
   };
