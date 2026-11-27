@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { EnrollmentStatus } from "@prisma/client";
 
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { ensureSessionsGenerated } from "@/features/shared/server/classSession.service";
 import { resolveEndedSessionsForEnrollments } from "@/features/shared/server/sessionResolve.service";
 
@@ -47,6 +48,11 @@ export interface CalendarOccurrence {
   courseId: string;
   courseTitle: string | null;
   subject: string | null;
+  /** Teacher calendar only: this row is a whole group class (see `collapseGroupSessions`). */
+  isGroup?: boolean;
+  /** Students in the group class (seats not cancelled by their own parent). */
+  groupSize?: number;
+  groupStudentNames?: string[];
 }
 
 const sessionInclude = {
@@ -57,7 +63,7 @@ const sessionInclude = {
   enrollment: {
     select: {
       subject: true,
-      course: { select: { id: true, courseTitle: true, subject: true } },
+      course: { select: { id: true, courseTitle: true, subject: true, type: true } },
     },
   },
 } as const;
@@ -113,10 +119,87 @@ function toOccurrence(session: SessionWithRelations): CalendarOccurrence {
   };
 }
 
+/** A parent cancelled their OWN seat: the class still happens for everyone else. */
+function isOwnSeatCancel(session: SessionWithRelations): boolean {
+  return (
+    session.status === "CANCELLED_LATE" ||
+    (session.status === "CANCELLED" && session.cancelledByRole === "PARENT")
+  );
+}
+
+/** Which student's row stands for the group class: the most "alive" status first. */
+const GROUP_STATUS_PRIORITY: Record<string, number> = {
+  SCHEDULED: 0,
+  COMPLETED: 1,
+  NEEDS_REVIEW: 2,
+  STUDENT_NO_SHOW: 3,
+  TEACHER_NO_SHOW: 4,
+  EXCUSED: 5,
+  CANCELLED: 6,
+  CANCELLED_LATE: 7,
+  MISSED: 8,
+};
+
+/**
+ * Group classes (Nov 2026), teacher calendar: every student of a group has
+ * their own `ClassSession` row for the same class (same course, same start),
+ * but the teacher teaches ONE class. Those rows are collapsed into a single
+ * occurrence, named "Group · N students". Individual classes pass through.
+ *
+ * The group's row is the id of one student's session (the most "alive" one),
+ * which is enough to open the class: Start, End, Cancel and Reschedule on any
+ * student's session already act on the whole group.
+ */
+function collapseGroupSessions(sessions: SessionWithRelations[]): CalendarOccurrence[] {
+  const groups = new Map<string, SessionWithRelations[]>();
+  const order: Array<{ single: SessionWithRelations } | { groupKey: string }> = [];
+
+  for (const session of sessions) {
+    if (!isGroupType(session.enrollment.course.type) || !session.startsAt) {
+      order.push({ single: session });
+      continue;
+    }
+
+    const key = `${session.enrollment.course.id}|${session.startsAt.toISOString()}`;
+    const members = groups.get(key);
+
+    if (members) {
+      members.push(session);
+    } else {
+      groups.set(key, [session]);
+      order.push({ groupKey: key });
+    }
+  }
+
+  return order.map((entry) => {
+    if ("single" in entry) return toOccurrence(entry.single);
+
+    const members = groups.get(entry.groupKey) ?? [];
+    const seats = members.filter((member) => !isOwnSeatCancel(member));
+    const pool = seats.length > 0 ? seats : members;
+    const representative = [...pool].sort(
+      (a, b) =>
+        (GROUP_STATUS_PRIORITY[a.status] ?? 9) - (GROUP_STATUS_PRIORITY[b.status] ?? 9) ||
+        a.id.localeCompare(b.id),
+    )[0];
+
+    const size = seats.length;
+
+    return {
+      ...toOccurrence(representative),
+      studentName: `Group · ${size} ${size === 1 ? "student" : "students"}`,
+      isGroup: true,
+      groupSize: size,
+      groupStudentNames: seats.map((member) => displayName(member.student)).sort(),
+    };
+  });
+}
+
 async function occurrencesFor(
   enrollmentWhere: Parameters<typeof prisma.enrollment.findMany>[0],
   start: Date,
   end: Date,
+  collapseGroups = false,
 ): Promise<CalendarOccurrence[]> {
   const enrollments = await prisma.enrollment.findMany({
     ...enrollmentWhere,
@@ -146,7 +229,7 @@ async function occurrencesFor(
     orderBy: { scheduledDate: "asc" },
   });
 
-  return sessions.map(toOccurrence);
+  return collapseGroups ? collapseGroupSessions(sessions) : sessions.map(toOccurrence);
 }
 
 /**
@@ -175,7 +258,10 @@ export async function getParentCalendarOccurrences(
   );
 }
 
-/** A Teacher's calendar — every scheduled class, across every enrolled student. */
+/**
+ * A Teacher's calendar — every scheduled class, across every enrolled student.
+ * A group class is listed once (not once per student).
+ */
 export async function getTeacherCalendarOccurrences(
   teacherId: string,
   monthParam?: string,
@@ -191,6 +277,7 @@ export async function getTeacherCalendarOccurrences(
     },
     start,
     end,
+    true,
   );
 }
 
@@ -210,5 +297,6 @@ export async function getTeacherOccurrencesInRange(teacherId: string, from: Date
     },
     from,
     to,
+    true,
   );
 }

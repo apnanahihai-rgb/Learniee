@@ -88,6 +88,7 @@ export async function releaseClosedCyclePayout(
           cycleNumber: cycle.cycleNumber,
           ratePerSession: cycle.ratePerSession,
           price: cycle.price,
+          sessionCount: cycle.sessionCount,
         },
         countedSessions: cycle.countedSessionCount ?? 0,
       });

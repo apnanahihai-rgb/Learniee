@@ -129,6 +129,42 @@ export function notifyRescheduleResponded(requestId: string, approved: boolean) 
   });
 }
 /**
+ * Group class: the teacher moved the whole group's class at once, so there is
+ * nothing for the parent to approve — they are just told the new time.
+ * Reuses RESCHEDULE_APPROVED so no enum migration is needed.
+ */
+export function notifyGroupClassMoved(requestId: string) {
+  return safe("group class moved", async () => {
+    const request = await prisma.rescheduleRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        parentId: true,
+        proposedDate: true,
+        proposedTime: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!request) return;
+
+    const courseTitle = request.enrollment.course.courseTitle || "the class";
+    const dateLabel = request.proposedDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
+    const timeLabel = request.proposedTime ? ` at ${request.proposedTime}` : "";
+
+    await createNotification({
+      recipientId: request.parentId,
+      recipientRole: R.PARENT,
+      type: T.RESCHEDULE_APPROVED,
+      title: "Group class rescheduled",
+      message: `The teacher moved the "${courseTitle}" group class to ${dateLabel}${timeLabel}.`,
+      link: "/parent/calendar",
+    });
+  });
+}
+/**
  * Phase 1.2 / 1.3: a pending request was closed by the system
  * (expired at class start, or cancelled because the teacher's leave
  * was approved). Both parties are told; reuses RESCHEDULE_REJECTED so

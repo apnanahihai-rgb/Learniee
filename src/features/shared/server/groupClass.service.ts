@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ClassSessionStatus, EnrollmentStatus } from "@prisma/client";
+import { ClassSessionStatus, EnrollmentStatus, type Prisma } from "@prisma/client";
 
 import { isGroupType } from "@/features/courses/utils/groupClass";
 import { prisma } from "@/lib/prisma";
@@ -92,6 +92,58 @@ export async function countGroupClassStudents(
     size: rows.length,
     joined: rows.filter((row) => row.studentJoinedAt !== null).length,
   };
+}
+
+/**
+ * Locks one group class (same course, same start) for the rest of the
+ * transaction, so the writers that treat the class as ONE thing — the single
+ * strike, the shared make-up slot — can't race each other when each student's
+ * follow-up runs in its own transaction. Take the cycle lock first, then this
+ * one. Released automatically when the transaction ends.
+ *
+ * `$executeRaw` (not `$queryRaw`): the lock function returns `void`, which
+ * Prisma can't read back as a column.
+ */
+export async function lockGroupClass(
+  tx: Prisma.TransactionClient,
+  courseId: string,
+  startsAt: Date,
+): Promise<void> {
+  const key = `group-class:${courseId}:${startsAt.toISOString()}`;
+
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+}
+
+/**
+ * Every still-SCHEDULED student session of one group class, the one passed in
+ * included. Empty when the session isn't a group session. Used by the actions
+ * that move or cancel the class as a whole (teacher cancel, teacher reschedule).
+ */
+export async function listScheduledGroupMembers(session: GroupSessionRef) {
+  if (!isGroupSession(session)) return [];
+
+  return prisma.classSession.findMany({
+    where: {
+      startsAt: session.startsAt,
+      enrollment: { courseId: session.enrollment.courseId },
+      status: ClassSessionStatus.SCHEDULED,
+    },
+    select: {
+      id: true,
+      enrollmentId: true,
+      cycleId: true,
+      teacherId: true,
+      studentId: true,
+      parentId: true,
+      scheduledDate: true,
+      scheduledTime: true,
+      startsAt: true,
+      lengthMinutes: true,
+      studentJoinedAt: true,
+      teacherStartedAt: true,
+    },
+    orderBy: { id: "asc" },
+  });
 }
 
 export interface GroupMateEnrollment {

@@ -51,6 +51,9 @@ export type FollowUpSession = Prisma.ClassSessionGetPayload<{
         scheduleDays: true;
         scheduleTime: true;
         sessionLengthMinutes: true;
+        // Group classes: a group class is found from the course + start.
+        courseId: true;
+        course: { select: { type: true } };
       };
     };
     cycle: { select: { id: true; startDate: true; status: true; extendedDeadline: true } };

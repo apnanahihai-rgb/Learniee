@@ -4,6 +4,32 @@ import { PLATFORM_SHARE, TEACHER_SHARE, VERIFICATION_WINDOW_MS } from './base';
 import { round2 } from '@/lib/money';
 
 /**
+ * What a cycle earned for `counted` sessions (cycle model).
+ *
+ * Normally `rate x counted`. A group-class cycle is priced as one flat fee,
+ * and its `ratePerSession` is that fee divided by the month's session count
+ * rounded to 2 decimals, so `rate x sessionCount` can differ from the fee by a
+ * few paise (1000 / 12 = 83.33; 83.33 x 12 = 999.96). When that happens the
+ * earning is the same share of the fee actually paid instead, so a fully
+ * counted cycle always earns exactly its price. An Individual cycle (where
+ * `rate x sessionCount` already equals the price) is unchanged.
+ */
+export function earnedForCycle(
+  cycle: { ratePerSession: Prisma.Decimal | number; price: Prisma.Decimal | number; sessionCount: number },
+  counted: number,
+): number {
+  const rate = Number(cycle.ratePerSession);
+  const price = Number(cycle.price);
+  const paidFor = cycle.sessionCount;
+
+  if (!(paidFor > 0) || Math.abs(rate * paidFor - price) < 0.005) {
+    return round2(rate * counted);
+  }
+
+  return round2((price * Math.min(Math.max(counted, 0), paidFor)) / paidFor);
+}
+
+/**
  * Creates the ledger row for a just-completed cycle. Meant to be
  * called with the *same* `tx` client the Enrollment update runs in
  * (see cycleProgress.service.ts), so the cycle-progress update and
@@ -105,7 +131,12 @@ export async function createLedgerEntryForClosedCycle(
       courseId: string;
       dueDate: Date;
     };
-    cycle: { cycleNumber: number; ratePerSession: Prisma.Decimal; price: Prisma.Decimal };
+    cycle: {
+      cycleNumber: number;
+      ratePerSession: Prisma.Decimal;
+      price: Prisma.Decimal;
+      sessionCount: number;
+    };
     countedSessions: number;
   },
 ): Promise<boolean> {
@@ -116,7 +147,7 @@ export async function createLedgerEntryForClosedCycle(
   }
 
   const rate = Number(cycle.ratePerSession);
-  const earned = round2(rate * countedSessions);
+  const earned = earnedForCycle(cycle, countedSessions);
   const now = new Date();
 
   const result = await tx.tuitionLedgerEntry.createMany({
@@ -175,7 +206,12 @@ export async function reconcileLedgerEntryForClosedCycle(
       courseId: string;
       dueDate: Date;
     };
-    cycle: { cycleNumber: number; ratePerSession: Prisma.Decimal; price: Prisma.Decimal };
+    cycle: {
+      cycleNumber: number;
+      ratePerSession: Prisma.Decimal;
+      price: Prisma.Decimal;
+      sessionCount: number;
+    };
     countedSessions: number;
   },
 ): Promise<"CREATED" | "UPDATED" | "REJECTED" | "LOCKED" | "UNCHANGED"> {
@@ -226,7 +262,7 @@ export async function reconcileLedgerEntryForClosedCycle(
     return "REJECTED";
   }
 
-  const earned = round2(Number(cycle.ratePerSession) * countedSessions);
+  const earned = earnedForCycle(cycle, countedSessions);
 
   await tx.tuitionLedgerEntry.update({
     where: { id: entry.id },

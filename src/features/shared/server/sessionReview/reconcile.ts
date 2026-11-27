@@ -86,6 +86,7 @@ export async function reconcileClosedCycle(cycleId: string): Promise<string[]> {
           cycleNumber: cycle.cycleNumber,
           ratePerSession: cycle.ratePerSession,
           price: cycle.price,
+          sessionCount: cycle.sessionCount,
         },
         countedSessions: counted,
       });

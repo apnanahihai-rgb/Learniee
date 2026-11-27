@@ -4,3 +4,4 @@ export * from './rescheduleRequest/propose';
 export * from './rescheduleRequest/respond';
 export * from './rescheduleRequest/cancel';
 export * from './rescheduleRequest/close';
+export * from './rescheduleRequest/group';

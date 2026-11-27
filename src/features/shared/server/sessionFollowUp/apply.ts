@@ -1,5 +1,7 @@
 import { logActivity } from "@/features/shared/server/activityLog.service";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { lockCycle } from "@/features/shared/server/cycleSlots.service";
+import { lockGroupClass } from "@/features/shared/server/groupClass.service";
 import { notifySessionFollowUp } from "@/features/shared/server/notificationTriggers.service";
 import {
     planSessionFollowUp,
@@ -27,6 +29,8 @@ export async function applySessionFollowUp(sessionId: string, now: Date): Promis
           scheduleDays: true,
           scheduleTime: true,
           sessionLengthMinutes: true,
+          courseId: true,
+          course: { select: { type: true } },
         },
       },
       cycle: { select: { id: true, startDate: true, status: true, extendedDeadline: true } },
@@ -121,6 +125,34 @@ function notificationOutcome(session: FollowUpSession, plan: SessionFollowUpPlan
 
   return "NOBODY_JOINED" as const;
 }
+/**
+ * Group class: true when another student's session of this same class
+ * already carries the strike. Takes the group lock first so two students'
+ * follow-ups (each in its own transaction) can't both decide they are first.
+ * Always false for an Individual class.
+ */
+async function groupClassAlreadyStruck(
+  tx: Prisma.TransactionClient,
+  session: FollowUpSession,
+): Promise<boolean> {
+  if (!isGroupType(session.enrollment.course.type) || !session.startsAt) return false;
+
+  await lockGroupClass(tx, session.enrollment.courseId, session.startsAt);
+
+  const existing = await tx.teacherStrike.findFirst({
+    where: {
+      teacherId: session.teacherId,
+      classSessionId: { not: session.id },
+      classSession: {
+        startsAt: session.startsAt,
+        enrollment: { courseId: session.enrollment.courseId },
+      },
+    },
+    select: { id: true },
+  });
+
+  return existing !== null;
+}
 async function applyInTransaction(
   tx: Prisma.TransactionClient,
   session: FollowUpSession,
@@ -180,7 +212,11 @@ async function applyInTransaction(
 
   let strikeRecorded = false;
 
-  if (plan.strike) {
+  // Group class: the class was lost once, so the teacher gets ONE strike for
+  // it — not one per student.
+  const strikeAlreadyHeld = plan.strike ? await groupClassAlreadyStruck(tx, session) : false;
+
+  if (plan.strike && !strikeAlreadyHeld) {
     const result = await tx.teacherStrike.createMany({
       data: [
         {

@@ -1,6 +1,7 @@
 import {
     notifyReschedulePropose
 } from "@/features/shared/server/notificationTriggers.service";
+import { isGroupSession } from "@/features/shared/server/groupClass.service";
 import { cancelSession } from "@/features/shared/server/sessionFlow.service";
 import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
 import {
@@ -15,6 +16,7 @@ import {
     RescheduleRequestStatus,
 } from "@prisma/client";
 import "server-only";
+import { rescheduleGroupClass } from './group';
 import { ActorRole, assertCycleSlotAllowed, assertLegacyRescheduleNotice, assertNotOnTeacherLeave, assertUnderRescheduleCap, assertValidTime, isCycleModelSession, parseDateOnly, PENDING_STATUSES, requestInclude, RescheduleRequestError, startOfDay } from './base';
 
 /**
@@ -29,6 +31,8 @@ async function loadReschedulableSession(sessionId: string, actorRole: ActorRole,
       actorRole === "TEACHER"
         ? { id: sessionId, teacherId: actorId }
         : { id: sessionId, parentId: actorId },
+    // Group classes: a group class is found from the course + start.
+    include: { enrollment: { select: { courseId: true, course: { select: { type: true } } } } },
   });
 
   if (!session) {
@@ -130,6 +134,24 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
       409,
       "LATE_TEACHER_RESCHEDULE",
     );
+  }
+
+  // Group class (Nov 2026): one class for the whole group. Only the teacher
+  // moves it, and it moves for every student at once.
+  if (isGroupSession(session)) {
+    if (input.actorRole === "PARENT") {
+      throw new RescheduleRequestError(
+        "This is a group class, so only the teacher can move it — for the whole group. You can cancel just your own class instead.",
+        409,
+      );
+    }
+
+    return rescheduleGroupClass({
+      session,
+      proposedDate: input.proposedDate,
+      proposedTime: assertValidTime(input.proposedTime),
+      reason: input.reason?.trim() || null,
+    });
   }
 
   const existingPending = await prisma.rescheduleRequest.findFirst({

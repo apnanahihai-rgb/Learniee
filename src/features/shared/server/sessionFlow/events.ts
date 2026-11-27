@@ -299,6 +299,27 @@ export async function cancelSession(
 
   const cleanReason = reason?.trim().slice(0, 500) || null;
 
+  // Group class: a TEACHER's cancel is the whole class, so every other
+  // student's session of it is cancelled together with this one. A parent's
+  // cancel stays their own seat only.
+  const groupSiblings = actor.role === "TEACHER" ? await findGroupSiblings(session) : [];
+
+  if (groupSiblings.some((s) => s.studentJoinedAt !== null || s.teacherStartedAt !== null)) {
+    throw new SessionFlowError(
+      "A student has already joined this group class, so it can't be cancelled any more.",
+      409,
+    );
+  }
+
+  const siblingIds = groupSiblings.map((s) => s.id);
+
+  const cancelData = {
+    status,
+    cancelledAt: now,
+    cancelledByRole: actor.role,
+    cancelReason: cleanReason,
+  };
+
   const changed = await prisma.$transaction(async (tx) => {
     const result = await tx.classSession.updateMany({
       // Re-checked inside the write so a Start/Join that lands at the
@@ -309,18 +330,28 @@ export async function cancelSession(
         teacherStartedAt: null,
         studentJoinedAt: null,
       },
-      data: {
-        status,
-        cancelledAt: now,
-        cancelledByRole: actor.role,
-        cancelReason: cleanReason,
-      },
+      data: cancelData,
     });
 
     if (result.count === 0) return false;
 
+    if (siblingIds.length > 0) {
+      await tx.classSession.updateMany({
+        where: {
+          id: { in: siblingIds },
+          status: ClassSessionStatus.SCHEDULED,
+          teacherStartedAt: null,
+          studentJoinedAt: null,
+        },
+        data: cancelData,
+      });
+    }
+
     await tx.rescheduleRequest.updateMany({
-      where: { classSessionId: session.id, status: { in: PENDING_RESCHEDULE_STATUSES } },
+      where: {
+        classSessionId: { in: [session.id, ...siblingIds] },
+        status: { in: PENDING_RESCHEDULE_STATUSES },
+      },
       data: { status: RescheduleRequestStatus.CANCELLED, respondedAt: now },
     });
 
@@ -341,12 +372,24 @@ export async function cancelSession(
     description: `Class session cancelled by the ${actor.role.toLowerCase()} (${statusLabel(
       status as SessionStatusValue,
     )}).`,
-    metadata: { sessionId: session.id, status, reason: cleanReason },
+    metadata: {
+      sessionId: session.id,
+      status,
+      reason: cleanReason,
+      ...(siblingIds.length > 0 ? { groupSessionIds: siblingIds } : {}),
+    },
   });
 
   // Part 1C: a teacher cancel gets its make-up and strike, a late
   // parent cancel feeds the counters, and the cycle close check runs.
   await runSessionFollowUps(session.id, now);
+
+  // Group class: the other students' sessions run their own follow-up one
+  // after another. The first make-up fixes the group's slot and the rest book
+  // the same one; the class gets one strike, not one per student.
+  for (const siblingId of siblingIds) {
+    await runSessionFollowUps(siblingId, now);
+  }
 
   return reload(sessionId, actor, now);
 }

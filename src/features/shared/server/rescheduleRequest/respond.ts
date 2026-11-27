@@ -1,10 +1,12 @@
 import {
     notifyRescheduleResponded
 } from "@/features/shared/server/notificationTriggers.service";
+import { isGroupSession } from "@/features/shared/server/groupClass.service";
 import {
     dateToCalendarDate,
     isValidTimeOfDay,
-    platformWallClockToUtc
+    platformWallClockToUtc,
+    toDateKey,
 } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,6 +15,7 @@ import {
 } from "@prisma/client";
 import "server-only";
 import { expireStaleRescheduleRequests } from './close';
+import { rescheduleGroupClass } from './group';
 import { ActorRole, assertCycleSlotAllowed, assertLegacyRescheduleNotice, assertNotOnTeacherLeave, assertSlotStillFree, isCycleModelSession, requestInclude, RescheduleRequestError } from './base';
 
 function assertCanRespond(
@@ -99,6 +102,7 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
   // APPROVE
   const session = await prisma.classSession.findUnique({
     where: { id: request.classSessionId },
+    include: { enrollment: { select: { courseId: true, course: { select: { type: true } } } } },
   });
 
   if (!session || session.status !== ClassSessionStatus.SCHEDULED) {
@@ -106,6 +110,26 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
       "This class is no longer scheduled — nothing to reschedule.",
       409,
     );
+  }
+
+  // Group class (Nov 2026): the class moves for the whole group, and only the
+  // teacher decides. A request raised before groups moved as one can still
+  // be answered here: the teacher's approval moves every student's session.
+  if (isGroupSession(session)) {
+    if (input.actorRole === "PARENT") {
+      throw new RescheduleRequestError(
+        "This is a group class, so only the teacher can move it — for the whole group. Please reject this request; the teacher can propose a new time.",
+        409,
+      );
+    }
+
+    return rescheduleGroupClass({
+      session,
+      proposedDate: toDateKey(dateToCalendarDate(request.proposedDate)),
+      proposedTime: request.proposedTime,
+      reason: request.reason,
+      existing: { id: request.id, classSessionId: session.id, responseNote },
+    });
   }
 
   // Cycle-model sessions: the 4-hour and cycle-deadline rules hold at
