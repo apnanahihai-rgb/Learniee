@@ -3,7 +3,14 @@
 import { CheckCircle2, Info, Loader2, MessageCircle, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { ageFitsGroup, groupRegistrationState, resolveGroupStartDate, type GroupBookingInfo } from "@/features/courses/utils/groupClass";
+import {
+  ageFitsGroup,
+  GROUP_MIN_CLASSES_LEFT,
+  groupClassesLeft,
+  groupRegistrationState,
+  resolveGroupStartDate,
+  type GroupBookingInfo,
+} from "@/features/courses/utils/groupClass";
 import { formatTime12 } from "@/features/shared/utils/availability";
 import { formatCycleSummary } from "@/features/shared/utils/cyclePlan";
 import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
@@ -66,7 +73,9 @@ export default function GroupEnrollSection({
   const anytime = group.joinMode === "ANYTIME";
   const seatsLeft = group.maxStudents === null ? null : Math.max(group.maxStudents - group.seatsTaken, 0);
   const full = seatsLeft === 0;
-  const registration = groupRegistrationState(group.regStartDate, group.regEndDate);
+  // Registration closes on the teacher's end date, or earlier (the day before the
+  // last 4 classes) for a one-time group that allows mid-way joining.
+  const registration = groupRegistrationState(group.regStartDate, group.lastRegistrationDate);
   const registrationOpen = registration === "OPEN";
   // Only flag a mismatch once a child is picked.
   const ageMismatch =
@@ -80,11 +89,25 @@ export default function GroupEnrollSection({
     groupEndDate: group.endDate,
     requested: startDate,
     today: todayInPlatformTz(),
+    days: group.days,
   });
-  const ended = !!group.joinMode && !joinCheck.ok;
-  const closed = (timeBound && !group.joinMode && startInPast) || ended;
+  const joinFailed = !!group.joinMode && !joinCheck.ok;
+  // Mid-way joining: fewer than 4 classes left from the chosen start date.
+  const tooFewLeft = joinFailed && !joinCheck.ok && joinCheck.reason === "TOO_FEW_LEFT";
+  const ended = joinFailed && !tooFewLeft;
+  const closed = (timeBound && !group.joinMode && startInPast) || joinFailed;
+  const midwayJoin = timeBound && !!group.joinMode;
+  const joiningMidway = midwayJoin && !!group.startDate && !!startDate && startDate > group.startDate;
+  const classesLeft = joiningMidway ? groupClassesLeft(group.days, startDate, group.endDate) : null;
+  const closesEarly =
+    midwayJoin &&
+    !!group.lastRegistrationDate &&
+    group.lastRegistrationDate !== group.regEndDate &&
+    group.lastRegistrationDate >= (group.regStartDate ?? "");
   // Earliest date the date picker allows (a time-bound group can't be joined before it starts).
   const pickerMin = timeBound && group.startDate && group.startDate > minStartDate ? group.startDate : minStartDate;
+  // Latest start that still leaves 4 classes (mid-way joining), else the group's end.
+  const pickerMax = timeBound && group.endDate ? (group.lastStartDate ?? group.endDate) : undefined;
   // The parent picks the date for an open group, and for any "anytime" group.
   const showDatePicker = anytime || (!timeBound && !group.joinMode);
 
@@ -121,6 +144,12 @@ export default function GroupEnrollSection({
             {group.regEndDate ? ` – ${formatDay(group.regEndDate)}` : " onwards"}
           </p>
         )}
+        {closesEarly && (
+          <p>
+            Registration closes automatically on {formatDay(group.lastRegistrationDate)}, before the last{" "}
+            {GROUP_MIN_CLASSES_LEFT} classes.
+          </p>
+        )}
         <p>
           {group.days.map((d) => WEEKDAY_LABELS[d]).join(", ")} at {formatTime12(group.time)} (IST)
         </p>
@@ -130,7 +159,13 @@ export default function GroupEnrollSection({
             : "Open group"}
         </p>
         {monthlyFixed && <p>Monthly fixed — you join at the start of a monthly batch.</p>}
-        {anytime && <p>Anytime — join on any date you choose.</p>}
+        {anytime && !midwayJoin && <p>Anytime — join on any date you choose.</p>}
+        {midwayJoin && (
+          <p>
+            Mid-way joining allowed — you pay only for the classes still left. Nobody can join when fewer than{" "}
+            {GROUP_MIN_CLASSES_LEFT} are left.
+          </p>
+        )}
         {!group.joinMode && !timeBound && <p>Join any time.</p>}
         <p>
           <span className="font-bold text-gray-800">₹{group.pricePerSession.toLocaleString("en-IN")}</span> per
@@ -164,9 +199,11 @@ export default function GroupEnrollSection({
 
       {closed && (
         <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
-          {ended
-            ? "This group has ended, so new students can't join."
-            : "This group has already started, so new students can't join."}
+          {tooFewLeft
+            ? `Fewer than ${GROUP_MIN_CLASSES_LEFT} classes are left from that date, so new students can't join. Pick an earlier start date.`
+            : ended
+              ? "This group has ended, so new students can't join."
+              : "This group has already started, so new students can't join."}
         </p>
       )}
 
@@ -174,6 +211,14 @@ export default function GroupEnrollSection({
         <p className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3">
           Your child joins the next batch, starting{" "}
           <span className="font-bold text-gray-800">{formatDay(startDate)}</span>. Classes begin on that date.
+        </p>
+      )}
+
+      {joiningMidway && !closed && classesLeft !== null && (
+        <p className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3">
+          This group has already started. {classesLeft} class{classesLeft === 1 ? "" : "es"} left from{" "}
+          <span className="font-bold text-gray-800">{formatDay(startDate)}</span> — you pay only for the classes
+          from your start date, not the ones already held.
         </p>
       )}
 
@@ -185,7 +230,7 @@ export default function GroupEnrollSection({
           <input
             type="date"
             min={pickerMin}
-            max={timeBound && group.endDate ? group.endDate : undefined}
+            max={pickerMax}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value && e.target.value < pickerMin ? pickerMin : e.target.value)}
             className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"

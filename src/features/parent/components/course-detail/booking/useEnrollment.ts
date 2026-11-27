@@ -68,6 +68,7 @@ export function useEnrollment({
       groupEndDate: group.endDate,
       requested: null,
       today,
+      days: group.days,
     });
 
     if (first.ok) return first.startKey;
@@ -125,7 +126,9 @@ export function useEnrollment({
   const cyclePlan = useMemo(() => {
     if (!startDate) return null;
 
-    if (group) return buildCyclePlan(startDate, group.days, planType);
+    // A one-time group ends on the teacher's end date, so a mid-way joiner's
+    // cycle stops there and is priced for the classes left only.
+    if (group) return buildCyclePlan(startDate, group.days, planType, [], group.endDate);
 
     if (scheduleMode === "DATES") {
       return activeCustomDates.length > 0

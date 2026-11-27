@@ -5,12 +5,15 @@
  */
 
 import {
+  addDays,
   compareDates,
+  daysBetween,
   daysInMonth,
   isValidTimeOfDay,
   parseDateKey,
   toDateKey,
   todayInPlatformTz,
+  weekdayOf,
   type CalendarDate,
 } from "@/lib/platformTime";
 
@@ -341,6 +344,15 @@ export function parseGroupSchedule(
     return { ok: false, error: "The class end date must be on or after the class start date." };
   }
 
+  // A cycle needs at least 4 classes, so a group shorter than that could
+  // never be joined by anyone.
+  if (groupClassDateKeys(days, toDateKey(start), toDateKey(end)).length < GROUP_MIN_CLASSES_LEFT) {
+    return {
+      ok: false,
+      error: `A one-time group needs at least ${GROUP_MIN_CLASSES_LEFT} classes between the start and end dates with the weekdays you picked.`,
+    };
+  }
+
   if (compareDates(regEnd, allowMidwayJoin ? end : start) > 0) {
     return {
       ok: false,
@@ -401,6 +413,107 @@ export function groupModeLabel(course: GroupDisplayFields): string {
   }
 
   return "-";
+}
+
+/* ── Mid-way joining (one-time groups) ───────────────────────────────── */
+
+/**
+ * Mid-way joining: nobody can join a one-time group when fewer than this
+ * many classes are left, and registration closes automatically the day
+ * before the last this-many classes begin.
+ */
+export const GROUP_MIN_CLASSES_LEFT = 4;
+
+/** Safety bound for the day loops below (a group is never this long). */
+const MAX_GROUP_SPAN_DAYS = 1100;
+
+/** Every class date ("YYYY-MM-DD", ascending) of the weekly pattern from `fromKey` to `endKey`, both inclusive. */
+export function groupClassDateKeys(
+  days: readonly number[],
+  fromKey: string | null | undefined,
+  endKey: string | null | undefined,
+): string[] {
+  const from = parseDateKey(fromKey);
+  const end = parseDateKey(endKey);
+
+  if (!from || !end || days.length === 0) return [];
+
+  const daySet = new Set(days);
+  const span = Math.min(daysBetween(from, end) + 1, MAX_GROUP_SPAN_DAYS);
+  const keys: string[] = [];
+
+  for (let i = 0; i < span; i += 1) {
+    const date = addDays(from, i);
+
+    if (daySet.has(weekdayOf(date))) keys.push(toDateKey(date));
+  }
+
+  return keys;
+}
+
+/** How many classes of the group fall on or after `fromKey`, up to its end date. */
+export function groupClassesLeft(
+  days: readonly number[],
+  fromKey: string | null | undefined,
+  endKey: string | null | undefined,
+): number {
+  return groupClassDateKeys(days, fromKey, endKey).length;
+}
+
+/**
+ * The latest start date that still leaves `GROUP_MIN_CLASSES_LEFT` classes
+ * (the date of the 4th-last class). Null when the group has fewer than that
+ * in total, or no dates.
+ */
+export function groupLastStartKey(
+  days: readonly number[],
+  startKey: string | null | undefined,
+  endKey: string | null | undefined,
+): string | null {
+  const classes = groupClassDateKeys(days, startKey, endKey);
+
+  return classes.length >= GROUP_MIN_CLASSES_LEFT ? classes[classes.length - GROUP_MIN_CLASSES_LEFT] : null;
+}
+
+/** Returned as the registration end of a group that can never be joined (fewer than 4 classes). */
+const GROUP_NEVER_OPEN_KEY = "1970-01-01";
+
+export interface GroupRegistrationEndInput {
+  days: readonly number[];
+  /** Null on groups from before the joining option existed. */
+  joinMode: GroupJoinMode | null | undefined;
+  mode: GroupMode | null | undefined;
+  startDate: string | null | undefined;
+  endDate: string | null | undefined;
+  /** The registration end the teacher chose. */
+  regEndDate: string | null | undefined;
+}
+
+/**
+ * The last day a new student can register. For a one-time group that allows
+ * mid-way joining it is the earlier of the teacher's registration end and
+ * the day before the last 4 classes; everything else keeps the teacher's
+ * date (null = open-ended). Pure — shared by the cards, the booking panel
+ * and the server.
+ */
+export function groupLastRegistrationKey(input: GroupRegistrationEndInput): string | null {
+  const teacherEnd = input.regEndDate ?? null;
+
+  if (input.mode !== "TIME_BOUND" || !input.joinMode || !input.startDate || !input.endDate) {
+    return teacherEnd;
+  }
+
+  const lastStart = groupLastStartKey(input.days, input.startDate, input.endDate);
+
+  if (!lastStart) return GROUP_NEVER_OPEN_KEY;
+
+  const lastStartDate = parseDateKey(lastStart);
+
+  if (!lastStartDate) return teacherEnd;
+
+  const cutoff = toDateKey(addDays(lastStartDate, -1));
+
+  return teacherEnd && teacherEnd < cutoff ? teacherEnd : cutoff;
 }
 
 /* ── Age and registration window ────────────────────────────────────── */
@@ -486,6 +599,14 @@ export interface GroupBookingInfo {
   regEndDate: string | null;
   kind: GroupKind | null;
   recurrence: GroupRecurrence | null;
+  /**
+   * The real last registration day: the teacher's end date, or earlier for
+   * a mid-way-joinable one-time group (day before the last 4 classes).
+   * Null = open-ended. Use this, not `regEndDate`, to decide if joining is open.
+   */
+  lastRegistrationDate: string | null;
+  /** Latest start date that still leaves 4 classes (mid-way joining); null when not applicable. */
+  lastStartDate: string | null;
 }
 
 interface GroupBookingSource {
@@ -527,22 +648,37 @@ export function groupBookingFromCourse(course: GroupBookingSource): GroupBooking
     return null;
   }
 
+  const joinMode = isGroupJoinMode(course.groupJoinMode) ? course.groupJoinMode : null;
+  const startDate = toDay(course.groupStartDate);
+  const endDate = toDay(course.groupEndDate);
+  const regEndDate = toDay(course.groupRegEndDate);
+  const midway = course.groupMode === "TIME_BOUND" && joinMode !== null;
+
   return {
     days,
     time: course.groupTime,
     mode: course.groupMode,
-    joinMode: isGroupJoinMode(course.groupJoinMode) ? course.groupJoinMode : null,
-    startDate: toDay(course.groupStartDate),
-    endDate: toDay(course.groupEndDate),
+    joinMode,
+    startDate,
+    endDate,
     pricePerSession,
     maxStudents: course.groupMaxStudents ?? null,
     seatsTaken: course.groupSeatsTaken ?? 0,
     ageMin: course.groupAgeMin ?? null,
     ageMax: course.groupAgeMax ?? null,
     regStartDate: toDay(course.groupRegStartDate),
-    regEndDate: toDay(course.groupRegEndDate),
+    regEndDate,
     kind: isGroupKind(course.groupKind) ? course.groupKind : null,
     recurrence: isGroupRecurrence(course.groupRecurrence) ? course.groupRecurrence : null,
+    lastRegistrationDate: groupLastRegistrationKey({
+      days,
+      joinMode,
+      mode: course.groupMode,
+      startDate,
+      endDate,
+      regEndDate,
+    }),
+    lastStartDate: midway ? groupLastStartKey(days, startDate, endDate) : null,
   };
 }
 
@@ -568,6 +704,11 @@ export interface ResolveGroupStartInput {
   requested: string | null;
   today: CalendarDate;
   /**
+   * The group's weekdays. When given, a time-bound group refuses a start
+   * date that leaves fewer than `GROUP_MIN_CLASSES_LEFT` classes.
+   */
+  days?: readonly number[];
+  /**
    * Verify / webhook: the order already exists and the money is taken, so
    * the date stamped on it is used as it is.
    */
@@ -576,7 +717,7 @@ export interface ResolveGroupStartInput {
 
 export type ResolveGroupStartResult =
   | { ok: true; startKey: string }
-  | { ok: false; error: string; status: number };
+  | { ok: false; error: string; status: number; reason?: "ENDED" | "TOO_FEW_LEFT" };
 
 const GROUP_NOT_READY: ResolveGroupStartResult = {
   ok: false,
@@ -605,7 +746,16 @@ export function resolveGroupStartDate(input: ResolveGroupStartInput): ResolveGro
 
   const finish = (start: CalendarDate): ResolveGroupStartResult => {
     if (groupEnd && compareDates(start, groupEnd) > 0) {
-      return { ok: false, error: "This group has ended, so new students can't join.", status: 409 };
+      return { ok: false, error: "This group has ended, so new students can't join.", status: 409, reason: "ENDED" };
+    }
+
+    if (groupEnd && input.days && groupClassesLeft(input.days, toDateKey(start), toDateKey(groupEnd)) < GROUP_MIN_CLASSES_LEFT) {
+      return {
+        ok: false,
+        error: `Fewer than ${GROUP_MIN_CLASSES_LEFT} classes are left in this group, so new students can't join.`,
+        status: 409,
+        reason: "TOO_FEW_LEFT",
+      };
     }
 
     return { ok: true, startKey: toDateKey(start) };

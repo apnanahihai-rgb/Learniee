@@ -18,6 +18,7 @@ import {
     toDateKey,
     todayInPlatformTz,
 } from "@/lib/platformTime";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { prisma } from "@/lib/prisma";
 import { CycleStatus, EnrollmentStatus, type Enrollment } from "@prisma/client";
 import { EnrollmentApprovalError, cycleStartHasPassed } from './base';
@@ -137,11 +138,22 @@ export async function reviseCycleEnrollment(
     );
   }
 
+  // A one-time group stops on the teacher's end date (same cap as pricing).
+  const groupCourse = await prisma.course.findUnique({
+    where: { id: enrollment.courseId },
+    select: { type: true, groupEndDate: true },
+  });
+  const groupEndKey =
+    groupCourse && isGroupType(groupCourse.type) && groupCourse.groupEndDate
+      ? toDateKey(dateToCalendarDate(groupCourse.groupEndDate))
+      : null;
+
   const plan = buildCyclePlan(
     startKey,
     scheduleDays,
     enrollment.planType,
     customDateKeys,
+    groupEndKey,
   );
 
   if (!plan) {

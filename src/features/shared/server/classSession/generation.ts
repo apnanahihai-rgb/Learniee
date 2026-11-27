@@ -1,3 +1,4 @@
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { buildCyclePlan } from "@/features/shared/utils/cyclePlan";
 import { DEFAULT_SESSION_LENGTH_MINUTES } from "@/lib/platformConfig";
 import {
@@ -175,6 +176,17 @@ export async function createCycleSessions(
     );
   }
 
+  // A one-time group ends on the teacher's end date, so a mid-way joiner's
+  // cycle was priced (and must be generated) only up to that date.
+  const groupCourse = await tx.course.findUnique({
+    where: { id: enrollment.courseId },
+    select: { type: true, groupEndDate: true },
+  });
+  const groupEndKey =
+    groupCourse && isGroupType(groupCourse.type) && groupCourse.groupEndDate
+      ? toDateKey(dateToCalendarDate(groupCourse.groupEndDate))
+      : null;
+
   const plan = buildCyclePlan(
     toDateKey(dateToCalendarDate(cycle.startDate)),
     enrollment.scheduleDays,
@@ -182,6 +194,7 @@ export async function createCycleSessions(
     // Hand-picked dates for this cycle ("Complete month plan"); empty =
     // the repeating weekdays above.
     cycle.customDates.map((date) => toDateKey(dateToCalendarDate(date))),
+    groupEndKey,
   );
 
   if (

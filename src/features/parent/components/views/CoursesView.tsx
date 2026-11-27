@@ -31,7 +31,7 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
   const group = isGroupType(course.type);
   const booking = group ? groupBookingFromCourse(course) : null;
   const full = !!booking && booking.maxStudents !== null && booking.seatsTaken >= booking.maxStudents;
-  const registration = booking ? groupRegistrationState(booking.regStartDate, booking.regEndDate) : "OPEN";
+  const registration = booking ? groupRegistrationState(booking.regStartDate, booking.lastRegistrationDate) : "OPEN";
   // A group can't be joined when it is full or outside its registration period.
   const unavailable = full || registration !== "OPEN";
   const unavailableLabel = full

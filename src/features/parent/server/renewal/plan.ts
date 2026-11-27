@@ -10,6 +10,7 @@ import {
     isInternationalParent,
     priceWithInternationalSurcharge,
 } from "@/lib/internationalPayments";
+import { isGroupType } from "@/features/courses/utils/groupClass";
 import { SESSION_POLICY } from "@/lib/platformConfig";
 import {
     addDays,
@@ -91,7 +92,7 @@ export async function loadRenewableEnrollment(enrollmentId: string, parentId: st
     include: {
       cycles: { orderBy: { cycleNumber: "desc" }, take: 1 },
       parent: { select: { nriOrIndian: true, country: true } },
-      course: { select: { subject: true } },
+      course: { select: { subject: true, type: true, groupEndDate: true } },
     },
   });
 
@@ -119,6 +120,17 @@ export async function loadRenewableEnrollment(enrollmentId: string, parentId: st
 
   if (!latestCycle) {
     throw new RenewalError("This enrollment doesn't have a cycle to renew yet.", 409);
+  }
+
+  // A one-time group stops on the teacher's end date: once the current cycle
+  // reaches it (always the case for a mid-way joiner) there is nothing to renew.
+  const groupEnd = enrollment.course.groupEndDate;
+
+  if (isGroupType(enrollment.course.type) && groupEnd && latestCycle.endDate >= groupEnd) {
+    throw new RenewalError(
+      "This group's classes end with the current cycle, so there is nothing to renew.",
+      409,
+    );
   }
 
   return { enrollment, latestCycle };

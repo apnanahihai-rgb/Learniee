@@ -13,6 +13,7 @@ import { WEEKDAY_LABELS_FULL } from "@/features/shared/utils/weekdays";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import {
   ageFitsGroup,
+  groupLastRegistrationKey,
   groupRegistrationState,
   isGroupType,
   resolveGroupStartDate,
@@ -252,6 +253,8 @@ async function priceGroupEnrollment(
     groupEndDate: toKey(course.groupEndDate),
     requested: input.cycleStartDate?.trim() || null,
     today,
+    // Mid-way joining: refuses a start date that leaves fewer than 4 classes.
+    days: scheduleDays,
     // Verify / webhook: the money is taken, keep the date stamped on the order.
     trustRequested: !options.enforceStartNotPast,
   });
@@ -262,7 +265,9 @@ async function priceGroupEnrollment(
 
   const startKey = resolved.startKey;
 
-  const plan = buildCyclePlan(startKey, scheduleDays, "MONTHLY", []);
+  // A one-time group ends on the teacher's end date: the cycle stops there, so
+  // a student joining mid-way pays only for the classes that are left.
+  const plan = buildCyclePlan(startKey, scheduleDays, "MONTHLY", [], toKey(course.groupEndDate));
 
   if (!plan) {
     throw new EnrollmentError(
@@ -304,9 +309,18 @@ async function priceGroupEnrollment(
     // Registration and age rules apply to new sign-ups only (order creation);
     // verify / webhook skip them because the money is already taken.
     const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+    // Registration closes on the teacher's end date, or earlier — the day
+    // before the last 4 classes — for a one-time group with mid-way joining.
     const registration = groupRegistrationState(
       day(course.groupRegStartDate),
-      day(course.groupRegEndDate),
+      groupLastRegistrationKey({
+        days: scheduleDays,
+        mode: course.groupMode,
+        joinMode: course.groupJoinMode,
+        startDate: day(course.groupStartDate),
+        endDate: day(course.groupEndDate),
+        regEndDate: day(course.groupRegEndDate),
+      }),
       today,
     );
 

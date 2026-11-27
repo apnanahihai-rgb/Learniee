@@ -70,6 +70,13 @@ export function buildCyclePlan(
    * the repeating weekday pattern, exactly as before.
    */
   customDateKeys: readonly string[] = [],
+  /**
+   * Last day the cycle may run to ("YYYY-MM-DD"). A one-time group class
+   * ends on the teacher's end date, so a student joining mid-way gets a
+   * shorter cycle that stops there and pays only for the classes left.
+   * Null/omitted = the normal full week / month.
+   */
+  lastDateKey: string | null = null,
 ): CyclePlan | null {
   const startDate = parseDateKey(startDateKey);
 
@@ -77,9 +84,16 @@ export function buildCyclePlan(
 
   // WEEKLY: 7 days, start date to start + 6. MONTHLY: same date next
   // month minus one day.
-  const nextCycleStart =
+  let nextCycleStart =
     planType === "WEEKLY" ? addDays(startDate, 7) : addOneMonthClamped(startDate);
-  const endDate = addDays(nextCycleStart, -1);
+  let endDate = addDays(nextCycleStart, -1);
+  const lastDate = parseDateKey(lastDateKey);
+
+  if (lastDate && compareDates(lastDate, endDate) < 0) {
+    endDate = lastDate;
+    nextCycleStart = addDays(lastDate, 1);
+  }
+
   const cycleLengthDays = daysBetween(startDate, endDate) + 1;
   const isCustom = customDateKeys.length > 0;
 
