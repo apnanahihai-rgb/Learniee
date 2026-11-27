@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ChatSenderRole, type EnrollmentStatus } from "@prisma/client";
+import { ChatSenderRole, ClassSessionStatus, type EnrollmentStatus } from "@prisma/client";
 
 import { ChatError } from "@/features/chat/server/chat.service";
 import { screenChatMessage } from "@/features/chat/utils/chatScreening";
@@ -97,7 +97,64 @@ export interface GroupStudentRow {
   studentName: string;
 }
 
-/** Students, announcements and title for the Teacher's group page. */
+/** One upcoming class of a group: ONE row however many students are in it. */
+export interface GroupClassSlot {
+  /** Any student's session of the class — opening it Starts / Ends the whole group. */
+  sessionId: string;
+  startsAt: string;
+  endsAt: string;
+  students: number;
+}
+
+const MAX_UPCOMING_SLOTS = 8;
+
+/**
+ * The group's coming classes, one per start time. Every student has their own
+ * `ClassSession` for the same class, so rows are collapsed by `startsAt`; a
+ * student who cancelled their own seat is not counted (their session is no
+ * longer SCHEDULED).
+ */
+async function listUpcomingGroupClasses(
+  teacherId: string,
+  courseId: string,
+): Promise<GroupClassSlot[]> {
+  const rows = await prisma.classSession.findMany({
+    where: {
+      teacherId,
+      enrollment: { courseId },
+      status: ClassSessionStatus.SCHEDULED,
+      cycleId: { not: null },
+      endsAt: { gt: new Date() },
+    },
+    orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+    take: 400,
+    select: { id: true, startsAt: true, endsAt: true },
+  });
+
+  const slots = new Map<string, GroupClassSlot>();
+
+  for (const row of rows) {
+    if (!row.startsAt || !row.endsAt) continue;
+
+    const key = row.startsAt.toISOString();
+    const slot = slots.get(key);
+
+    if (slot) {
+      slot.students += 1;
+    } else {
+      slots.set(key, {
+        sessionId: row.id,
+        startsAt: key,
+        endsAt: row.endsAt.toISOString(),
+        students: 1,
+      });
+    }
+  }
+
+  return [...slots.values()].slice(0, MAX_UPCOMING_SLOTS);
+}
+
+/** Students, announcements, upcoming classes and title for the Teacher's group page. */
 export async function getTeacherGroupOverview(teacherId: string, courseId: string) {
   const course = await requireOwnGroupCourse(teacherId, courseId);
 
@@ -132,9 +189,12 @@ export async function getTeacherGroupOverview(teacherId: string, courseId: strin
     select: { id: true, body: true, createdAt: true },
   });
 
+  const classes = await listUpcomingGroupClasses(teacherId, courseId);
+
   return {
     course: { id: course.id, title: course.courseTitle },
     students,
     announcements,
+    classes,
   };
 }

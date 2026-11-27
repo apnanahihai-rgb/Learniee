@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import ClassesTab from "./ClassesTab";
 import GroupWorkspace from "./GroupWorkspace";
 
 /**
- * My classes > Group classes: the normal class rows (course page with Start /
- * Join lecture, Students) plus a "Homework & announcements" button that opens
- * the group's homework, announcements and private chats.
+ * My classes > Group classes: one row per group course (next class with a
+ * Start / Join button), and a group page — classes with their join link,
+ * homework, announcements and private chats. `?group=<courseId>` opens a
+ * group page directly.
  */
 export default function GroupClassesTab() {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const params = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(params.get("group"));
 
   if (openId) {
     return <GroupWorkspace courseId={openId} onBack={() => setOpenId(null)} />;

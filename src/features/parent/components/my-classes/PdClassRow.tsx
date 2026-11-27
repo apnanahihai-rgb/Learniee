@@ -8,7 +8,7 @@ import { KidAvatar } from "@/features/parent/components/home/HomeBits";
 import { kidColor, whenLabel, dayDiff } from "@/features/parent/components/home/homeLogic";
 import type { HomeKid } from "@/features/parent/components/home/homeTypes";
 import { subjectTheme, firstWord } from "@/features/parent/components/my-classes/pdClassesUi";
-import { PD_BTN_SEC_SM } from "@/features/parent/components/courses/pdUi";
+import { PD_BTN_PRI_SM, PD_BTN_SEC_SM } from "@/features/parent/components/courses/pdUi";
 import type { ParentEnrollment } from "@/features/parent/hooks/useEnrollments";
 import { displayName } from "@/features/shared/utils/displayName";
 import { isGroupType } from "@/features/courses/utils/groupClass";
@@ -63,6 +63,16 @@ export default function PdClassRow({ enrollment: e, kind, kids, now }: Props) {
   const progress = summary?.progress ?? null;
   const next = summary?.nextClass ?? null;
   const title = e.course.courseTitle ?? "Untitled course";
+  const isGroup = isGroupType(e.course.type);
+
+  // Group class: a Join link straight on the row while Join is open (10 min
+  // before the start until the scheduled end), like the class page's button.
+  const joinNow =
+    isGroup &&
+    kind === "enrolled" &&
+    next !== null &&
+    now.getTime() >= new Date(next.startsAt).getTime() - SESSION_POLICY.joinOpensMinutesBefore * 60_000 &&
+    now.getTime() <= new Date(next.endsAt).getTime();
 
   let nx: React.ReactNode;
   let pr: React.ReactNode;
@@ -153,7 +163,6 @@ export default function PdClassRow({ enrollment: e, kind, kids, now }: Props) {
 
   const titleClass =
     "text-left text-[15px] font-semibold leading-[1.3] text-pd-ink";
-  const isGroup = isGroupType(e.course.type);
 
   return (
     <article
@@ -187,7 +196,17 @@ export default function PdClassRow({ enrollment: e, kind, kids, now }: Props) {
         </small>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-[3px] max-[760px]:col-start-1">{nx}</div>
+      <div className="flex min-w-0 flex-col gap-[3px] max-[760px]:col-start-1">
+        {nx}
+        {joinNow && next && (
+          <Link
+            href={`/parent/classes/${next.id}/join`}
+            className={`${PD_BTN_PRI_SM} relative z-[2] mt-1 w-fit`}
+          >
+            Join class
+          </Link>
+        )}
+      </div>
       <div className="flex min-w-0 flex-col gap-[3px] max-[760px]:col-start-2">{pr}</div>
 
       <div className="relative z-[2] flex min-w-0 items-center justify-end gap-1 max-[760px]:absolute max-[760px]:right-2.5 max-[760px]:top-2.5">

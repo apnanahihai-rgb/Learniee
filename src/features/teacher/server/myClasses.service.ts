@@ -236,6 +236,7 @@ export async function getTeacherClasses(
     let activeStudentCount = 0;
     let liveNowCount = 0;
     let nextSessionAt: number | null = null;
+    let nextSessionId: string | null = null;
     let progressSum = 0;
     let progressCount = 0;
 
@@ -254,9 +255,15 @@ export async function getTeacherClasses(
 
       if (summary.nextClass) {
         const startsAt = new Date(summary.nextClass.startsAt).getTime();
-        if (nextSessionAt === null || startsAt < nextSessionAt) nextSessionAt = startsAt;
+        if (nextSessionAt === null || startsAt < nextSessionAt) {
+          nextSessionAt = startsAt;
+          nextSessionId = summary.nextClass.id;
+        }
       }
     }
+
+    // A group class is ONE live class, however many students are in it.
+    if (isGroup) liveNowCount = Math.min(liveNowCount, 1);
 
     classes.push({
       courseId,
@@ -268,6 +275,7 @@ export async function getTeacherClasses(
       activeStudentCount,
       liveNowCount,
       nextSessionAt: nextSessionAt !== null ? new Date(nextSessionAt).toISOString() : null,
+      nextSessionId,
       averageProgressPercent: progressCount > 0 ? Math.round((progressSum / progressCount) * 100) : 0,
     });
   }
@@ -323,6 +331,7 @@ export async function getTeacherClassRoster(
       id: courseId,
       title: enrollments[0].course.courseTitle,
       subject: enrollments[0].course.subject,
+      isGroup: isGroupType(enrollments[0].course.type),
     },
     students,
   };

@@ -2,30 +2,44 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Megaphone, MessageCircle, UsersRound } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, Megaphone, MessageCircle, UsersRound } from "lucide-react";
 
-import { PD_BTN_PRI, PD_INPUT, PdEmpty, pillFilter } from "@/features/parent/components/courses/pdUi";
+import {
+  PD_BTN_PRI,
+  PD_BTN_PRI_SM,
+  PD_BTN_SEC_SM,
+  PD_INPUT,
+  PdEmpty,
+  pillFilter,
+} from "@/features/parent/components/courses/pdUi";
+import { formatClassDay, formatDateTile } from "@/features/shared/utils/classTimeLabels";
+import { formatPlatformTime } from "@/lib/platformTime";
+import { SESSION_POLICY } from "@/lib/platformConfig";
 import PdErrorState from "@/features/shared/components/PdErrorState";
 import TeacherHomeworkPanel from "@/features/teacher/components/homework/TeacherHomeworkPanel";
 import { useGroupClass } from "@/features/teacher/hooks/useGroupClass";
 import { TD_CARD } from "./TeacherUi";
 
-type Tab = "homework" | "announcements" | "students";
+type Tab = "classes" | "homework" | "announcements" | "students";
 
 const TABS: { id: Tab; label: string; icon: typeof BookOpen }[] = [
+  { id: "classes", label: "Classes", icon: CalendarClock },
   { id: "homework", label: "Homework", icon: BookOpen },
   { id: "announcements", label: "Announcements", icon: Megaphone },
   { id: "students", label: "Students & chat", icon: UsersRound },
 ];
 
 /**
- * My classes > Group classes > one group: homework for everyone, announcements
- * to the whole group, and a private 1:1 chat per student.
+ * My classes > Group classes > one group: the coming classes with their
+ * Start / Join link (one per class, not per student), homework for everyone,
+ * announcements to the whole group, and a private 1:1 chat per student.
  */
 export default function GroupWorkspace({ courseId, onBack }: { courseId: string; onBack: () => void }) {
-  const { title, students, announcements, loading, error, broadcast, reload } = useGroupClass(courseId);
+  const { title, students, announcements, classes, loading, error, broadcast, reload } =
+    useGroupClass(courseId);
 
-  const [tab, setTab] = useState<Tab>("homework");
+  const [now] = useState(() => new Date());
+  const [tab, setTab] = useState<Tab>("classes");
   const [viewing, setViewing] = useState("");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -85,6 +99,56 @@ export default function GroupWorkspace({ courseId, onBack }: { courseId: string;
           </div>
 
           <div className={`${TD_CARD} mt-4 p-4 sm:p-5`}>
+            {tab === "classes" &&
+              (classes.length === 0 ? (
+                <PdEmpty
+                  icon={CalendarClock}
+                  title="No upcoming classes"
+                  text="Classes appear here once students are enrolled and approved."
+                />
+              ) : (
+                <ul className="divide-y divide-pd-line">
+                  {classes.map((c) => {
+                    const start = new Date(c.startsAt);
+                    const end = new Date(c.endsAt);
+                    const tile = formatDateTile(start);
+                    const live =
+                      now.getTime() >= start.getTime() - SESSION_POLICY.joinOpensMinutesBefore * 60_000 &&
+                      now.getTime() <= end.getTime();
+
+                    return (
+                      <li key={c.sessionId} className="flex flex-wrap items-center gap-3 py-3">
+                        <span className="w-12 flex-shrink-0 rounded-xl border border-pd-line bg-pd-bg py-1 text-center">
+                          <span className="block text-[10px] font-bold uppercase leading-tight text-pd-brand">
+                            {tile.month}
+                          </span>
+                          <span className="block font-heading text-lg font-bold leading-tight text-pd-ink">
+                            {tile.day}
+                          </span>
+                        </span>
+
+                        <span className="min-w-0 flex-1 basis-[160px]">
+                          <b className="block text-sm font-semibold text-pd-ink">
+                            {formatClassDay(start, now)} · {formatPlatformTime(start)}
+                          </b>
+                          <small className="block text-xs text-pd-ink3">
+                            {c.students} {c.students === 1 ? "student" : "students"}
+                            {live && <span className="font-semibold text-pd-green"> · Live now</span>}
+                          </small>
+                        </span>
+
+                        <Link
+                          href={`/teacher/classes/${c.sessionId}/start`}
+                          className={live ? PD_BTN_PRI_SM : PD_BTN_SEC_SM}
+                        >
+                          {live ? "Start / Join class" : "Open class"}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ))}
+
             {tab === "homework" &&
               (students.length === 0 ? (
                 <PdEmpty

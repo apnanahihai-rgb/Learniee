@@ -9,6 +9,13 @@ export interface GroupStudent {
   studentName: string;
 }
 
+export interface GroupClassSlot {
+  sessionId: string;
+  startsAt: string;
+  endsAt: string;
+  students: number;
+}
+
 export interface GroupAnnouncement {
   id: string;
   body: string;
@@ -20,6 +27,7 @@ export function useGroupClass(courseId: string) {
   const [title, setTitle] = useState("");
   const [students, setStudents] = useState<GroupStudent[]>([]);
   const [announcements, setAnnouncements] = useState<GroupAnnouncement[]>([]);
+  const [classes, setClasses] = useState<GroupClassSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -36,6 +44,7 @@ export function useGroupClass(courseId: string) {
       setTitle(data.course?.title ?? "");
       setStudents(data.students ?? []);
       setAnnouncements(data.announcements ?? []);
+      setClasses(data.classes ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load the group class.");
     } finally {
@@ -69,5 +78,5 @@ export function useGroupClass(courseId: string) {
     }
   }
 
-  return { title, students, announcements, loading, error, broadcast, reload: load };
+  return { title, students, announcements, classes, loading, error, broadcast, reload: load };
 }

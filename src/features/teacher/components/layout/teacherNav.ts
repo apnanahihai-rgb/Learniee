@@ -8,7 +8,6 @@ import {
   Newspaper,
   User,
   LifeBuoy,
-  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,19 +37,13 @@ export const TEACHER_NAV: Record<string, TeacherNavItem> = {
     matches: ["/teacher/course-management", "/teacher/vacancy"],
     icon: BookOpen,
   },
-  groups: {
-    id: "groups",
-    label: "Group classes",
-    href: "/teacher/group-classes",
-    base: "/teacher/group-classes",
-    icon: UsersRound,
-  },
   classes: {
     id: "classes",
     label: "My classes",
     href: "/teacher/my-classes",
     base: "/teacher/my-classes",
     matches: [
+      "/teacher/group-classes",
       "/teacher/enrollments",
       "/teacher/hw-tests",
       "/teacher/resources",
@@ -98,13 +91,13 @@ export const TEACHER_NAV: Record<string, TeacherNavItem> = {
 
 /** Sidebar order, with separators between groups. */
 export const TEACHER_SIDEBAR_GROUPS: string[][] = [
-  ["home", "courses", "groups", "classes", "requests", "calendar"],
+  ["home", "courses", "classes", "requests", "calendar"],
   ["earnings", "blogs"],
   ["account", "help"],
 ];
 
 export const TEACHER_BOTTOM_NAV_IDS = ["home", "classes", "requests", "calendar"];
-export const TEACHER_MORE_NAV_IDS = ["courses", "groups", "earnings", "blogs", "account", "help"];
+export const TEACHER_MORE_NAV_IDS = ["courses", "earnings", "blogs", "account", "help"];
 
 const under = (path: string, p: string) => path === p || path.startsWith(`${p}/`);
 

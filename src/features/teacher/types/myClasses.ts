@@ -19,6 +19,11 @@ export interface TeacherClassSummary {
   liveNowCount: number;
   /** Soonest upcoming class across the course, if any. */
   nextSessionAt: string | null;
+  /**
+   * Session to open for that class (`/teacher/classes/<id>/start`). For a
+   * group class any student's session opens the one shared class.
+   */
+  nextSessionId: string | null;
   /** Average cycle progress (0–100) across the course's ACTIVE students. */
   averageProgressPercent: number;
 }
@@ -38,7 +43,7 @@ export interface TeacherStudentRow {
 }
 
 export interface TeacherClassRoster {
-  course: { id: string; title: string | null; subject: string | null };
+  course: { id: string; title: string | null; subject: string | null; isGroup: boolean };
   students: TeacherStudentRow[];
 }
 
