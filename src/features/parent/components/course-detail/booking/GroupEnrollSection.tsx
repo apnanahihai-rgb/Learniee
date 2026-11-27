@@ -3,7 +3,7 @@
 import { CheckCircle2, Info, Loader2, MessageCircle, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { resolveGroupStartDate, type GroupBookingInfo } from "@/features/courses/utils/groupClass";
+import { ageFitsGroup, groupRegistrationState, resolveGroupStartDate, type GroupBookingInfo } from "@/features/courses/utils/groupClass";
 import { formatTime12 } from "@/features/shared/utils/availability";
 import { formatCycleSummary } from "@/features/shared/utils/cyclePlan";
 import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
@@ -15,6 +15,8 @@ interface Props {
   group: GroupBookingInfo;
   studentsLoading: boolean;
   studentCount: number;
+  /** Age of the selected child (null = none picked / unknown). */
+  studentAge: number | null;
 }
 
 const formatDay = (key: string | null) =>
@@ -38,6 +40,7 @@ export default function GroupEnrollSection({
   group,
   studentsLoading,
   studentCount,
+  studentAge,
 }: Props) {
   const router = useRouter();
   const {
@@ -63,6 +66,11 @@ export default function GroupEnrollSection({
   const anytime = group.joinMode === "ANYTIME";
   const seatsLeft = group.maxStudents === null ? null : Math.max(group.maxStudents - group.seatsTaken, 0);
   const full = seatsLeft === 0;
+  const registration = groupRegistrationState(group.regStartDate, group.regEndDate);
+  const registrationOpen = registration === "OPEN";
+  // Only flag a mismatch once a child is picked.
+  const ageMismatch =
+    studentAge !== null && !ageFitsGroup(studentAge, group.ageMin, group.ageMax);
   // Groups from before the joining option existed close once started; the
   // newer ones close only when their last batch is over.
   const joinCheck = resolveGroupStartDate({
@@ -85,6 +93,8 @@ export default function GroupEnrollSection({
     studentsLoading ||
     studentCount === 0 ||
     full ||
+    !registrationOpen ||
+    ageMismatch ||
     closed ||
     !startDate ||
     startInPast ||
@@ -100,10 +110,17 @@ export default function GroupEnrollSection({
           <Users size={13} /> Group class
           {seatsLeft !== null && (
             <span className="font-semibold text-gray-600">
-              · {full ? "No seats left" : `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`}
+              · {full ? "Full" : `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`}
             </span>
           )}
         </p>
+        {group.ageMin != null && group.ageMax != null && <p>For ages {group.ageMin}–{group.ageMax}</p>}
+        {group.regStartDate && (
+          <p>
+            Registration: {formatDay(group.regStartDate)}
+            {group.regEndDate ? ` – ${formatDay(group.regEndDate)}` : " onwards"}
+          </p>
+        )}
         <p>
           {group.days.map((d) => WEEKDAY_LABELS[d]).join(", ")} at {formatTime12(group.time)} (IST)
         </p>
@@ -123,7 +140,25 @@ export default function GroupEnrollSection({
 
       {full && (
         <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
-          This group is full right now. Please check back later.
+          Full — this group has no seats left right now. Please check back later.
+        </p>
+      )}
+
+      {registration === "NOT_OPEN" && (
+        <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
+          Registration opens on {formatDay(group.regStartDate)}.
+        </p>
+      )}
+
+      {registration === "CLOSED" && (
+        <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
+          Registration for this group has closed.
+        </p>
+      )}
+
+      {ageMismatch && (
+        <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mb-3">
+          This group is for ages {group.ageMin}–{group.ageMax}. Pick a child in that age range.
         </p>
       )}
 

@@ -50,6 +50,12 @@ export interface ParentCourseDetail {
   groupJoinMode?: string | null;
   groupStartDate?: string | null;
   groupEndDate?: string | null;
+  groupKind?: string | null;
+  groupRecurrence?: string | null;
+  groupAgeMin?: number | null;
+  groupAgeMax?: number | null;
+  groupRegStartDate?: string | null;
+  groupRegEndDate?: string | null;
   /** Seats already taken in the group (added by the detail API). */
   groupSeatsTaken?: number;
 

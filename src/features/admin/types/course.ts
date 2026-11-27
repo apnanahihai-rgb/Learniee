@@ -27,6 +27,13 @@ export interface AdminCourse {
   groupJoinMode: "MONTHLY_FIXED" | "ANYTIME" | null;
   groupStartDate: string | null;
   groupEndDate: string | null;
+  groupKind?: "ONE_TIME" | "RECURRING" | null;
+  groupRecurrence?: "WEEKLY" | "MONTHLY" | null;
+  groupAllowMidwayJoin?: boolean | null;
+  groupRegStartDate?: string | null;
+  groupRegEndDate?: string | null;
+  groupAgeMin?: number | null;
+  groupAgeMax?: number | null;
   language: string | null;
   frequency: string | null;
 

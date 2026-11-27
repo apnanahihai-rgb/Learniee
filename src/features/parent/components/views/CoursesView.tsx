@@ -9,7 +9,7 @@ import { useApprovedCourses } from "@/features/parent/hooks/useApprovedCourses";
 import type { ParentCourse } from "@/features/parent/types/course";
 import { NeutralAvatar, RatingBadge, Tag } from "@/features/parent/components/home/HomeBits";
 import { SUBJECT_COLOR } from "@/features/parent/components/home/homeLogic";
-import { groupLabel, isGroupType } from "@/features/courses/utils/groupClass";
+import { groupBookingFromCourse, groupLabel, groupRegistrationState, isGroupType } from "@/features/courses/utils/groupClass";
 import CourseEnrollDialog from "@/features/parent/components/courses/CourseEnrollDialog";
 import {
   GridSkeleton,
@@ -29,6 +29,16 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
   const price = coursePrice(course.price);
   const rating = course.teacher.averageRating;
   const group = isGroupType(course.type);
+  const booking = group ? groupBookingFromCourse(course) : null;
+  const full = !!booking && booking.maxStudents !== null && booking.seatsTaken >= booking.maxStudents;
+  const registration = booking ? groupRegistrationState(booking.regStartDate, booking.regEndDate) : "OPEN";
+  // A group can't be joined when it is full or outside its registration period.
+  const unavailable = full || registration !== "OPEN";
+  const unavailableLabel = full
+    ? "Full"
+    : registration === "NOT_OPEN"
+      ? `Opens ${booking?.regStartDate ?? ""}`
+      : "Registration closed";
 
   return (
     <article
@@ -58,8 +68,12 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
         </div>
 
         {group && (
-          <div>
+          <div className="flex flex-wrap gap-1.5">
             <Tag tone="amber">{groupLabel(course.groupMaxStudents)}</Tag>
+            {booking?.ageMin != null && booking.ageMax != null && (
+              <Tag tone="violet">{`Ages ${booking.ageMin}–${booking.ageMax}`}</Tag>
+            )}
+            {unavailable && <Tag tone="amber">{unavailableLabel}</Tag>}
           </div>
         )}
 
@@ -68,8 +82,13 @@ function CourseCard({ course, onEnroll }: { course: ParentCourse; onEnroll: () =
             {price ? rupees(price) : "—"}
             <small className="text-xs font-bold text-pd-ink3">/session</small>
           </span>
-          <button type="button" onClick={onEnroll} className={PD_BTN_PRI_SM}>
-            Enroll
+          <button
+            type="button"
+            onClick={onEnroll}
+            disabled={unavailable}
+            className={`${PD_BTN_PRI_SM} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            {full ? "Full" : "Enroll"}
           </button>
         </div>
       </div>

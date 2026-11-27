@@ -7,7 +7,7 @@ import ChildPicker from "./booking/ChildPicker";
 import DemoBookingSection from "./booking/DemoBookingSection";
 import EnrollSection from "./booking/EnrollSection";
 import GroupEnrollSection from "./booking/GroupEnrollSection";
-import type { GroupBookingInfo } from "@/features/courses/utils/groupClass";
+import { studentAgeYears, type GroupBookingInfo } from "@/features/courses/utils/groupClass";
 import { useDemoBooking } from "./booking/useDemoBooking";
 import { useEnrollment } from "./booking/useEnrollment";
 import { useTeacherAvailabilityForBooking } from "@/features/parent/hooks/useTeacherAvailability";
@@ -211,6 +211,7 @@ export default function BookingPanel({
               group={group}
               studentsLoading={studentsLoading}
               studentCount={students.length}
+              studentAge={studentAgeYears(students.find((s) => s.id === selectedStudentId) ?? {})}
             />
           ) : (
             <>

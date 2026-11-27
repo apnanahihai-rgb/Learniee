@@ -403,6 +403,64 @@ export function groupModeLabel(course: GroupDisplayFields): string {
   return "-";
 }
 
+/* ── Age and registration window ────────────────────────────────────── */
+
+/** A child's age in whole years: the stored `age`, else worked out from the date of birth. */
+export function studentAgeYears(
+  student: { age?: number | null; dateOfBirth?: string | Date | null },
+  today: CalendarDate = todayInPlatformTz(),
+): number | null {
+  if (typeof student.age === "number" && Number.isFinite(student.age)) return student.age;
+
+  if (!student.dateOfBirth) return null;
+
+  const dob = new Date(student.dateOfBirth);
+
+  if (Number.isNaN(dob.getTime())) return null;
+
+  let years = today.year - dob.getUTCFullYear();
+  const beforeBirthday =
+    today.month < dob.getUTCMonth() + 1 || (today.month === dob.getUTCMonth() + 1 && today.day < dob.getUTCDate());
+
+  if (beforeBirthday) years -= 1;
+
+  return years >= 0 ? years : null;
+}
+
+/** True when the group has no age range (older groups) or the age is inside it. */
+export function ageFitsGroup(
+  age: number | null | undefined,
+  min: number | null | undefined,
+  max: number | null | undefined,
+): boolean {
+  if (min == null || max == null) return true;
+
+  if (age == null) return false;
+
+  return age >= min && age <= max;
+}
+
+export type GroupRegistrationState = "NOT_OPEN" | "OPEN" | "CLOSED";
+
+/**
+ * Where "today" sits in the group's registration window. Groups from before
+ * the window existed (no start date) are always OPEN; no end date = open-ended.
+ * Dates are "YYYY-MM-DD" (IST), so plain string comparison is correct.
+ */
+export function groupRegistrationState(
+  regStart: string | null | undefined,
+  regEnd: string | null | undefined,
+  today: CalendarDate = todayInPlatformTz(),
+): GroupRegistrationState {
+  const todayKey = toDateKey(today);
+
+  if (regStart && todayKey < regStart) return "NOT_OPEN";
+
+  if (regEnd && todayKey > regEnd) return "CLOSED";
+
+  return "OPEN";
+}
+
 /* ── Parent booking ─────────────────────────────────────────────────── */
 
 /** What the parent's booking panel needs about a group course. */
@@ -420,6 +478,14 @@ export interface GroupBookingInfo {
   pricePerSession: number;
   maxStudents: number | null;
   seatsTaken: number;
+  /** Null on groups created before the age range existed. */
+  ageMin: number | null;
+  ageMax: number | null;
+  /** Registration window, "YYYY-MM-DD"; both null on older groups. */
+  regStartDate: string | null;
+  regEndDate: string | null;
+  kind: GroupKind | null;
+  recurrence: GroupRecurrence | null;
 }
 
 interface GroupBookingSource {
@@ -433,6 +499,12 @@ interface GroupBookingSource {
   price?: string | number | null;
   groupMaxStudents?: number | null;
   groupSeatsTaken?: number | null;
+  groupAgeMin?: number | null;
+  groupAgeMax?: number | null;
+  groupRegStartDate?: string | Date | null;
+  groupRegEndDate?: string | Date | null;
+  groupKind?: string | null;
+  groupRecurrence?: string | null;
 }
 
 const toDay = (v: string | Date | null | undefined) =>
@@ -465,6 +537,12 @@ export function groupBookingFromCourse(course: GroupBookingSource): GroupBooking
     pricePerSession,
     maxStudents: course.groupMaxStudents ?? null,
     seatsTaken: course.groupSeatsTaken ?? 0,
+    ageMin: course.groupAgeMin ?? null,
+    ageMax: course.groupAgeMax ?? null,
+    regStartDate: toDay(course.groupRegStartDate),
+    regEndDate: toDay(course.groupRegEndDate),
+    kind: isGroupKind(course.groupKind) ? course.groupKind : null,
+    recurrence: isGroupRecurrence(course.groupRecurrence) ? course.groupRecurrence : null,
   };
 }
 

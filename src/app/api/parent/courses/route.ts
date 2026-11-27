@@ -4,6 +4,9 @@ import { requireVerifiedCognitoAuth } from "@/lib/verifiedCognitoAuth";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import { getApprovedCourses } from "@/features/parent/server/course.service";
+import { SEAT_HOLDING_STATUSES } from "@/features/parent/server/enrollment/group";
+import { ageFitsGroup, isGroupType, studentAgeYears } from "@/features/courses/utils/groupClass";
+import { prisma } from "@/lib/prisma";
 import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
 
 type ApprovedCourse = Awaited<ReturnType<typeof getApprovedCourses>>[number];
@@ -22,7 +25,37 @@ export async function GET(req: Request) {
       return auth.error;
     }
 
-    const courses = await getApprovedCourses();
+    const approved = await getApprovedCourses();
+
+    // Group classes: only those whose age range fits at least one of this
+    // parent's children (when the children's ages are known), plus how many
+    // seats are taken so the card can say "Full".
+    const parent = await prisma.parentProfile.findUnique({
+      where: { cognitoSub: auth.payload.sub },
+      select: { students: { select: { age: true, dateOfBirth: true } } },
+    });
+    const childAges = (parent?.students ?? [])
+      .map((s) => studentAgeYears(s))
+      .filter((a): a is number => a !== null);
+
+    const groupIds = approved.filter((c) => isGroupType(c.type)).map((c) => c.id);
+    const seatRows = groupIds.length
+      ? await prisma.enrollment.groupBy({
+          by: ["courseId"],
+          where: { courseId: { in: groupIds }, status: { in: SEAT_HOLDING_STATUSES } },
+          _count: { _all: true },
+        })
+      : [];
+    const seats = new Map(seatRows.map((r) => [r.courseId, r._count._all]));
+
+    const courses = approved
+      .filter(
+        (c) =>
+          !isGroupType(c.type) ||
+          childAges.length === 0 ||
+          childAges.some((age) => ageFitsGroup(age, c.groupAgeMin, c.groupAgeMax)),
+      )
+      .map((c) => (isGroupType(c.type) ? { ...c, groupSeatsTaken: seats.get(c.id) ?? 0 } : c));
 
     // Rating shown per course is the teacher's own overall average
     // (across every review they've received, any course) — never the

@@ -11,7 +11,13 @@ import { getTeacherAvailability } from "@/features/shared/server/teacherAvailabi
 import { fitsAvailability } from "@/features/shared/utils/availability";
 import { WEEKDAY_LABELS_FULL } from "@/features/shared/utils/weekdays";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
-import { isGroupType, resolveGroupStartDate } from "@/features/courses/utils/groupClass";
+import {
+  ageFitsGroup,
+  groupRegistrationState,
+  isGroupType,
+  resolveGroupStartDate,
+  studentAgeYears,
+} from "@/features/courses/utils/groupClass";
 import {
     isInternationalParent,
     priceWithInternationalSurcharge,
@@ -213,6 +219,10 @@ async function priceGroupEnrollment(
     groupJoinMode: "MONTHLY_FIXED" | "ANYTIME" | null;
     groupStartDate: Date | null;
     groupEndDate: Date | null;
+    groupAgeMin: number | null;
+    groupAgeMax: number | null;
+    groupRegStartDate: Date | null;
+    groupRegEndDate: Date | null;
   },
 ): Promise<PricedEnrollment> {
   const groupPrice = course.price == null ? NaN : Number(course.price);
@@ -280,7 +290,7 @@ async function priceGroupEnrollment(
 
   const student = await prisma.student.findFirst({
     where: { id: input.studentId, parentId },
-    select: { id: true },
+    select: { id: true, age: true, dateOfBirth: true },
   });
 
   if (!student) {
@@ -291,6 +301,30 @@ async function priceGroupEnrollment(
   }
 
   if (options.enforceGroupRules) {
+    // Registration and age rules apply to new sign-ups only (order creation);
+    // verify / webhook skip them because the money is already taken.
+    const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+    const registration = groupRegistrationState(
+      day(course.groupRegStartDate),
+      day(course.groupRegEndDate),
+      today,
+    );
+
+    if (registration === "NOT_OPEN") {
+      throw new EnrollmentError("Registration for this group hasn't opened yet.", 409);
+    }
+
+    if (registration === "CLOSED") {
+      throw new EnrollmentError("Registration for this group has closed.", 409);
+    }
+
+    if (!ageFitsGroup(studentAgeYears(student, today), course.groupAgeMin, course.groupAgeMax)) {
+      throw new EnrollmentError(
+        `This group is for ages ${course.groupAgeMin}–${course.groupAgeMax}, so this child can't join.`,
+        409,
+      );
+    }
+
     if (await isStudentInGroup(course.id, input.studentId)) {
       throw new EnrollmentError("This child is already in this group.", 409);
     }
@@ -382,6 +416,10 @@ async function priceCycleEnrollment(
       groupJoinMode: true,
       groupStartDate: true,
       groupEndDate: true,
+      groupAgeMin: true,
+      groupAgeMax: true,
+      groupRegStartDate: true,
+      groupRegEndDate: true,
     },
   });
 

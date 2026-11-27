@@ -107,6 +107,28 @@ export default function CourseApprovalCard({
                 { label: "Weekly days & time (IST)", value: formatSchedule(course.groupDays, course.groupTime) },
                 { label: "Group type", value: groupModeLabel(course) },
                 { label: "Enrollment", value: groupJoinLabel(course) ?? "-" },
+                {
+                  label: "Group kind",
+                  value:
+                    course.groupKind === "RECURRING"
+                      ? `Recurring (${course.groupRecurrence === "WEEKLY" ? "weekly" : "monthly"})`
+                      : course.groupKind === "ONE_TIME"
+                        ? `One-time (${course.groupAllowMidwayJoin ? "mid-way joining allowed" : "no mid-way joining"})`
+                        : "-",
+                },
+                {
+                  label: "Student age",
+                  value:
+                    course.groupAgeMin != null && course.groupAgeMax != null
+                      ? `${course.groupAgeMin}–${course.groupAgeMax}`
+                      : "-",
+                },
+                {
+                  label: "Registration",
+                  value: course.groupRegStartDate
+                    ? `${course.groupRegStartDate.slice(0, 10)} → ${course.groupRegEndDate ? course.groupRegEndDate.slice(0, 10) : "open-ended"}`
+                    : "-",
+                },
               ]
             : []),
           { label: "Duration", value: course.duration || "-" },

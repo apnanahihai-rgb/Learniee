@@ -41,6 +41,14 @@ export interface ParentCourse {
   groupJoinMode?: string | null;
   groupStartDate?: string | null;
   groupEndDate?: string | null;
+  groupKind?: string | null;
+  groupRecurrence?: string | null;
+  groupAgeMin?: number | null;
+  groupAgeMax?: number | null;
+  groupRegStartDate?: string | null;
+  groupRegEndDate?: string | null;
+  /** Seats already taken (group classes; added by the list API). */
+  groupSeatsTaken?: number;
 
   courseTitle: string | null;
   price: string | null;
