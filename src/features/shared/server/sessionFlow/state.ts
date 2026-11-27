@@ -1,3 +1,4 @@
+import { countGroupClassStudents } from "@/features/shared/server/groupClass.service";
 import {
     isCohostConfirmed
 } from "@/features/shared/server/sessionMeeting.service";
@@ -64,6 +65,7 @@ export function toState(session: FlowSession, role: SessionActorRole, now: Date)
       meetingAccountEmail: null,
       meetingCohost: null,
       studentName: null,
+      group: null,
       serverNow: now.toISOString(),
     };
   }
@@ -146,7 +148,37 @@ export function toState(session: FlowSession, role: SessionActorRole, now: Date)
           : "PENDING"
         : null,
     studentName: role === "PARENT" ? displayName(session.student) : null,
+    group: null,
     serverNow: now.toISOString(),
+  };
+}
+
+/**
+ * `toState` plus the group-class view for a teacher: the class is one shared
+ * room, so the header names the group and the "has anyone joined?" steps look
+ * at every student, not just the one whose session was opened.
+ */
+export async function toStateWithGroup(
+  session: FlowSession,
+  role: SessionActorRole,
+  now: Date,
+): Promise<SessionFlowState> {
+  const state = toState(session, role, now);
+
+  if (role !== "TEACHER" || !isCycleSession(session)) return state;
+
+  const group = await countGroupClassStudents(session);
+
+  if (!group) return state;
+
+  const anyJoined = group.joined > 0;
+
+  return {
+    ...state,
+    group,
+    otherPartyName: `${group.size} ${group.size === 1 ? "student" : "students"}`,
+    // Display only: the live steps read "student joined" from this field.
+    studentJoinedAt: state.studentJoinedAt ?? (anyJoined ? state.teacherStartedAt ?? now.toISOString() : null),
   };
 }
 export function statusLabel(status: SessionStatusValue) {
@@ -160,8 +192,8 @@ export async function getSessionFlowState(
 ): Promise<SessionFlowState> {
   const session = await loadAndSettle(sessionId, actor, now);
 
-  return toState(session, actor.role, now);
+  return toStateWithGroup(session, actor.role, now);
 }
 export async function reload(sessionId: string, actor: SessionActor, now: Date) {
-  return toState(await loadSession(sessionId, actor), actor.role, now);
+  return toStateWithGroup(await loadSession(sessionId, actor), actor.role, now);
 }

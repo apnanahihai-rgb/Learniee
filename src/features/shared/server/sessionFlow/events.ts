@@ -1,4 +1,5 @@
 import { logActivity } from "@/features/shared/server/activityLog.service";
+import { findGroupSiblings } from "@/features/shared/server/groupClass.service";
 import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
 import {
     ensureSessionMeeting,
@@ -24,7 +25,31 @@ import {
 } from "@prisma/client";
 import "server-only";
 import { loadAndSettle, PENDING_RESCHEDULE_STATUSES, requireCycleSession, SessionActor, SessionFlowError } from './core';
-import { reload, statusLabel, toState } from './state';
+import { reload, statusLabel, toStateWithGroup } from './state';
+
+/**
+ * Group class: copies the teacher's Start onto every other student's session
+ * of the same class that hasn't got one yet. Conditional, so it never
+ * overwrites a time that was already saved. No-op for an Individual class.
+ */
+async function startGroupSiblings(
+  session: Parameters<typeof findGroupSiblings>[0],
+  startedAt: Date,
+): Promise<void> {
+  const siblings = await findGroupSiblings(session);
+
+  if (siblings.length === 0) return;
+
+  await prisma.classSession.updateMany({
+    where: {
+      id: { in: siblings.map((s) => s.id) },
+      status: ClassSessionStatus.SCHEDULED,
+      teacherStartedAt: null,
+      teacherEndedAt: null,
+    },
+    data: { teacherStartedAt: startedAt },
+  });
+}
 
 /**
  * Teacher taps Start. Opens 10 minutes before the class starts and
@@ -50,12 +75,16 @@ export async function startSession(
     // Already started: (re)try the Meet room if it's missing, and
     // re-check the co-host if Meet hasn't confirmed it yet. This is
     // also what the teacher's "Retry" button calls.
+    // Group class: a student who enrolled after the class started still
+    // belongs to the same live class.
+    await startGroupSiblings(session, session.teacherStartedAt);
+
     if (isGoogleMeetEnabled() && (!session.meetingUri || !isCohostConfirmed(session))) {
       await ensureSessionMeeting(session.id);
       return reload(sessionId, actor, now);
     }
 
-    return toState(session, "TEACHER", now);
+    return toStateWithGroup(session, "TEACHER", now);
   }
 
   const opensAt = joinOpensAt(session.startsAt);
@@ -76,6 +105,10 @@ export async function startSession(
     },
     data: { teacherStartedAt: now },
   });
+
+  // Group class: one Start opens the class for every student in it, and
+  // they all share the one Meet room created below.
+  await startGroupSiblings(session, now);
 
   // Meet only supplies the room; a failure here never blocks the Start.
   // The co-host is re-verified with Google on every first Start, even if
@@ -111,7 +144,7 @@ export async function joinSession(
       return reload(sessionId, actor, now);
     }
 
-    return toState(session, "PARENT", now);
+    return toStateWithGroup(session, "PARENT", now);
   }
 
   if (session.teacherEndedAt) {
@@ -159,14 +192,20 @@ export async function endSession(
   // Already decided (a double tap, or the time ran out first): show
   // the outcome instead of an error.
   if (session.status !== ClassSessionStatus.SCHEDULED) {
-    return toState(session, "TEACHER", now);
+    return toStateWithGroup(session, "TEACHER", now);
   }
 
   if (!session.teacherStartedAt) {
     throw new SessionFlowError("Start the session before ending it.", 409);
   }
 
-  if (!session.studentJoinedAt) {
+  // Group class: the teacher ends the one shared class for everyone. It only
+  // counts as "nobody came" when no student of the group has joined.
+  const siblings = await findGroupSiblings(session);
+  const anyStudentJoined =
+    session.studentJoinedAt !== null || siblings.some((s) => s.studentJoinedAt !== null);
+
+  if (!anyStudentJoined) {
     const absentFrom = studentAbsentFrom(session.startsAt);
 
     if (now < absentFrom) {
@@ -183,6 +222,34 @@ export async function endSession(
   });
 
   await resolveSession(session.id, now);
+
+  if (siblings.length > 0) {
+    // A student whose session was added after the Start is in the same class:
+    // the teacher was present from the same moment.
+    await startGroupSiblings(session, session.teacherStartedAt);
+
+    await prisma.classSession.updateMany({
+      where: {
+        id: { in: siblings.map((s) => s.id) },
+        status: ClassSessionStatus.SCHEDULED,
+        teacherEndedAt: null,
+      },
+      data: { teacherEndedAt: now },
+    });
+
+    // One at a time (each takes the cycle lock). A failure on one student
+    // never stops the rest; the sweep decides anything left over.
+    for (const sibling of siblings) {
+      try {
+        await resolveSession(sibling.id, now);
+      } catch (err) {
+        console.error(
+          `Group class: couldn't resolve session ${sibling.id}:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  }
 
   return reload(sessionId, actor, now);
 }

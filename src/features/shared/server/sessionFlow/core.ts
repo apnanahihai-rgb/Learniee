@@ -50,7 +50,12 @@ const flowInclude = {
   student: { select: { firstName: true, visibleName: true } },
   teacher: { select: { firstName: true, lastName: true, visibleName: true, email: true } },
   enrollment: {
-    select: { subject: true, course: { select: { courseTitle: true } } },
+    // courseId + type: a group class is found from these (groupClass.service.ts).
+    select: {
+      subject: true,
+      courseId: true,
+      course: { select: { courseTitle: true, type: true } },
+    },
   },
   cycle: { select: { startDate: true, extendedDeadline: true } },
   // Phase 2.2: the make-up of an excused class may go past day 45.

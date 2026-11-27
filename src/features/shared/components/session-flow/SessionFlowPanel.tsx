@@ -171,7 +171,11 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
-              {isTeacher ? "Class with your student" : "Class with your teacher"}
+              {isTeacher
+                ? state.group
+                  ? "Group class"
+                  : "Class with your student"
+                : "Class with your teacher"}
             </p>
             <h1 className="font-heading text-xl sm:text-2xl font-bold leading-snug truncate">
               {state.otherPartyName}
@@ -197,6 +201,11 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
           </span>
           {lengthMinutes !== null && lengthMinutes > 0 && (
             <span className={HEADER_CHIP}>{lengthMinutes} min</span>
+          )}
+          {state.group && (
+            <span className={HEADER_CHIP}>
+              {state.group.joined} of {state.group.size} joined
+            </span>
           )}
         </div>
       </div>

@@ -1,8 +1,11 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { prisma } from "@/lib/prisma";
 import { EnrollmentStatus, ResourceType } from "@prisma/client";
 
+import { listGroupMateEnrollments } from "@/features/shared/server/groupClass.service";
 import { notifyResourceShared } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 
@@ -182,29 +185,67 @@ export async function createResource(teacherId: string, input: CreateResourceInp
 
   const enrollment = await requireTeacherEnrollment(input.enrollmentId, teacherId);
 
-  const created = await prisma.resource.create({
-    data: {
-      enrollmentId: enrollment.id,
-      teacherId: enrollment.teacherId,
-      parentId: enrollment.parentId,
-      studentId: enrollment.studentId,
-      title,
-      description: input.description?.trim() || null,
-      type,
-      fileKey: type === ResourceType.FILE ? input.fileKey || null : null,
-      fileName: type === ResourceType.FILE ? input.fileName?.trim() || null : null,
-      externalUrl: type === ResourceType.LINK ? input.externalUrl!.trim() : null,
-    },
-  });
+  const data = {
+    title,
+    description: input.description?.trim() || null,
+    type,
+    fileKey: type === ResourceType.FILE ? input.fileKey || null : null,
+    fileName: type === ResourceType.FILE ? input.fileName?.trim() || null : null,
+    externalUrl: type === ResourceType.LINK ? input.externalUrl!.trim() : null,
+  };
 
-  await notifyResourceShared(created.id);
+  // Group class (Nov 2026): a resource goes to every student of the group —
+  // one row per student's enrollment, tied by `groupShareId` (so a delete
+  // reaches all of them). Each parent still sees it in their own library.
+  const mates = (await listGroupMateEnrollments(enrollment.id, SHAREABLE_ENROLLMENT_STATUSES)).filter(
+    (mate) => mate.teacherId === teacherId,
+  );
+
+  const targets =
+    mates.length > 1
+      ? mates
+      : [
+          {
+            id: enrollment.id,
+            teacherId: enrollment.teacherId,
+            parentId: enrollment.parentId,
+            studentId: enrollment.studentId,
+          },
+        ];
+  const groupShareId = mates.length > 1 ? randomUUID() : null;
+
+  const rows = await prisma.$transaction(
+    targets.map((target) =>
+      prisma.resource.create({
+        data: {
+          ...data,
+          enrollmentId: target.id,
+          teacherId: target.teacherId,
+          parentId: target.parentId,
+          studentId: target.studentId,
+          groupShareId,
+        },
+      }),
+    ),
+  );
+
+  const created = rows.find((row) => row.enrollmentId === enrollment.id) ?? rows[0];
+
+  for (const row of rows) {
+    await notifyResourceShared(row.id);
+  }
 
   await logActivity({
     action: "RESOURCE_SHARED",
     actorRole: "TEACHER",
     actorId: teacherId,
     description: `Resource "${title}" shared on enrollment ${enrollment.id}.`,
-    metadata: { enrollmentId: enrollment.id, resourceId: created.id, type },
+    metadata: {
+      enrollmentId: enrollment.id,
+      resourceId: created.id,
+      type,
+      ...(groupShareId ? { groupShareId, students: rows.length } : {}),
+    },
   });
 
   return created;
@@ -218,6 +259,13 @@ export async function deleteResource(teacherId: string, resourceId: string) {
 
   if (!resource) {
     throw new ResourceError("Resource not found, or doesn't belong to you.", 404);
+  }
+
+  // Group class: removing it removes every student's copy.
+  if (resource.groupShareId) {
+    await prisma.resource.deleteMany({ where: { groupShareId: resource.groupShareId, teacherId } });
+
+    return;
   }
 
   await prisma.resource.delete({ where: { id: resource.id } });

@@ -879,12 +879,17 @@ model Homework {
   dueDate       DateTime?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  /// Group classes (Nov 2026): rows created together for every student of a
+  /// group share this id, so an edit or delete reaches all of them. Null on
+  /// Individual classes.
+  groupShareId  String?
   enrollment    Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent        ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   teacher       Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   submission    HomeworkSubmission?
 
+  @@index([groupShareId])
   @@index([enrollmentId])
   @@index([teacherId])
   @@index([parentId])
@@ -1460,12 +1465,15 @@ model Resource {
   externalUrl  String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  /// Group classes (Nov 2026): see Homework.groupShareId.
+  groupShareId String?
 
   enrollment Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   teacher    Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   parent     ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student    Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+  @@index([groupShareId])
   @@index([enrollmentId])
   @@index([teacherId])
   @@index([parentId])

@@ -81,5 +81,10 @@ export interface SessionFlowState {
   meetingCohost: "CONFIRMED" | "PENDING" | null;
   /** Parent only: the student's name, to type in Meet if asked for a name. */
   studentName: string | null;
+  /**
+   * Teacher only, group classes only: how many students are in this class
+   * and how many have joined. Null for an Individual class and for parents.
+   */
+  group: { size: number; joined: number } | null;
   serverNow: string;
 }

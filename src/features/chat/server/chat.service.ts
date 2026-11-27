@@ -11,6 +11,7 @@ import {
   notifyChatMessage,
 } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
+import { listGroupMateEnrollments } from "@/features/shared/server/groupClass.service";
 import {
   SPLIT_LOOKBACK_MESSAGES,
   SPLIT_LOOKBACK_MINUTES,
@@ -256,6 +257,57 @@ export async function listMessages(
   });
 }
 
+/**
+ * Group class (Nov 2026): a message the teacher sends in one student's room
+ * is also delivered to every other student's room in the same group, so the
+ * whole group hears it. A parent's reply stays in their own room, private to
+ * the teacher. Never throws — the original message is already sent.
+ */
+async function shareTeacherMessageWithGroup(
+  enrollmentId: string,
+  teacherId: string,
+  body: string,
+): Promise<void> {
+  try {
+    const mates = await listGroupMateEnrollments(enrollmentId, SENDABLE_ENROLLMENT_STATUSES);
+    const otherIds = mates
+      .filter((mate) => mate.id !== enrollmentId && mate.teacherId === teacherId)
+      .map((mate) => mate.id);
+
+    if (otherIds.length === 0) return;
+
+    const rooms = await prisma.chatRoom.findMany({
+      where: { enrollmentId: { in: otherIds } },
+      select: { id: true },
+    });
+
+    if (rooms.length === 0) return;
+
+    const roomIds = rooms.map((room) => room.id);
+
+    await prisma.$transaction([
+      prisma.chatMessage.createMany({
+        data: roomIds.map((chatRoomId) => ({
+          chatRoomId,
+          senderRole: ChatSenderRole.TEACHER,
+          senderId: teacherId,
+          body,
+        })),
+      }),
+      prisma.chatRoom.updateMany({
+        where: { id: { in: roomIds } },
+        data: { lastMessageAt: new Date() },
+      }),
+    ]);
+
+    for (const roomId of roomIds) {
+      await notifyChatMessage(roomId, "TEACHER");
+    }
+  } catch (error) {
+    console.error("Group chat share error:", error);
+  }
+}
+
 export interface SendMessageInput {
   roomId: string;
   senderRole: "PARENT" | "TEACHER";
@@ -398,6 +450,10 @@ export async function sendMessage(input: SendMessageInput) {
   });
 
   await notifyChatMessage(input.roomId, input.senderRole);
+
+  if (input.senderRole === "TEACHER") {
+    await shareTeacherMessageWithGroup(room.enrollmentId, input.senderId, body);
+  }
 
   if (screening.level === "SUSPICIOUS") {
     await notifyAdminChatMessageFlagged(input.roomId, input.senderRole, "SUSPICIOUS");

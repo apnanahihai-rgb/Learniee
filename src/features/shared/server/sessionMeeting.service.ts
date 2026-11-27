@@ -3,6 +3,7 @@ import "server-only";
 import { ClassSessionStatus, type Prisma } from "@prisma/client";
 
 import { findBusyDemoOrganizers } from "@/features/shared/server/demoOrganizerBusy";
+import { isGroupSession } from "@/features/shared/server/groupClass.service";
 import { rankOrganizers } from "@/features/shared/utils/meetOrganizerPool";
 import { prisma } from "@/lib/prisma";
 import {
@@ -53,6 +54,17 @@ interface CohostSession {
   teacher: { email: string | null };
 }
 
+/**
+ * Every session that uses this session's room. A group class (Nov 2026) is
+ * one room shared by all its students' sessions, so co-host state is written
+ * to all of them; for an Individual class it is just the one session.
+ */
+function roomWhere(session: { id: string; meetSpaceName: string | null }) {
+  return session.meetSpaceName
+    ? { meetSpaceName: session.meetSpaceName, status: ClassSessionStatus.SCHEDULED }
+    : { id: session.id };
+}
+
 /** The account that owns this session's room. */
 function organizerOf(session: { meetOrganizerEmail: string | null }): string | null {
   return session.meetOrganizerEmail ?? getMeetOrganizers()[0] ?? null;
@@ -88,8 +100,8 @@ async function syncTeacherCohost(
 
   try {
     if (!teacherEmail) {
-      await prisma.classSession.update({
-        where: { id: session.id },
+      await prisma.classSession.updateMany({
+        where: roomWhere(session),
         data: {
           meetCohostCheckedAt: now,
           meetCohostAttempts: { increment: 1 },
@@ -102,8 +114,8 @@ async function syncTeacherCohost(
 
     const result = await ensureMeetCoHost(session.meetSpaceName, teacherEmail, organizer);
 
-    await prisma.classSession.update({
-      where: { id: session.id },
+    await prisma.classSession.updateMany({
+      where: roomWhere(session),
       data: result.confirmed
         ? {
             meetCohostEmail: teacherEmail,
@@ -151,8 +163,71 @@ const sessionSelect = {
   meetingUri: true,
   meetOrganizerEmail: true,
   meetCohostEmail: true,
+  enrollment: { select: { courseId: true, course: { select: { type: true } } } },
   teacher: { select: { email: true } },
 } as const;
+
+const roomFields = {
+  meetSpaceName: true,
+  meetingUri: true,
+  meetOrganizerEmail: true,
+  meetOrganizerAssignedAt: true,
+  meetCohostEmail: true,
+  meetCohostConfirmedAt: true,
+  meetCohostCheckedAt: true,
+  meetCohostError: true,
+} as const;
+
+/**
+ * Group class (Nov 2026): makes every student's session of the same class
+ * point at ONE room. The room that was created first (earliest organizer
+ * assignment, then id) wins; every other session — including ones with no
+ * room yet — adopts it. Safe to repeat, and it also repairs the rare race of
+ * two rooms being created at the same moment (Start and a Join together): the
+ * extra, empty Meet space is harmless. No-op for an Individual class.
+ */
+async function syncGroupRoom(
+  session: { id: string; startsAt: Date | null } & {
+    enrollment: { courseId: string; course: { type: string | null } };
+  },
+): Promise<void> {
+  if (!isGroupSession(session)) return;
+
+  const group = await prisma.classSession.findMany({
+    where: {
+      startsAt: session.startsAt,
+      enrollment: { courseId: session.enrollment.courseId },
+      status: ClassSessionStatus.SCHEDULED,
+    },
+    select: { id: true, ...roomFields },
+  });
+
+  const withRoom = group
+    .filter((row) => row.meetingUri !== null)
+    .sort(
+      (a, b) =>
+        (a.meetOrganizerAssignedAt?.getTime() ?? Number.MAX_SAFE_INTEGER) -
+          (b.meetOrganizerAssignedAt?.getTime() ?? Number.MAX_SAFE_INTEGER) ||
+        a.id.localeCompare(b.id),
+    );
+
+  const canonical = withRoom[0];
+
+  if (!canonical) return;
+
+  const stale = group.filter((row) => row.meetingUri !== canonical.meetingUri);
+
+  if (stale.length === 0) return;
+
+  const { id: _canonicalId, ...room } = canonical;
+
+  void _canonicalId;
+
+  await prisma.classSession.updateMany({
+    where: { id: { in: stale.map((row) => row.id) }, status: ClassSessionStatus.SCHEDULED },
+    data: room,
+  });
+}
 
 /**
  * Chooses the organizer for a new room and notes the choice on the
@@ -263,12 +338,26 @@ export async function ensureSessionMeeting(
     if (session.meetingUri) {
       if (session.status === ClassSessionStatus.SCHEDULED) {
         await syncTeacherCohost(session, options);
+        await syncGroupRoom(session);
       }
 
       return session.meetingUri;
     }
 
     if (session.status !== ClassSessionStatus.SCHEDULED) return null;
+
+    // Group class: if another student's session already has the room, use
+    // it instead of making a second one.
+    if (isGroupSession(session)) {
+      await syncGroupRoom({ ...session, id: session.id });
+
+      const adopted = await prisma.classSession.findUnique({
+        where: { id: session.id },
+        select: { meetingUri: true },
+      });
+
+      if (adopted?.meetingUri) return adopted.meetingUri;
+    }
 
     const candidates = await chooseOrganizers(session);
 
@@ -320,9 +409,17 @@ export async function ensureSessionMeeting(
 
     if (kept?.meetingUri) {
       await syncTeacherCohost(kept, claimed.count === 1 ? { force: true } : options);
+      // Group class: the other students of this class use this same room.
+      await syncGroupRoom(kept);
     }
 
-    return kept?.meetingUri ?? null;
+    // Re-read: a group's earlier room may have replaced the one made here.
+    const final = await prisma.classSession.findUnique({
+      where: { id: session.id },
+      select: { meetingUri: true },
+    });
+
+    return final?.meetingUri ?? null;
   } catch (err) {
     console.error(
       `Google Meet room creation failed for session ${sessionId}:`,

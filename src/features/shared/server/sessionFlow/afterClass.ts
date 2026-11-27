@@ -18,7 +18,7 @@ import {
 } from "@prisma/client";
 import "server-only";
 import { loadAndSettle, requireCycleSession, SessionActor, SessionFlowError, toConfirmationInput } from './core';
-import { reload, statusLabel, toState } from './state';
+import { reload, statusLabel, toStateWithGroup } from './state';
 
 /**
  * Teacher adds (or edits) the short class summary once they have
@@ -87,7 +87,7 @@ export async function confirmSessionOutcome(
       );
     case "ACCEPTED":
     case "DECIDED":
-      return toState(session, "PARENT", now);
+      return toStateWithGroup(session, "PARENT", now);
     case "OPEN":
       break;
   }
@@ -145,7 +145,7 @@ export async function reportSessionOutcome(
     case "NEEDS_REVIEW":
       throw new SessionFlowError("An Admin is already reviewing this class.", 409);
     case "REPORTED":
-      return toState(session, "PARENT", now);
+      return toStateWithGroup(session, "PARENT", now);
     case "ACCEPTED":
       throw new SessionFlowError(
         "The 48-hour window for this class has passed, so it was accepted.",

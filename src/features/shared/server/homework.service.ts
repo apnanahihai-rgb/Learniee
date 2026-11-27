@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
+
 import { prisma } from "@/lib/prisma";
 import { HomeworkSubmissionStatus } from "@prisma/client";
 
+import { listGroupMateEnrollments } from "@/features/shared/server/groupClass.service";
 import { ACTIVE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
 import {
   notifyHomeworkAssigned,
@@ -146,16 +149,54 @@ export async function createHomework(teacherId: string, input: CreateHomeworkInp
     teacherId,
   });
 
+  const data = {
+    title,
+    instructions: input.instructions?.trim() || null,
+    attachmentKey: input.attachmentKey || null,
+    dueDate: input.dueDate ? new Date(input.dueDate) : null,
+  };
+
+  // Group class (Nov 2026): homework goes to every student of the group — one
+  // row per student's enrollment, tied together by `groupShareId` so an edit
+  // or delete reaches all of them. Each student submits their own work.
+  const mates = (await listGroupMateEnrollments(enrollment.id, ACTIVE_ENROLLMENT_STATUSES)).filter(
+    (mate) => mate.teacherId === teacherId,
+  );
+
+  if (mates.length > 1) {
+    const groupShareId = randomUUID();
+
+    const rows = await prisma.$transaction(
+      mates.map((mate) =>
+        prisma.homework.create({
+          data: {
+            ...data,
+            enrollmentId: mate.id,
+            teacherId: mate.teacherId,
+            parentId: mate.parentId,
+            studentId: mate.studentId,
+            groupShareId,
+          },
+          include: homeworkInclude,
+        }),
+      ),
+    );
+
+    for (const row of rows) {
+      await notifyHomeworkAssigned(row.id);
+    }
+
+    // The teacher's own enrollment row (always present: the caller is in the group).
+    return rows.find((row) => row.enrollmentId === enrollment.id) ?? rows[0];
+  }
+
   const created = await prisma.homework.create({
     data: {
+      ...data,
       enrollmentId: enrollment.id,
       teacherId: enrollment.teacherId,
       parentId: enrollment.parentId,
       studentId: enrollment.studentId,
-      title,
-      instructions: input.instructions?.trim() || null,
-      attachmentKey: input.attachmentKey || null,
-      dueDate: input.dueDate ? new Date(input.dueDate) : null,
     },
     include: homeworkInclude,
   });
@@ -196,16 +237,26 @@ export async function updateHomework(
     throw new HomeworkError("Title can't be empty.");
   }
 
+  const data = {
+    title: input.title !== undefined ? input.title.trim() : undefined,
+    instructions:
+      input.instructions !== undefined ? input.instructions.trim() || null : undefined,
+    attachmentKey: input.attachmentKey !== undefined ? input.attachmentKey : undefined,
+    dueDate:
+      input.dueDate !== undefined ? (input.dueDate ? new Date(input.dueDate) : null) : undefined,
+  };
+
+  // Group class: the same edit reaches every student's copy.
+  if (homework.groupShareId) {
+    await prisma.homework.updateMany({
+      where: { groupShareId: homework.groupShareId, teacherId },
+      data,
+    });
+  }
+
   return prisma.homework.update({
     where: { id: homework.id },
-    data: {
-      title: input.title !== undefined ? input.title.trim() : undefined,
-      instructions:
-        input.instructions !== undefined ? input.instructions.trim() || null : undefined,
-      attachmentKey: input.attachmentKey !== undefined ? input.attachmentKey : undefined,
-      dueDate:
-        input.dueDate !== undefined ? (input.dueDate ? new Date(input.dueDate) : null) : undefined,
-    },
+    data,
     include: homeworkInclude,
   });
 }
@@ -213,6 +264,16 @@ export async function updateHomework(
 /** Teacher deletes their own homework (submission cascades with it). */
 export async function deleteHomework(teacherId: string, homeworkId: string) {
   const homework = await requireOwnedHomework(homeworkId, teacherId);
+
+  // Group class: removing it removes every student's copy.
+  if (homework.groupShareId) {
+    await prisma.homework.deleteMany({
+      where: { groupShareId: homework.groupShareId, teacherId },
+    });
+
+    return;
+  }
+
   await prisma.homework.delete({ where: { id: homework.id } });
 }
 
