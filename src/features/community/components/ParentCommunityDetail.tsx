@@ -9,15 +9,25 @@ import {
 } from "@/features/parent/components/courses/pdUi";
 
 import { useParentCommunity } from "../hooks/useParentCommunities";
-import type { ParentCommunityFile } from "../types/community";
+import type { CommunityReactionType, ParentCommunityFile } from "../types/community";
 import { formatBytes, formatDate, formatPrice } from "../utils/format";
 import ParentCommunityActions from "./ParentCommunityActions";
+import ParentCommunityPolls from "./ParentCommunityPolls";
+import ReactionBar from "./ReactionBar";
 
 function fileUrl(communityId: string, fileId: string, download: boolean) {
   return `/api/parent/communities/${communityId}/files/${fileId}${download ? "?download=1" : ""}`;
 }
 
-function FileRow({ communityId, file }: { communityId: string; file: ParentCommunityFile }) {
+function FileRow({
+  communityId,
+  file,
+  onReact,
+}: {
+  communityId: string;
+  file: ParentCommunityFile;
+  onReact: (fileId: string, type: CommunityReactionType | null) => Promise<string | null>;
+}) {
   const size = formatBytes(file.sizeBytes);
 
   return (
@@ -49,6 +59,10 @@ function FileRow({ communityId, file }: { communityId: string; file: ParentCommu
           Download
         </a>
       </div>
+
+      <div className="basis-full pl-[58px] max-[560px]:pl-0">
+        <ReactionBar counts={file.reactionCounts} mine={file.myReaction} onReact={(type) => onReact(file.id, type)} />
+      </div>
     </li>
   );
 }
@@ -59,7 +73,19 @@ function FileRow({ communityId, file }: { communityId: string; file: ParentCommu
  * Data: GET /api/parent/communities/[id]; files via .../files/[fileId].
  */
 export default function ParentCommunityDetail({ communityId }: { communityId: string }) {
-  const { community, loading, error, join, leave, pay } = useParentCommunity(communityId);
+  const { community, loading, error, join, leave, pay, react, vote } = useParentCommunity(communityId);
+
+  async function onReact(fileId: string, type: CommunityReactionType | null) {
+    const result = await react(fileId, type);
+
+    return result.ok ? null : result.error;
+  }
+
+  async function onVote(pollId: string, optionIds: string[]) {
+    const result = await vote(pollId, optionIds);
+
+    return result.ok ? null : result.error;
+  }
 
   return (
     <div className="mx-auto max-w-[860px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
@@ -121,11 +147,13 @@ export default function ParentCommunityDetail({ communityId }: { communityId: st
             ) : (
               <ul>
                 {community.files.map((f) => (
-                  <FileRow key={f.id} communityId={community.id} file={f} />
+                  <FileRow key={f.id} communityId={community.id} file={f} onReact={onReact} />
                 ))}
               </ul>
             )}
           </section>
+
+          {community.isMember && <ParentCommunityPolls polls={community.polls} onVote={onVote} />}
         </>
       )}
     </div>

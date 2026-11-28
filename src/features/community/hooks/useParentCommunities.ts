@@ -7,7 +7,7 @@ import { askPaymentMethod } from "@/lib/askPaymentMethod";
 import { openRazorpayCheckout } from "@/lib/loadRazorpayCheckout";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
 
-import type { ParentCommunityDetail, ParentCommunityRow } from "../types/community";
+import type { CommunityReactionType, ParentCommunityDetail, ParentCommunityRow } from "../types/community";
 
 export type MembershipResult = { ok: true } | { ok: false; error: string };
 
@@ -94,6 +94,28 @@ async function payForCommunity(community: { id: string; title: string; price: nu
     console.error("Community payment error:", err);
 
     return { ok: false, error: err instanceof Error ? err.message : "Payment failed. Please try again." };
+  }
+}
+
+/** PUT/POST helper for reactions and votes: returns a message instead of throwing. */
+async function sendJson(url: string, method: "PUT" | "POST", body: unknown): Promise<MembershipResult> {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Something went wrong. Please try again." };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    console.error("Community request error:", err);
+
+    return { ok: false, error: "Network error. Please try again." };
   }
 }
 
@@ -223,5 +245,29 @@ export function useParentCommunity(communityId: string) {
     return result;
   }, [community, load]);
 
-  return { community, loading, error, reload: load, join, leave, pay };
+  /** Pick, change or (type = null) remove this Parent's reaction on a file. */
+  const react = useCallback(
+    async (fileId: string, type: CommunityReactionType | null) => {
+      const result = await sendJson(`${BASE}/${communityId}/files/${fileId}/reaction`, "PUT", { type });
+
+      // Reload even on failure so the screen shows what the server actually holds.
+      await load();
+
+      return result;
+    },
+    [communityId, load],
+  );
+
+  const vote = useCallback(
+    async (pollId: string, optionIds: string[]) => {
+      const result = await sendJson(`${BASE}/${communityId}/polls/${pollId}/vote`, "POST", { optionIds });
+
+      await load();
+
+      return result;
+    },
+    [communityId, load],
+  );
+
+  return { community, loading, error, reload: load, join, leave, pay, react, vote };
 }

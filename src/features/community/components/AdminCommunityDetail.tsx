@@ -17,11 +17,14 @@ import {
 import { uploadFileToS3 } from "@/lib/uploadFileToS3";
 
 import { useAdminCommunity, type ActionResult } from "../hooks/useAdminCommunities";
-import type { AdminCommunityFile, AdminCommunityMember } from "../types/community";
+import type { AdminCommunityFile, AdminCommunityMember, AdminCommunityPoll } from "../types/community";
+import { COMMUNITY_REACTIONS } from "../types/community";
 import { formatBytes, formatDate, formatPrice } from "../utils/format";
+import AdminCommunityPolls from "./AdminCommunityPolls";
 import CommunityFormDialog from "./CommunityFormDialog";
+import PollFormDialog from "./PollFormDialog";
 
-type Tab = "files" | "members" | "payments";
+type Tab = "files" | "polls" | "members" | "payments";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
@@ -38,13 +41,31 @@ function withContentType(file: File): File {
  * all verified Admin auth. Files go browser -> S3 through /api/upload/presign.
  */
 export default function AdminCommunityDetail({ communityId }: { communityId: string }) {
-  const { community, members, payments, paymentsSummary, loading, error, edit, setStatus, addFile, deleteFile, removeMember } =
-    useAdminCommunity(communityId);
+  const {
+    community,
+    members,
+    payments,
+    paymentsSummary,
+    polls,
+    loading,
+    error,
+    edit,
+    setStatus,
+    addFile,
+    deleteFile,
+    removeMember,
+    createPoll,
+    closePoll,
+    deletePoll,
+  } = useAdminCommunity(communityId);
 
   const [tab, setTab] = useState<Tab>("files");
   const [editing, setEditing] = useState(false);
   const [deletingFile, setDeletingFile] = useState<AdminCommunityFile | null>(null);
   const [removing, setRemoving] = useState<AdminCommunityMember | null>(null);
+  const [creatingPoll, setCreatingPoll] = useState(false);
+  const [closingPoll, setClosingPoll] = useState<AdminCommunityPoll | null>(null);
+  const [deletingPoll, setDeletingPoll] = useState<AdminCommunityPoll | null>(null);
   const [uploading, setUploading] = useState(false);
   const [actionError, setActionError] = useState("");
   const [toast, setToast] = useState("");
@@ -157,6 +178,7 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
         onChange={setTab}
         tabs={[
           { value: "files", label: "Files", count: community.files.length },
+          { value: "polls", label: "Polls", count: polls.length },
           { value: "members", label: "Members", count: members.length },
           { value: "payments", label: "Payments", count: payments.length },
         ]}
@@ -194,6 +216,21 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
                 },
                 { label: "Name", render: (f) => <span className="break-all text-pd-ink2">{f.fileName}</span> },
                 { label: "Size", nowrap: true, render: (f) => formatBytes(f.sizeBytes) || "—" },
+                {
+                  label: "Reactions",
+                  render: (f) =>
+                    f.reactionTotal === 0 ? (
+                      <span className="text-pd-ink3">—</span>
+                    ) : (
+                      <span className="inline-flex flex-wrap gap-x-3 gap-y-0.5 whitespace-nowrap">
+                        {COMMUNITY_REACTIONS.filter((r) => f.reactionCounts[r.type] > 0).map((r) => (
+                          <span key={r.type} title={r.label}>
+                            {r.emoji} {f.reactionCounts[r.type]}
+                          </span>
+                        ))}
+                      </span>
+                    ),
+                },
                 { label: "Added", nowrap: true, render: (f) => formatDate(f.createdAt) },
                 {
                   label: "Action",
@@ -208,6 +245,18 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
               ]}
             />
           )}
+        </>
+      )}
+
+      {tab === "polls" && (
+        <>
+          <div>
+            <button type="button" className={adminBtn("pri")} onClick={() => setCreatingPoll(true)}>
+              New poll
+            </button>
+          </div>
+
+          <AdminCommunityPolls polls={polls} onClose={setClosingPoll} onDelete={setDeletingPoll} />
         </>
       )}
 
@@ -315,6 +364,63 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
             return null;
           }}
         />
+      )}
+
+      {creatingPoll && (
+        <PollFormDialog
+          onCancel={() => setCreatingPoll(false)}
+          onSubmit={async (values) => {
+            const result = await createPoll(values);
+
+            if (!result.ok) return result.error;
+
+            setCreatingPoll(false);
+            notify("Poll posted");
+
+            return null;
+          }}
+        />
+      )}
+
+      {closingPoll && (
+        <AdminConfirmDialog
+          title="Close this poll?"
+          confirmLabel="Close poll"
+          onCancel={() => setClosingPoll(null)}
+          onConfirm={async () => {
+            const result = await closePoll(closingPoll.id);
+
+            if (!result.ok) return result.error;
+
+            setClosingPoll(null);
+            notify("Poll closed");
+
+            return null;
+          }}
+        >
+          Parents will no longer be able to vote or change their vote on “{closingPoll.question}”. The results are kept.
+        </AdminConfirmDialog>
+      )}
+
+      {deletingPoll && (
+        <AdminConfirmDialog
+          title="Delete this poll?"
+          confirmLabel="Delete poll"
+          danger
+          onCancel={() => setDeletingPoll(null)}
+          onConfirm={async () => {
+            const result = await deletePoll(deletingPoll.id);
+
+            if (!result.ok) return result.error;
+
+            setDeletingPoll(null);
+            notify("Poll deleted");
+
+            return null;
+          }}
+        >
+          “{deletingPoll.question}” and all its votes will be removed. This cannot be undone.
+        </AdminConfirmDialog>
       )}
 
       {deletingFile && (

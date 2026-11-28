@@ -38,3 +38,38 @@ export function notifyCommunityFileAdded(fileId: string) {
     );
   });
 }
+
+/**
+ * Community engagement (Dec 2026): every Parent who joined the community is
+ * told once when Admin posts a poll. A hidden community notifies nobody.
+ */
+export function notifyCommunityPollCreated(pollId: string) {
+  return safe("community poll created", async () => {
+    const poll = await prisma.communityPoll.findUnique({
+      where: { id: pollId },
+      select: {
+        question: true,
+        communityId: true,
+        community: { select: { title: true, status: true } },
+      },
+    });
+
+    if (!poll || poll.community.status !== CommunityStatus.ACTIVE) return;
+
+    const members = await prisma.communityMember.findMany({
+      where: { communityId: poll.communityId },
+      select: { parentId: true },
+    });
+
+    await createNotifications(
+      members.map((m) => ({
+        recipientId: m.parentId,
+        recipientRole: R.PARENT,
+        type: T.COMMUNITY_POLL_CREATED,
+        title: "New poll in your community",
+        message: `${poll.community.title}: ${poll.question}`,
+        link: `/parent/community/${poll.communityId}`,
+      })),
+    );
+  });
+}

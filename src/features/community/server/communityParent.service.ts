@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { createPresignedFileLink } from "@/lib/s3";
 
 import { CommunityError } from "./community.service";
+import { getMyReactionsByFile, listPollsForParent } from "./communityEngagement.service";
+import { emptyReactionCounts, getReactionCountsByFile } from "./communityReactions";
 
 /**
  * Community, Part 2 (Parent, Dec 2026). A Parent sees every visible community,
@@ -32,6 +34,26 @@ async function requireVisibleCommunity(communityId: string) {
   }
 
   return community;
+}
+
+/** A member's view of a community's files: details plus reaction counts and their own reaction. */
+async function loadMemberFiles(communityId: string, parentId: string) {
+  const [rows, reactionsByFile, myReactions] = await Promise.all([
+    prisma.communityFile.findMany({ where: { communityId }, orderBy: { createdAt: "desc" } }),
+    getReactionCountsByFile(communityId),
+    getMyReactionsByFile(communityId, parentId),
+  ]);
+
+  return rows.map((f) => ({
+    id: f.id,
+    title: f.title,
+    fileName: f.fileName,
+    contentType: f.contentType,
+    sizeBytes: f.sizeBytes,
+    createdAt: f.createdAt.toISOString(),
+    reactionCounts: reactionsByFile.get(f.id) ?? emptyReactionCounts(),
+    myReaction: myReactions.get(f.id) ?? null,
+  }));
 }
 
 export async function listCommunitiesForParent(parentId: string) {
@@ -76,21 +98,10 @@ export async function getCommunityForParent(communityId: string, parentId: strin
 
   const isMember = community.members.length > 0;
 
-  const files = isMember
-    ? (
-        await prisma.communityFile.findMany({
-          where: { communityId },
-          orderBy: { createdAt: "desc" },
-        })
-      ).map((f) => ({
-        id: f.id,
-        title: f.title,
-        fileName: f.fileName,
-        contentType: f.contentType,
-        sizeBytes: f.sizeBytes,
-        createdAt: f.createdAt.toISOString(),
-      }))
-    : [];
+  // Files, reactions and polls are for members only.
+  const [files, polls] = isMember
+    ? await Promise.all([loadMemberFiles(communityId, parentId), listPollsForParent(communityId, parentId)])
+    : [[], []];
 
   return {
     id: community.id,
@@ -105,6 +116,7 @@ export async function getCommunityForParent(communityId: string, parentId: strin
     joinedAt: community.members[0]?.joinedAt.toISOString() ?? null,
     createdAt: community.createdAt.toISOString(),
     files,
+    polls,
   };
 }
 

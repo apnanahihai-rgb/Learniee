@@ -8,6 +8,8 @@ import { logActivity } from "@/features/shared/server/activityLog.service";
 import { displayName } from "@/features/shared/utils/displayName";
 import { notifyCommunityFileAdded } from "@/features/shared/server/notificationTriggers.service";
 
+import { emptyReactionCounts, getReactionCountsByFile } from "./communityReactions";
+
 /**
  * Community, Part 1 (Admin, Dec 2026). Admin creates communities and shares
  * files; Parents (Parts 2 and 3) join and read. Every function here is called
@@ -132,16 +134,24 @@ export async function getCommunityDetail(communityId: string) {
     throw new CommunityError("Community not found.", 404);
   }
 
+  const reactionsByFile = await getReactionCountsByFile(communityId);
+
   const files = await Promise.all(
-    community.files.map(async (f) => ({
-      id: f.id,
-      title: f.title,
-      fileName: f.fileName,
-      contentType: f.contentType,
-      sizeBytes: f.sizeBytes,
-      createdAt: f.createdAt.toISOString(),
-      fileUrl: await createPresignedDownloadUrl(f.fileKey),
-    })),
+    community.files.map(async (f) => {
+      const reactionCounts = reactionsByFile.get(f.id) ?? emptyReactionCounts();
+
+      return {
+        reactionCounts,
+        reactionTotal: Object.values(reactionCounts).reduce((sum, n) => sum + n, 0),
+        id: f.id,
+        title: f.title,
+        fileName: f.fileName,
+        contentType: f.contentType,
+        sizeBytes: f.sizeBytes,
+        createdAt: f.createdAt.toISOString(),
+        fileUrl: await createPresignedDownloadUrl(f.fileKey),
+      };
+    }),
   );
 
   return {
@@ -285,6 +295,8 @@ export async function addCommunityFile(
     sizeBytes: file.sizeBytes,
     createdAt: file.createdAt.toISOString(),
     fileUrl: await createPresignedDownloadUrl(file.fileKey),
+    reactionCounts: emptyReactionCounts(),
+    reactionTotal: 0,
   };
 }
 

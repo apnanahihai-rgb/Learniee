@@ -160,6 +160,11 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
     scope: "owner",
     paths: ["/api/admin/communities", "/api/parent/communities", "/api/parent/invoices"],
   },
+  // Community engagement (Dec 2026): file reactions and polls.
+  CommunityFileReaction: { scope: "owner", paths: ["/api/admin/communities", "/api/parent/communities"] },
+  CommunityPoll: { scope: "all", paths: ["/api/admin/communities", "/api/parent/communities"] },
+  CommunityPollOption: { scope: "all", paths: ["/api/admin/communities", "/api/parent/communities"] },
+  CommunityPollVote: { scope: "owner", paths: ["/api/admin/communities", "/api/parent/communities"] },
   Certificate: {
     scope: "owner",
     paths: ["/api/parent/certificates", "/api/parent/students", "/api/teacher/certificates"],

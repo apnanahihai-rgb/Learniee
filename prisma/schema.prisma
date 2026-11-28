@@ -63,6 +63,8 @@ model ParentProfile {
   refundRequests      RefundRequest[]
   communityMemberships CommunityMember[]
   communityPayments    CommunityPayment[]
+  communityFileReactions CommunityFileReaction[]
+  communityPollVotes     CommunityPollVote[]
 }
 
 model Admin {
@@ -1972,6 +1974,8 @@ enum CertificateStatus {
 enum NotificationType {
   /// Community (Dec 2026, Part 2): a new file was added to a community the Parent joined
   COMMUNITY_FILE_ADDED
+  /// Community (Dec 2026, engagement): Admin posted a poll in a community the Parent joined
+  COMMUNITY_POLL_CREATED
   /// Group classes (Dec 2026): continue / renew of a recurring group
   GROUP_CONTINUE_PROMPT
   GROUP_CONTINUE_REMINDER
@@ -2173,6 +2177,9 @@ enum ActivityAction {
   COURSE_DELETED
   /// Community (Dec 2026)
   COMMUNITY_FILE_DELETED
+  COMMUNITY_POLL_CREATED
+  COMMUNITY_POLL_CLOSED
+  COMMUNITY_POLL_DELETED
   COMMUNITY_MEMBER_REMOVED
   USER_DELETED
   /// Teacher Payouts (Sep 9, 2026)
@@ -2517,6 +2524,7 @@ model Community {
   files    CommunityFile[]
   members  CommunityMember[]
   payments CommunityPayment[]
+  polls    CommunityPoll[]
 
   @@index([status, createdAt])
 }
@@ -2534,6 +2542,7 @@ model CommunityFile {
   createdAt   DateTime  @default(now())
 
   community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  reactions CommunityFileReaction[]
 
   @@index([communityId, createdAt])
 }
@@ -2585,4 +2594,91 @@ model CommunityPayment {
 
   @@index([communityId, paidAt])
   @@index([parentId, communityId])
+}
+
+/// Community engagement (Dec 2026): reactions on files and polls.
+/// A Parent picks ONE reaction per file from this short fixed list (the emoji
+/// shown for each lives in `features/community/types/community.ts`).
+enum CommunityReactionType {
+  LIKE
+  LOVE
+  CLAP
+  HELPFUL
+  THANKS
+}
+
+enum CommunityPollStatus {
+  OPEN
+  CLOSED
+}
+
+/// One reaction per Parent per file (change it by overwriting, remove it by deleting the row).
+/// `communityId` is denormalized so Admin / Parent counts are one grouped query per community.
+model CommunityFileReaction {
+  id          String                @id @default(uuid())
+  fileId      String
+  communityId String
+  parentId    String
+  type        CommunityReactionType
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  file   CommunityFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  parent ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, parentId])
+  @@index([communityId, fileId])
+  @@index([parentId])
+}
+
+/// An Admin question for the members of one community. Parents vote while it is
+/// OPEN (and before `closesAt`); Admin sees counts and who voted.
+model CommunityPoll {
+  id            String              @id @default(uuid())
+  communityId   String
+  question      String
+  /// false = pick one option, true = pick any number.
+  allowMultiple Boolean             @default(false)
+  status        CommunityPollStatus @default(OPEN)
+  /// Optional automatic end; read as "closed" once it has passed (no cron needed).
+  closesAt      DateTime?
+  closedAt      DateTime?
+  createdBySub  String?
+  createdAt     DateTime            @default(now())
+
+  community Community             @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  options   CommunityPollOption[]
+  votes     CommunityPollVote[]
+
+  @@index([communityId, createdAt])
+}
+
+model CommunityPollOption {
+  id       String @id @default(uuid())
+  pollId   String
+  text     String
+  position Int
+
+  poll  CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes CommunityPollVote[]
+
+  @@index([pollId, position])
+}
+
+/// One row per (option, Parent). A single-choice poll keeps at most one row per Parent
+/// (enforced in the service, inside a transaction).
+model CommunityPollVote {
+  id        String   @id @default(uuid())
+  pollId    String
+  optionId  String
+  parentId  String
+  createdAt DateTime @default(now())
+
+  poll   CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option CommunityPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  parent ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, parentId])
+  @@index([pollId, parentId])
+  @@index([parentId])
 }
