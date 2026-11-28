@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import ClassesTab from "./ClassesTab";
+import GroupContinueBanner from "./GroupContinueBanner";
 import GroupWorkspace from "./GroupWorkspace";
 
 /**
@@ -20,5 +21,10 @@ export default function GroupClassesTab() {
     return <GroupWorkspace courseId={openId} onBack={() => setOpenId(null)} />;
   }
 
-  return <ClassesTab groupOnly onManageGroup={setOpenId} />;
+  return (
+    <>
+      <GroupContinueBanner />
+      <ClassesTab groupOnly onManageGroup={setOpenId} />
+    </>
+  );
 }

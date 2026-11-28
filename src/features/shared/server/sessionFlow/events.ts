@@ -1,5 +1,6 @@
 import { logActivity } from "@/features/shared/server/activityLog.service";
 import { findGroupSiblings } from "@/features/shared/server/groupClass.service";
+import { getGroupClassStartBlock } from "@/features/shared/server/groupContinue.service";
 import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
 import {
     ensureSessionMeeting,
@@ -94,6 +95,14 @@ export async function startSession(
       `You can start this session from ${formatPlatformTime(opensAt)}, 10 minutes before it begins.`,
       409,
     );
+  }
+
+  // Recurring group: the 4th-last class of a batch (and the ones after it)
+  // can't be held until the teacher has answered "continue this group?".
+  const startBlock = await getGroupClassStartBlock(session);
+
+  if (startBlock) {
+    throw new SessionFlowError(startBlock, 409);
   }
 
   await prisma.classSession.updateMany({

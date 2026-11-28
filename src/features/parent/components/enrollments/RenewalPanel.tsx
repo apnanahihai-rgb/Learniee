@@ -50,7 +50,26 @@ export default function RenewalPanel({ enrollmentId, onRenewed, recap }: Props) 
     }
   }, [status]);
 
-  if (loading || !status || status.alreadyRenewed || !status.eligible) {
+  if (loading || !status || status.alreadyRenewed) {
+    return null;
+  }
+
+  // Recurring group: tell the parent why Renew isn't open yet (or ever).
+  if (!status.eligible && status.groupHold && status.groupHoldMessage) {
+    return (
+      <div className="mt-4 bg-violet-50 border border-violet-100 rounded-xl p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <RefreshCw size={13} className="text-violet-700" />
+          <p className="text-xs font-bold text-violet-800">
+            {status.groupHold === "CLOSING" ? "Group is closing" : "Renewal opens soon"}
+          </p>
+        </div>
+        <p className="text-[11px] text-violet-700">{status.groupHoldMessage}</p>
+      </div>
+    );
+  }
+
+  if (!status.eligible) {
     return null;
   }
 
@@ -130,7 +149,15 @@ export default function RenewalPanel({ enrollmentId, onRenewed, recap }: Props) 
         </p>
       )}
 
-      {isCustom ? (
+      {status.scheduleLocked ? (
+        <p className="text-[11px] text-violet-700 mb-2">
+          Same group schedule
+          {status.currentScheduleDays.length > 0
+            ? ` · ${status.currentScheduleDays.map((d) => WEEKDAY_LABELS[d]).join(", ")}`
+            : ""}
+          {status.currentScheduleTime ? ` · ${formatScheduleTime(status.currentScheduleTime)}` : ""}
+        </p>
+      ) : isCustom ? (
         <div className="mb-2">
           <CustomDatePicker
             startDateKey={status.nextCycleStartKey}
@@ -157,12 +184,14 @@ export default function RenewalPanel({ enrollmentId, onRenewed, recap }: Props) 
         </div>
       )}
 
-      <input
-        type="time"
-        value={scheduleTime}
-        onChange={(e) => setScheduleTime(e.target.value)}
-        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 mb-2"
-      />
+      {!status.scheduleLocked && (
+        <input
+          type="time"
+          value={scheduleTime}
+          onChange={(e) => setScheduleTime(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 mb-2"
+        />
+      )}
 
       {preview && (
         <p className="text-[11px] text-violet-700 mb-2">

@@ -1,3 +1,6 @@
+import { isGroupType } from "@/features/courses/utils/groupClass";
+import { GROUP_HOLD_MESSAGES } from "@/features/courses/utils/groupContinue";
+import { getGroupRenewalHold } from "@/features/shared/server/groupContinue.service";
 import { addTransactionCharge, type PaymentMethodChoice } from "@/lib/transactionCharges";
 import {
     addDays,
@@ -33,9 +36,16 @@ export async function getRenewalStatus(enrollmentId: string, parentId: string) {
   const nextStartKey = toDateKey(addDays(dateToCalendarDate(latestCycle.endDate), 1));
   const nextWindow = buildCyclePlan(nextStartKey, [], enrollment.planType);
 
+  // Recurring group: renewal waits for the teacher's "continue?" answer.
+  const isGroup = isGroupType(enrollment.course.type);
+  const groupHold =
+    isGroup && eligible && !alreadyRenewed
+      ? await getGroupRenewalHold(enrollment.courseId, latestCycle.endDate)
+      : null;
+
   let preview: RenewalPlan | null = null;
 
-  if (eligible && !alreadyRenewed) {
+  if (eligible && !alreadyRenewed && !groupHold) {
     try {
       preview = await buildRenewalPlan(enrollmentId, parentId, {});
     } catch {
@@ -45,8 +55,13 @@ export async function getRenewalStatus(enrollmentId: string, parentId: string) {
   }
 
   return {
-    eligible: eligible && !alreadyRenewed,
+    eligible: eligible && !alreadyRenewed && !groupHold,
     alreadyRenewed: Boolean(alreadyRenewed),
+    /** Group class: renewal is on hold (waiting for the teacher, or the group is closing). */
+    groupHold,
+    groupHoldMessage: groupHold ? GROUP_HOLD_MESSAGES[groupHold] : null,
+    /** Group class: weekdays and time are the group's, the parent can't change them. */
+    scheduleLocked: isGroup,
     opensOn: toDateKey(opensOn),
     currentCycleNumber: latestCycle.cycleNumber,
     currentCycleEndDate: toDateKey(dateToCalendarDate(latestCycle.endDate)),

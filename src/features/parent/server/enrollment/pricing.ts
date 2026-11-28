@@ -31,6 +31,7 @@ import {
 } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
 import { countGroupSeats, isStudentInGroup } from './group';
+import { isGroupClosing } from "@/features/shared/server/groupContinue.service";
 import { CreateEnrollmentInput, EnrollmentError, MAX_NO_OF_MONTHS, MAX_SESSIONS_PER_MONTH, MIN_SESSIONS_PER_MONTH, PriceOptions, PricedEnrollment, SCHEDULE_TIME_PATTERN } from './types';
 
 /**
@@ -310,6 +311,12 @@ async function priceGroupEnrollment(
   if (options.enforceGroupRules) {
     // Registration and age rules apply to new sign-ups only (order creation);
     // verify / webhook skip them because the money is already taken.
+
+    // The teacher closed this recurring group: no new students.
+    if (await isGroupClosing(course.id)) {
+      throw new EnrollmentError("This group is closing, so new students can't join.", 409);
+    }
+
     const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
     // Registration closes on the teacher's end date, or earlier — the day
     // before the last 4 classes — for a one-time group with mid-way joining.

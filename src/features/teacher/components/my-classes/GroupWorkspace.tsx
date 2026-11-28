@@ -18,6 +18,7 @@ import { SESSION_POLICY } from "@/lib/platformConfig";
 import PdErrorState from "@/features/shared/components/PdErrorState";
 import TeacherHomeworkPanel from "@/features/teacher/components/homework/TeacherHomeworkPanel";
 import { useGroupClass } from "@/features/teacher/hooks/useGroupClass";
+import GroupContinueBanner from "./GroupContinueBanner";
 import { TD_CARD } from "./TeacherUi";
 
 type Tab = "classes" | "homework" | "announcements" | "students";
@@ -77,6 +78,8 @@ export default function GroupWorkspace({ courseId, onBack }: { courseId: string;
       <p className="text-sm text-pd-ink3">
         {loading ? "Loading…" : `${students.length} student${students.length === 1 ? "" : "s"} enrolled`}
       </p>
+
+      <GroupContinueBanner courseId={courseId} />
 
       {error && !loading ? (
         <div className="mt-4">

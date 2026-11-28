@@ -11,6 +11,8 @@ import {
     priceWithInternationalSurcharge,
 } from "@/lib/internationalPayments";
 import { isGroupType } from "@/features/courses/utils/groupClass";
+import { GROUP_HOLD_MESSAGES } from "@/features/courses/utils/groupContinue";
+import { getGroupRenewalHold } from "@/features/shared/server/groupContinue.service";
 import { SESSION_POLICY } from "@/lib/platformConfig";
 import {
     addDays,
@@ -92,7 +94,7 @@ export async function loadRenewableEnrollment(enrollmentId: string, parentId: st
     include: {
       cycles: { orderBy: { cycleNumber: "desc" }, take: 1 },
       parent: { select: { nriOrIndian: true, country: true } },
-      course: { select: { subject: true, type: true, groupEndDate: true } },
+      course: { select: { subject: true, type: true, groupEndDate: true, groupDays: true, groupTime: true } },
     },
   });
 
@@ -166,6 +168,18 @@ export async function buildRenewalPlan(
     );
   }
 
+  const isGroup = isGroupType(enrollment.course.type);
+
+  // Recurring group: renewal opens only once the teacher has said the group
+  // continues (current families get the first chance), and never if it closes.
+  if (isGroup) {
+    const hold = await getGroupRenewalHold(enrollment.courseId, latestCycle.endDate);
+
+    if (hold) {
+      throw new RenewalError(GROUP_HOLD_MESSAGES[hold], 409);
+    }
+  }
+
   const nextCycleNumber = latestCycle.cycleNumber + 1;
 
   const alreadyRenewed = await prisma.enrollmentCycle.findUnique({
@@ -207,8 +221,16 @@ export async function buildRenewalPlan(
     }
   }
 
-  const scheduleDays =
-    customDates.length > 0
+  // A group class fixes its own weekdays and time: every student of the group
+  // must keep sharing the same class, so the parent can't change them.
+  const groupDays = isGroup
+    ? Array.from(new Set(enrollment.course.groupDays)).sort((a, b) => a - b)
+    : [];
+  const lockToGroup = groupDays.length > 0 && isValidTimeOfDay(enrollment.course.groupTime);
+
+  const scheduleDays = lockToGroup
+    ? groupDays
+    : customDates.length > 0
       ? weekdaysOfDateKeys(customDates)
       : Array.from(new Set(input.scheduleDays ?? enrollment.scheduleDays)).sort(
           (a, b) => a - b,
@@ -221,7 +243,9 @@ export async function buildRenewalPlan(
     throw new RenewalError("Pick at least one day of the week for classes.");
   }
 
-  const scheduleTime = input.scheduleTime?.trim() || enrollment.scheduleTime;
+  const scheduleTime = lockToGroup
+    ? (enrollment.course.groupTime as string)
+    : input.scheduleTime?.trim() || enrollment.scheduleTime;
 
   if (!isValidTimeOfDay(scheduleTime)) {
     throw new RenewalError("Pick a valid class time (HH:mm).");

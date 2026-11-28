@@ -363,10 +363,53 @@ model Course {
   reviews         Review[]
   certificates    Certificate[]
   classRequestResponse ClassRequestResponse?
+  groupContinuations GroupContinuation[]
 
   @@index([teacherId])
   @@index([status])
   @@index([teacherId, status])
+}
+
+enum GroupContinuationDecision {
+  PENDING
+  CONTINUE
+  CLOSE
+}
+
+/// Group classes (Dec 2026): the Teacher's "continue this recurring group?"
+/// answer for ONE batch. A batch = the current cycle of the students in a
+/// recurring group, identified by the cycle's end date, so there is at most
+/// one row per (course, batch end). Rows are created lazily from the live
+/// enrollments (`ensureGroupContinuations`), never by hand.
+///  - `askFrom`: first day the Teacher is asked (monthly: 10 days before the
+///    batch ends; weekly: after week 2), pulled earlier when needed so it is
+///    always before `mustAnswerBy`.
+///  - `mustAnswerBy`: start of the 4th-last class of the batch; that class
+///    can't be started until the answer is CONTINUE or CLOSE.
+///  - `remindAfter`: set by "remind me later"; null = not snoozed.
+model GroupContinuation {
+  id             String                    @id @default(uuid())
+  courseId       String
+  teacherId      String
+  batchStartDate DateTime                  @db.Date
+  batchEndDate   DateTime                  @db.Date
+  askFrom        DateTime                  @db.Date
+  mustAnswerBy   DateTime
+  decision       GroupContinuationDecision @default(PENDING)
+  /// First notification sent (claimed by a conditional update, so it goes once).
+  askedAt        DateTime?
+  remindAfter    DateTime?
+  lastRemindedAt DateTime?
+  decidedAt      DateTime?
+  /// CONTINUE only: the group size the Teacher chose (may equal the old one).
+  maxStudents    Int?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  course         Course                    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, batchEndDate])
+  @@index([teacherId, decision])
+  @@index([decision, askFrom])
 }
 
 /// Every ParentProfile gets exactly one DemoCoupon row, lazily
@@ -1925,6 +1968,11 @@ enum CertificateStatus {
 }
 
 enum NotificationType {
+  /// Group classes (Dec 2026): continue / renew of a recurring group
+  GROUP_CONTINUE_PROMPT
+  GROUP_CONTINUE_REMINDER
+  GROUP_RENEWAL_OPEN
+  GROUP_CLOSING
   /// Parent journey (Oct 2026): demo reminders, post-demo survey, renewal reminders
   DEMO_REMINDER
   DEMO_SURVEY_PROMPT

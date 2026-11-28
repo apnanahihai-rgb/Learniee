@@ -37,6 +37,11 @@ export interface RenewalStatus {
   nextCycleStartKey: string;
   nextCycleEndKey: string;
   preview: RenewalPreview | null;
+  /** Recurring group: renewal is on hold (waiting for the teacher, or the group is closing). */
+  groupHold?: "WAITING_TEACHER" | "CLOSING" | null;
+  groupHoldMessage?: string | null;
+  /** Group class: weekdays and time belong to the group and can't be changed. */
+  scheduleLocked?: boolean;
 }
 
 /** What the parent can change for the next cycle. `customDates` only on the "Complete month plan". */

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCronAuth } from "@/lib/cronAuth";
 
 import { runDueDateReminderCheck } from "@/features/shared/server/dueDateReminder.service";
+import { runGroupContinueSweep } from "@/features/shared/server/groupContinue.service";
 import { runRenewalReminderSweep } from "@/features/shared/server/renewalReminder.service";
 
 /**
@@ -39,7 +40,16 @@ export async function GET(req: Request) {
       console.error("Renewal reminder sweep error:", renewalError);
     }
 
-    return NextResponse.json({ success: true, ...result, renewal });
+    // Group classes: "continue this group?" prompts and "remind me later"
+    // reminders for recurring groups. Isolated like the sweep above.
+    let groupContinue = null;
+    try {
+      groupContinue = await runGroupContinueSweep();
+    } catch (groupError) {
+      console.error("Group continue sweep error:", groupError);
+    }
+
+    return NextResponse.json({ success: true, ...result, renewal, groupContinue });
   } catch (error) {
     console.error("Due-date reminder cron error:", error);
 

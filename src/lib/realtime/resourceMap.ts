@@ -188,6 +188,17 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
   // Chat
   ChatRoom: { scope: "owner", paths: CHAT },
   ChatMessage: { scope: "owner", paths: CHAT },
+  // Group classes (Dec 2026): the Teacher's "continue?" answer also opens / holds
+  // the Parent's Renew action, so every tab hears about it.
+  GroupContinuation: {
+    scope: "all",
+    paths: [
+      "/api/teacher/group-continue",
+      "/api/teacher/group-classes",
+      "/api/parent/enrollments",
+      "/api/parent/my-classes",
+    ],
+  },
   ChatSafetyFlag: { scope: "all", paths: ["/api/admin/chat-reports", "/api/admin/chat"] },
   ChatMessageReport: { scope: "all", paths: ["/api/admin/chat-reports", ...CHAT] },
 
