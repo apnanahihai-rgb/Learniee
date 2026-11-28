@@ -11,6 +11,7 @@ import {
   Newspaper,
   LifeBuoy,
   UsersRound,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -110,6 +111,13 @@ export const PARENT_NAV: Record<string, ParentNavItem> = {
     matches: ["/parent/profile", "/parent/settings", "/parent/students"],
     icon: User,
   },
+  community: {
+    id: "community",
+    label: "Community",
+    href: "/parent/community",
+    base: "/parent/community",
+    icon: Megaphone,
+  },
   blogs: { id: "blogs", label: "Blogs", href: "/parent/blogs", base: "/parent/blogs", icon: Newspaper },
   help: { id: "help", label: "Help", href: "/parent/complain", base: "/parent/complain", icon: LifeBuoy },
 };
@@ -118,11 +126,11 @@ export const PARENT_NAV: Record<string, ParentNavItem> = {
 export const SIDEBAR_GROUPS: string[][] = [
   ["home", "courses", "groups", "classes", "demos", "calendar", "reschedule", "library"],
   ["payments", "account"],
-  ["blogs", "help"],
+  ["community", "blogs", "help"],
 ];
 
 export const BOTTOM_NAV_IDS = ["home", "courses", "classes", "calendar"];
-export const MORE_NAV_IDS = ["groups", "demos", "reschedule", "library", "payments", "blogs", "account", "help"];
+export const MORE_NAV_IDS = ["groups", "demos", "reschedule", "library", "payments", "community", "blogs", "account", "help"];
 
 const under = (path: string, p: string) => path === p || path.startsWith(`${p}/`);
 

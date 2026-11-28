@@ -13,3 +13,4 @@ export * from './notificationTriggers/classRequests';
 export * from './notificationTriggers/refunds';
 export * from './notificationTriggers/journey';
 export * from './notificationTriggers/groupContinue';
+export * from './notificationTriggers/community';

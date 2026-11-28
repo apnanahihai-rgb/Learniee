@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { UPLOAD_FOLDERS, createPresignedDownloadUrl, deleteS3Object } from "@/lib/s3";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 import { displayName } from "@/features/shared/utils/displayName";
+import { notifyCommunityFileAdded } from "@/features/shared/server/notificationTriggers.service";
 
 /**
  * Community, Part 1 (Admin, Dec 2026). Admin creates communities and shares
@@ -272,6 +273,9 @@ export async function addCommunityFile(
       uploadedBySub: actor.sub,
     },
   });
+
+  // Part 2: tell the Parents who joined (never throws; see notificationTriggers).
+  await notifyCommunityFileAdded(file.id);
 
   return {
     id: file.id,

@@ -44,3 +44,33 @@ export interface CommunityFormValues {
   /** Rupees as typed; only used when `isPaid`. */
   price: string;
 }
+
+/* ------------------------------ Parent side ------------------------------ */
+
+export interface ParentCommunityRow {
+  id: string;
+  title: string;
+  description: string;
+  isPaid: boolean;
+  price: number | null;
+  fileCount: number;
+  memberCount: number;
+  isMember: boolean;
+  joinedAt: string | null;
+  createdAt: string;
+}
+
+/** A file as a Parent sees it: no link here; open/download go through the file route. */
+export interface ParentCommunityFile {
+  id: string;
+  title: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number | null;
+  createdAt: string;
+}
+
+export interface ParentCommunityDetail extends ParentCommunityRow {
+  /** Empty unless the Parent has joined. */
+  files: ParentCommunityFile[];
+}

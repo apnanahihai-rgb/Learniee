@@ -151,10 +151,10 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
     scope: "owner",
     paths: ["/api/parent/resources", "/api/teacher/resources", "/api/admin/resources"],
   },
-  // Community (Dec 2026, Part 1: Admin). Parent-side paths are added in Part 2.
-  Community: { scope: "all", paths: ["/api/admin/communities"] },
-  CommunityFile: { scope: "all", paths: ["/api/admin/communities"] },
-  CommunityMember: { scope: "owner", paths: ["/api/admin/communities"] },
+  // Community (Dec 2026): Part 1 Admin paths, Part 2 Parent paths.
+  Community: { scope: "all", paths: ["/api/admin/communities", "/api/parent/communities"] },
+  CommunityFile: { scope: "all", paths: ["/api/admin/communities", "/api/parent/communities"] },
+  CommunityMember: { scope: "owner", paths: ["/api/admin/communities", "/api/parent/communities"] },
   Certificate: {
     scope: "owner",
     paths: ["/api/parent/certificates", "/api/parent/students", "/api/teacher/certificates"],

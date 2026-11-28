@@ -130,3 +130,27 @@ export async function createPresignedDownloadUrl(
 export async function deleteS3Object(key: string) {
   await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
 }
+
+/**
+ * Short-lived GET link that makes the browser open the file in a tab
+ * (`download = false`) or save it (`download = true`), under its original
+ * name. Used for files that are gated behind a membership check: the caller
+ * checks access first, then redirects to this link straight away.
+ */
+export async function createPresignedFileLink(
+  key: string,
+  options: { fileName: string; contentType: string; download: boolean },
+  expiresInSeconds = 120,
+) {
+  const asciiName = options.fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  const disposition = `${options.download ? "attachment" : "inline"}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(options.fileName)}`;
+
+  const command = new GetObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: key,
+    ResponseContentDisposition: disposition,
+    ResponseContentType: options.contentType,
+  });
+
+  return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+}

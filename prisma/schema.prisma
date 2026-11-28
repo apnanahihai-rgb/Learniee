@@ -1969,6 +1969,8 @@ enum CertificateStatus {
 }
 
 enum NotificationType {
+  /// Community (Dec 2026, Part 2): a new file was added to a community the Parent joined
+  COMMUNITY_FILE_ADDED
   /// Group classes (Dec 2026): continue / renew of a recurring group
   GROUP_CONTINUE_PROMPT
   GROUP_CONTINUE_REMINDER
