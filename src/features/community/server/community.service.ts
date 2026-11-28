@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ActivityActorRole, CommunityStatus, Prisma } from "@prisma/client";
+import { ActivityActorRole, CommunityPaymentStatus, CommunityStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { UPLOAD_FOLDERS, createPresignedDownloadUrl, deleteS3Object } from "@/lib/s3";
@@ -344,6 +344,24 @@ export async function listCommunityMembers(communityId: string) {
     },
   });
 
+  // Part 3: which of them paid (a standing payment, not a refunded one).
+  const payments = members.length
+    ? await prisma.communityPayment.findMany({
+        where: {
+          communityId,
+          status: CommunityPaymentStatus.PAID,
+          parentId: { in: members.map((m) => m.parentId) },
+        },
+        select: { parentId: true, amountPaid: true },
+      })
+    : [];
+
+  const paidByParent = new Map<string, number>();
+
+  for (const p of payments) {
+    paidByParent.set(p.parentId, (paidByParent.get(p.parentId) ?? 0) + Number(p.amountPaid));
+  }
+
   return members.map((m) => ({
     id: m.id,
     parentId: m.parent.id,
@@ -351,12 +369,16 @@ export async function listCommunityMembers(communityId: string) {
     email: m.parent.email,
     phone: m.parent.phone,
     joinedAt: m.joinedAt.toISOString(),
+    // null = joined without paying (a free community).
+    paidAmount: paidByParent.has(m.parentId) ? Math.round((paidByParent.get(m.parentId) ?? 0) * 100) / 100 : null,
   }));
 }
 
 /**
- * Removes a Parent from a community (deletes the membership row). Part 2
- * decides whether a removed Parent may re-join; for now they simply can.
+ * Removes a Parent from a community (deletes the membership row). A Parent who
+ * paid cannot be removed here: they would lose what they paid for with no
+ * refund. To end a paid member's access, approve a FULL refund request instead
+ * (Admin > Refund requests), which removes them and credits their Wallet.
  */
 export async function removeCommunityMember(
   communityId: string,
@@ -373,6 +395,18 @@ export async function removeCommunityMember(
 
   if (!member) {
     throw new CommunityError("Member not found.", 404);
+  }
+
+  const paid = await prisma.communityPayment.findFirst({
+    where: { communityId, parentId: member.parentId, status: CommunityPaymentStatus.PAID },
+    select: { id: true },
+  });
+
+  if (paid) {
+    throw new CommunityError(
+      "This parent paid for this community, so they cannot be removed here. Approve a full refund request for their payment to end their access.",
+      409,
+    );
   }
 
   await prisma.communityMember.delete({ where: { id: member.id } });

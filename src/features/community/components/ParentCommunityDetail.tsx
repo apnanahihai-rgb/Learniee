@@ -59,7 +59,7 @@ function FileRow({ communityId, file }: { communityId: string; file: ParentCommu
  * Data: GET /api/parent/communities/[id]; files via .../files/[fileId].
  */
 export default function ParentCommunityDetail({ communityId }: { communityId: string }) {
-  const { community, loading, error, join, leave } = useParentCommunity(communityId);
+  const { community, loading, error, join, leave, pay } = useParentCommunity(communityId);
 
   return (
     <div className="mx-auto max-w-[860px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
@@ -98,7 +98,7 @@ export default function ParentCommunityDetail({ communityId }: { communityId: st
               {community.memberCount === 1 ? "member" : "members"}
             </p>
 
-            <ParentCommunityActions community={community} onJoin={join} onLeave={leave} showOpen={false} />
+            <ParentCommunityActions community={community} onJoin={join} onLeave={leave} onPay={pay} showOpen={false} />
           </header>
 
           <section className="mt-6 overflow-hidden rounded-2xl border border-pd-line bg-white">
@@ -108,7 +108,7 @@ export default function ParentCommunityDetail({ communityId }: { communityId: st
                 title="Files are for members"
                 text={
                   community.isPaid
-                    ? "This is a paid community. Paid joining is not available yet."
+                    ? `Pay ${formatPrice(community.price)} (plus GST) to join and open its files. You join automatically once the payment goes through.`
                     : "Join this community, it is free, to open and download its files."
                 }
               />

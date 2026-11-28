@@ -2,6 +2,7 @@ import {
   notifyRefundRequestDecided,
   notifyRefundRequestSubmitted,
 } from "@/features/shared/server/notificationTriggers.service";
+import { applyRefundToCommunityInTx } from "@/features/community/server/communityRefund.service";
 import { closeCycleIfDue } from "@/features/shared/server/cycleClose.service";
 import { applyRefundToEnrollmentInTx } from "@/features/shared/server/refundEnrollment.service";
 import { creditWalletInTx } from "@/features/shared/server/wallet.service";
@@ -348,7 +349,15 @@ export async function decideRefundRequest(input: DecideRefundInput) {
       now,
     });
 
-    return { parentId: request.parentId, effect };
+    // Paid community (Part 3): a full refund removes the membership too.
+    const community = await applyRefundToCommunityInTx(tx, {
+      invoiceType: request.invoice.type,
+      invoiceReferenceId: request.invoice.referenceId,
+      fullyRefunded,
+      now,
+    });
+
+    return { parentId: request.parentId, effect, communityNotices: community.notices };
   }, { timeout: 15_000 });
 
   // After commit — closing uses the normal rule and can't undo the refund.
@@ -367,5 +376,9 @@ export async function decideRefundRequest(input: DecideRefundInput) {
     adminNote: adminNote || null,
   });
 
-  return { status: RefundRequestStatus.APPROVED, amount, notices: outcome.effect.notices };
+  return {
+    status: RefundRequestStatus.APPROVED,
+    amount,
+    notices: [...outcome.effect.notices, ...outcome.communityNotices],
+  };
 }

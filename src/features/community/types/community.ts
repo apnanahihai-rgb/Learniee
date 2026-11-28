@@ -35,6 +35,33 @@ export interface AdminCommunityMember {
   email: string;
   phone: string | null;
   joinedAt: string;
+  /** Rupees the Parent paid for a standing payment; null = joined without paying. */
+  paidAmount: number | null;
+}
+
+export type CommunityPaymentStatus = "PAID" | "REFUNDED";
+
+export interface AdminCommunityPayment {
+  id: string;
+  parentId: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  /** The community price at the time (before GST / surcharge / UPI charge). */
+  price: number;
+  /** What the Parent was charged in total (= the invoice amount). */
+  amountPaid: number;
+  status: CommunityPaymentStatus;
+  paidAt: string;
+  refundedAt: string | null;
+  invoiceNumber: string | null;
+}
+
+export interface AdminCommunityPaymentsSummary {
+  paidCount: number;
+  refundedCount: number;
+  /** Total charged for payments that still stand (refunded ones excluded). */
+  totalCollected: number;
 }
 
 export interface CommunityFormValues {
@@ -56,6 +83,8 @@ export interface ParentCommunityRow {
   fileCount: number;
   memberCount: number;
   isMember: boolean;
+  /** A standing (not refunded) payment exists: no new payment is needed to get back in. */
+  hasPaid: boolean;
   joinedAt: string | null;
   createdAt: string;
 }

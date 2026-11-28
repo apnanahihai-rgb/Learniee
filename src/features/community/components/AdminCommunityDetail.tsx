@@ -21,7 +21,7 @@ import type { AdminCommunityFile, AdminCommunityMember } from "../types/communit
 import { formatBytes, formatDate, formatPrice } from "../utils/format";
 import CommunityFormDialog from "./CommunityFormDialog";
 
-type Tab = "files" | "members";
+type Tab = "files" | "members" | "payments";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
@@ -38,7 +38,7 @@ function withContentType(file: File): File {
  * all verified Admin auth. Files go browser -> S3 through /api/upload/presign.
  */
 export default function AdminCommunityDetail({ communityId }: { communityId: string }) {
-  const { community, members, loading, error, edit, setStatus, addFile, deleteFile, removeMember } =
+  const { community, members, payments, paymentsSummary, loading, error, edit, setStatus, addFile, deleteFile, removeMember } =
     useAdminCommunity(communityId);
 
   const [tab, setTab] = useState<Tab>("files");
@@ -158,6 +158,7 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
         tabs={[
           { value: "files", label: "Files", count: community.files.length },
           { value: "members", label: "Members", count: members.length },
+          { value: "payments", label: "Payments", count: payments.length },
         ]}
       />
 
@@ -223,6 +224,12 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
               { label: "Phone", nowrap: true, render: (m) => m.phone || "—" },
               { label: "Joined", nowrap: true, render: (m) => formatDate(m.joinedAt) },
               {
+                label: "Paid",
+                nowrap: true,
+                render: (m) =>
+                  m.paidAmount === null ? <span className="text-pd-ink3">—</span> : formatPrice(m.paidAmount),
+              },
+              {
                 label: "Action",
                 right: true,
                 block: true,
@@ -235,6 +242,56 @@ export default function AdminCommunityDetail({ communityId }: { communityId: str
             ]}
           />
         ))}
+
+      {tab === "payments" && (
+        <>
+          {paymentsSummary && (
+            <p className={`${ADMIN_CARD} p-4 text-sm text-pd-ink2`}>
+              <b className="text-pd-ink">{paymentsSummary.paidCount}</b> paid ·{" "}
+              <b className="text-pd-ink">{paymentsSummary.refundedCount}</b> refunded · Collected{" "}
+              <b className="text-pd-ink">{formatPrice(paymentsSummary.totalCollected)}</b>{" "}
+              <span className="text-pd-ink3">(includes GST and any UPI charge)</span>
+            </p>
+          )}
+
+          {payments.length === 0 ? (
+            <AdminEmptyState
+              title="No payments yet"
+              message={
+                community.isPaid
+                  ? "Parents who pay to join this community will appear here."
+                  : "This community is free. Payments appear here only if it is paid."
+              }
+            />
+          ) : (
+            <AdminDataTable
+              rows={payments}
+              rowKey={(p) => p.id}
+              columns={[
+                { label: "Parent", block: true, render: (p) => <span className="font-semibold">{p.name}</span> },
+                { label: "Email", render: (p) => <span className="break-all text-pd-ink2">{p.email}</span> },
+                { label: "Phone", nowrap: true, render: (p) => p.phone || "—" },
+                { label: "Price", nowrap: true, render: (p) => formatPrice(p.price) },
+                { label: "Charged", nowrap: true, render: (p) => formatPrice(p.amountPaid) },
+                { label: "Paid on", nowrap: true, render: (p) => formatDate(p.paidAt) },
+                { label: "Invoice", nowrap: true, render: (p) => p.invoiceNumber || "—" },
+                {
+                  label: "Status",
+                  nowrap: true,
+                  render: (p) =>
+                    p.status === "REFUNDED" ? (
+                      <span className={adminTag("gray")}>
+                        Refunded{p.refundedAt ? ` · ${formatDate(p.refundedAt)}` : ""}
+                      </span>
+                    ) : (
+                      <span className={adminTag("green")}>Paid</span>
+                    ),
+                },
+              ]}
+            />
+          )}
+        </>
+      )}
 
       {editing && (
         <CommunityFormDialog

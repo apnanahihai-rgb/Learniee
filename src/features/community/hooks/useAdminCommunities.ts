@@ -7,6 +7,8 @@ import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import type {
   AdminCommunityDetail,
   AdminCommunityMember,
+  AdminCommunityPayment,
+  AdminCommunityPaymentsSummary,
   AdminCommunityRow,
   CommunityFormValues,
   CommunityStatus,
@@ -94,6 +96,8 @@ export function useAdminCommunities() {
 export function useAdminCommunity(communityId: string) {
   const [community, setCommunity] = useState<AdminCommunityDetail | null>(null);
   const [members, setMembers] = useState<AdminCommunityMember[]>([]);
+  const [payments, setPayments] = useState<AdminCommunityPayment[]>([]);
+  const [paymentsSummary, setPaymentsSummary] = useState<AdminCommunityPaymentsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -101,18 +105,23 @@ export function useAdminCommunity(communityId: string) {
     try {
       setError("");
 
-      const [detailRes, membersRes] = await Promise.all([
+      const [detailRes, membersRes, paymentsRes] = await Promise.all([
         fetch(`${BASE}/${communityId}`, { cache: "no-store" }),
         fetch(`${BASE}/${communityId}/members`, { cache: "no-store" }),
+        fetch(`${BASE}/${communityId}/payments`, { cache: "no-store" }),
       ]);
       const detail = await detailRes.json().catch(() => ({}));
       const membersData = await membersRes.json().catch(() => ({}));
+      const paymentsData = await paymentsRes.json().catch(() => ({}));
 
       if (!detailRes.ok) throw new Error(detail.error || "Failed to load the community.");
       if (!membersRes.ok) throw new Error(membersData.error || "Failed to load members.");
+      if (!paymentsRes.ok) throw new Error(paymentsData.error || "Failed to load payments.");
 
       setCommunity(detail.community);
       setMembers(membersData.members ?? []);
+      setPayments(paymentsData.payments ?? []);
+      setPaymentsSummary(paymentsData.summary ?? null);
     } catch (err) {
       console.error("Load community error:", err);
       setError(err instanceof Error ? err.message : "Failed to load the community.");
@@ -182,5 +191,17 @@ export function useAdminCommunity(communityId: string) {
     [communityId, load],
   );
 
-  return { community, members, loading, error, edit, setStatus, addFile, deleteFile, removeMember };
+  return {
+    community,
+    members,
+    payments,
+    paymentsSummary,
+    loading,
+    error,
+    edit,
+    setStatus,
+    addFile,
+    deleteFile,
+    removeMember,
+  };
 }

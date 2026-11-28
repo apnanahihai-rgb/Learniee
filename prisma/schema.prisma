@@ -62,6 +62,7 @@ model ParentProfile {
   classRequests       ClassRequest[]
   refundRequests      RefundRequest[]
   communityMemberships CommunityMember[]
+  communityPayments    CommunityPayment[]
 }
 
 model Admin {
@@ -2154,6 +2155,8 @@ enum ActivityAction {
   PAYMENT_DEMO_BOOKING
   PAYMENT_WALLET_TOPUP
   PAYMENT_DEMO_COUPON_PURCHASE
+  /// Community (Dec 2026, Part 3): a Parent paid to join a paid community
+  PAYMENT_COMMUNITY
   WALLET_CREDITED_MANUAL
   LEAVE_REQUEST_APPROVED
   LEAVE_REQUEST_REJECTED
@@ -2289,6 +2292,9 @@ enum InvoiceType {
   /// razorpayPaymentId still hold only the FIRST payment — this
   /// Invoice's own razorpayOrderId/PaymentId are the renewal's.
   CYCLE_RENEWAL_PAYMENT
+  /// Community (Dec 2026, Part 3): a Parent paid to join a paid community.
+  /// `referenceType` = "COMMUNITY_PAYMENT", `referenceId` = CommunityPayment.id.
+  COMMUNITY_PAYMENT
 }
 
 /// Always PARENT today — see the `Invoice` model's doc-comment.
@@ -2508,8 +2514,9 @@ model Community {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  files   CommunityFile[]
-  members CommunityMember[]
+  files    CommunityFile[]
+  members  CommunityMember[]
+  payments CommunityPayment[]
 
   @@index([status, createdAt])
 }
@@ -2542,4 +2549,40 @@ model CommunityMember {
 
   @@unique([communityId, parentId])
   @@index([parentId])
+}
+
+/// Community (Dec 2026, Part 3: paid communities).
+enum CommunityPaymentStatus {
+  PAID
+  /// Fully refunded through a refund request: access was removed.
+  REFUNDED
+}
+
+/// One row per successful payment to join a paid community. It is the Parent's
+/// proof of purchase (the Invoice is the receipt) and what Admin reads to see
+/// who paid. Membership itself stays in `CommunityMember`; a full refund flips
+/// this row to REFUNDED and deletes the membership in the same transaction.
+model CommunityPayment {
+  id          String @id @default(uuid())
+  communityId String
+  parentId    String
+  /// The community price at the moment of payment (before GST / surcharge / UPI charge).
+  price       Decimal @db.Decimal(10, 2)
+  gstAmount   Decimal @default(0) @db.Decimal(10, 2)
+  internationalSurchargeAmount Decimal @default(0) @db.Decimal(10, 2)
+  transactionChargeAmount      Decimal @default(0) @db.Decimal(10, 2)
+  /// What the Parent was actually charged (= the Invoice amount).
+  amountPaid  Decimal @db.Decimal(10, 2)
+  status      CommunityPaymentStatus @default(PAID)
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String   @unique
+  paidAt      DateTime @default(now())
+  refundedAt  DateTime?
+
+  /// Restrict: a community that has payments cannot be deleted (it can be hidden).
+  community Community     @relation(fields: [communityId], references: [id], onDelete: Restrict)
+  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, paidAt])
+  @@index([parentId, communityId])
 }

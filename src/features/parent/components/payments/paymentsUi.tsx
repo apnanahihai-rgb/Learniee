@@ -51,6 +51,7 @@ export const INVOICE_TYPE_LABEL: Record<InvoiceType, string> = {
   WALLET_TOPUP: "Wallet top-up",
   DEMO_COUPON_PURCHASE: "Demo coupons",
   CYCLE_RENEWAL_PAYMENT: "Renewal",
+  COMMUNITY_PAYMENT: "Community",
 };
 
 /** Design `.kv`: label / value pairs. */

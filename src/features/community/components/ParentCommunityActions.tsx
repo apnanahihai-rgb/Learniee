@@ -18,22 +18,27 @@ import type { MembershipResult } from "../hooks/useParentCommunities";
 import type { ParentCommunityRow } from "../types/community";
 import { formatPrice } from "../utils/format";
 
-type Target = Pick<ParentCommunityRow, "id" | "title" | "isMember" | "isPaid" | "price">;
+type Target = Pick<ParentCommunityRow, "id" | "title" | "isMember" | "isPaid" | "hasPaid" | "price">;
 
 /**
- * Join / Open / Leave for one community. Free communities join in one tap (no
- * payment); paid ones show the price but cannot be joined yet. Leaving asks
- * first, since the files are no longer reachable afterwards.
+ * Join / Pay / Open / Leave for one community. Free communities join in one tap.
+ * Paid ones show "Pay ₹X & join": paying opens Razorpay and joins automatically.
+ * A Parent who paid cannot leave (a refund request is how a paid membership
+ * ends); leaving a free community asks first, since its files are no longer
+ * reachable afterwards.
  */
 export default function ParentCommunityActions({
   community,
   onJoin,
   onLeave,
+  onPay,
   showOpen = true,
 }: {
   community: Target;
   onJoin: () => Promise<MembershipResult>;
   onLeave: () => Promise<MembershipResult>;
+  /** Opens checkout for a paid community; joins automatically once paid. */
+  onPay: () => Promise<MembershipResult>;
   /** The card links to the detail page; the detail page itself does not need "Open". */
   showOpen?: boolean;
 }) {
@@ -58,12 +63,16 @@ export default function ParentCommunityActions({
     return true;
   }
 
-  if (community.isPaid && !community.isMember) {
+  // Paid, not a member yet. If they already paid (access was lost somehow) they
+  // get back in without paying again.
+  if (community.isPaid && !community.isMember && !community.hasPaid) {
     return (
       <div className="flex flex-col items-start gap-1">
-        <button type="button" disabled className={PD_BTN_SEC_SM}>
-          Paid · {formatPrice(community.price)} · coming soon
+        <button type="button" disabled={busy} onClick={() => void run(onPay)} className={PD_BTN_PRI_SM}>
+          {busy ? "Opening payment…" : `Pay ${formatPrice(community.price)} & join`}
         </button>
+        <p className="text-xs text-pd-ink3">GST is added at checkout.</p>
+        {error && <p className={PD_ERR}>{error}</p>}
       </div>
     );
   }
@@ -73,7 +82,7 @@ export default function ParentCommunityActions({
       <div className="flex flex-col items-start gap-1">
         <button type="button" disabled={busy} onClick={() => void run(onJoin)} className={PD_BTN_PRI_SM}>
           <Plus size={14} />
-          {busy ? "Joining…" : "Join for free"}
+          {busy ? "Joining…" : community.hasPaid ? "Join (already paid)" : "Join for free"}
         </button>
         {error && <p className={PD_ERR}>{error}</p>}
       </div>
@@ -92,11 +101,22 @@ export default function ParentCommunityActions({
             Open
           </Link>
         )}
-        <button type="button" disabled={busy} onClick={() => setConfirmingLeave(true)} className={PD_BTN_DTXT_SM}>
-          <LogOut size={14} />
-          Leave
-        </button>
+        {!community.hasPaid && (
+          <button type="button" disabled={busy} onClick={() => setConfirmingLeave(true)} className={PD_BTN_DTXT_SM}>
+            <LogOut size={14} />
+            Leave
+          </button>
+        )}
       </div>
+      {community.hasPaid && (
+        <p className="text-xs text-pd-ink3">
+          Paid membership. To end it,{" "}
+          <Link href="/parent/payments" className="font-semibold text-pd-brand hover:underline">
+            request a refund
+          </Link>
+          .
+        </p>
+      )}
       {error && <p className={PD_ERR}>{error}</p>}
 
       {confirmingLeave && (

@@ -7,6 +7,7 @@ import {
   reconcileDemoBookingFromWebhook,
   reconcileDemoCouponPurchaseFromWebhook,
 } from "@/features/parent/server/demoCoupon.service";
+import { reconcileCommunityPaymentFromWebhook } from "@/features/community/server/communityPayment.service";
 import { reconcileWalletTopupFromWebhook } from "@/features/shared/server/wallet.service";
 
 /**
@@ -28,7 +29,8 @@ import { reconcileWalletTopupFromWebhook } from "@/features/shared/server/wallet
  * primary path is the client calling `/api/parent/enrollments/verify`,
  * `/api/parent/enrollments/[id]/renew/verify`,
  * `/api/parent/demo-bookings/verify`, `/api/parent/wallet/verify`, or
- * `/api/parent/demo-coupons/verify` right after Checkout succeeds.
+ * `/api/parent/demo-coupons/verify`, or
+ * `/api/parent/communities/[id]/payment/verify` right after Checkout succeeds.
  * This webhook exists for the case where the payment captured on
  * Razorpay's side but the client never confirmed it back to us
  * (closed the tab, lost network, app crashed) — without it, that
@@ -119,6 +121,12 @@ export async function POST(req: Request) {
         success: true,
         reconciled: "demo_coupon_purchase",
       });
+    }
+
+    const communityPayment = await reconcileCommunityPaymentFromWebhook(orderId, paymentId);
+
+    if (communityPayment) {
+      return NextResponse.json({ success: true, reconciled: "community_payment" });
     }
 
     // Order wasn't recognized, already reconciled, or failed a

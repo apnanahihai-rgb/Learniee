@@ -17,7 +17,7 @@ type Filter = "all" | "joined";
  * Data: GET /api/parent/communities (verified Parent auth).
  */
 export default function ParentCommunityList() {
-  const { communities, loading, error, join, leave } = useParentCommunities();
+  const { communities, loading, error, join, leave, pay } = useParentCommunities();
   const [filter, setFilter] = useState<Filter>("all");
 
   const joinedCount = communities.filter((c) => c.isMember).length;
@@ -94,6 +94,7 @@ export default function ParentCommunityList() {
                   community={c}
                   onJoin={() => join(c.id)}
                   onLeave={() => leave(c.id)}
+                  onPay={() => pay(c)}
                 />
               </li>
             ))}

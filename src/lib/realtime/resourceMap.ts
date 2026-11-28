@@ -155,6 +155,11 @@ export const RESOURCE_MAP: Record<string, ResourceRule> = {
   Community: { scope: "all", paths: ["/api/admin/communities", "/api/parent/communities"] },
   CommunityFile: { scope: "all", paths: ["/api/admin/communities", "/api/parent/communities"] },
   CommunityMember: { scope: "owner", paths: ["/api/admin/communities", "/api/parent/communities"] },
+  // Part 3: a payment changes the Parent's own list/invoices and Admin's Payments tab.
+  CommunityPayment: {
+    scope: "owner",
+    paths: ["/api/admin/communities", "/api/parent/communities", "/api/parent/invoices"],
+  },
   Certificate: {
     scope: "owner",
     paths: ["/api/parent/certificates", "/api/parent/students", "/api/teacher/certificates"],

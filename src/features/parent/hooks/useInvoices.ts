@@ -9,7 +9,8 @@ export type InvoiceType =
   | "DEMO_BOOKING_PAYMENT"
   | "WALLET_TOPUP"
   | "DEMO_COUPON_PURCHASE"
-  | "CYCLE_RENEWAL_PAYMENT";
+  | "CYCLE_RENEWAL_PAYMENT"
+  | "COMMUNITY_PAYMENT";
 
 export interface InvoiceView {
   id: string;

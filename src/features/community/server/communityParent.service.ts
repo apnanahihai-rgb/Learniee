@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CommunityStatus } from "@prisma/client";
+import { CommunityPaymentStatus, CommunityStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { createPresignedFileLink } from "@/lib/s3";
@@ -15,6 +15,10 @@ import { CommunityError } from "./community.service";
  * file route re-checks membership on every open/download.
  *
  * Every function takes the verified `parentId` from `requireParentId`.
+ *
+ * Part 3: a paid community is joined by paying (`communityPayment.service.ts`),
+ * which also creates the membership. A Parent whose payment still stands
+ * (`hasPaid`) can always get back in without paying again.
  */
 
 /** A community a Parent may see: it exists and is not hidden. */
@@ -37,6 +41,7 @@ export async function listCommunitiesForParent(parentId: string) {
     include: {
       _count: { select: { files: true, members: true } },
       members: { where: { parentId }, select: { joinedAt: true } },
+      payments: { where: { parentId, status: CommunityPaymentStatus.PAID }, select: { id: true }, take: 1 },
     },
   });
 
@@ -50,6 +55,7 @@ export async function listCommunitiesForParent(parentId: string) {
     fileCount: c._count.files,
     memberCount: c._count.members,
     isMember: c.members.length > 0,
+    hasPaid: c.payments.length > 0,
     joinedAt: c.members[0]?.joinedAt.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
   }));
@@ -64,6 +70,7 @@ export async function getCommunityForParent(communityId: string, parentId: strin
     include: {
       _count: { select: { files: true, members: true } },
       members: { where: { parentId }, select: { joinedAt: true } },
+      payments: { where: { parentId, status: CommunityPaymentStatus.PAID }, select: { id: true }, take: 1 },
     },
   });
 
@@ -94,6 +101,7 @@ export async function getCommunityForParent(communityId: string, parentId: strin
     fileCount: community._count.files,
     memberCount: community._count.members,
     isMember,
+    hasPaid: community.payments.length > 0,
     joinedAt: community.members[0]?.joinedAt.toISOString() ?? null,
     createdAt: community.createdAt.toISOString(),
     files,
@@ -101,15 +109,24 @@ export async function getCommunityForParent(communityId: string, parentId: strin
 }
 
 /**
- * Join a free community. Idempotent: joining twice is the same as joining
- * once (the unique key on communityId + parentId makes the second insert a
- * no-op). Paid communities are refused here until the paid flow exists.
+ * Join a community without paying. Idempotent: joining twice is the same as
+ * joining once (the unique key on communityId + parentId makes the second
+ * insert a no-op). A paid community needs a standing payment first: paying
+ * (POST .../payment/order + verify) joins automatically, so this path only
+ * restores access for a Parent who already paid.
  */
 export async function joinCommunity(communityId: string, parentId: string) {
   const community = await requireVisibleCommunity(communityId);
 
   if (community.isPaid) {
-    throw new CommunityError("This is a paid community. Paid joining is not available yet.", 403);
+    const paid = await prisma.communityPayment.findFirst({
+      where: { communityId, parentId, status: CommunityPaymentStatus.PAID },
+      select: { id: true },
+    });
+
+    if (!paid) {
+      throw new CommunityError("This is a paid community. Pay to join it.", 403);
+    }
   }
 
   await prisma.communityMember.createMany({
@@ -118,7 +135,11 @@ export async function joinCommunity(communityId: string, parentId: string) {
   });
 }
 
-/** Leave a community. Idempotent; works even if the community was hidden meanwhile. */
+/**
+ * Leave a community. Idempotent; works even if the community was hidden meanwhile.
+ * A Parent whose payment still stands cannot leave (they would lose what they
+ * paid for); a refund request is how a paid membership ends.
+ */
 export async function leaveCommunity(communityId: string, parentId: string) {
   const exists = await prisma.community.findUnique({
     where: { id: communityId },
@@ -127,6 +148,18 @@ export async function leaveCommunity(communityId: string, parentId: string) {
 
   if (!exists) {
     throw new CommunityError("Community not found.", 404);
+  }
+
+  const paid = await prisma.communityPayment.findFirst({
+    where: { communityId, parentId, status: CommunityPaymentStatus.PAID },
+    select: { id: true },
+  });
+
+  if (paid) {
+    throw new CommunityError(
+      "You paid for this community, so your membership can't be left. Request a refund from Payments if you want out.",
+      403,
+    );
   }
 
   await prisma.communityMember.deleteMany({ where: { communityId, parentId } });

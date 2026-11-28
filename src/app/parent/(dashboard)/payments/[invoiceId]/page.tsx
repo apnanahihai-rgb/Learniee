@@ -36,6 +36,7 @@ const ITEM_LABEL: Record<InvoiceType, string> = {
   WALLET_TOPUP: "Wallet top-up",
   DEMO_COUPON_PURCHASE: "Demo coupons",
   CYCLE_RENEWAL_PAYMENT: "Course renewal",
+  COMMUNITY_PAYMENT: "Community membership",
 };
 
 /** Printable single-invoice view — `window.print()` is the "download as PDF" path, no PDF-generation dependency needed. */

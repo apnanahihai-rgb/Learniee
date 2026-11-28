@@ -54,6 +54,7 @@ const INVOICE_TYPE_LABEL: Record<string, string> = {
   WALLET_TOPUP: "Wallet top-up",
   DEMO_COUPON_PURCHASE: "Demo coupons",
   CYCLE_RENEWAL_PAYMENT: "Renewal",
+  COMMUNITY_PAYMENT: "Community",
 };
 
 /** Invoice type enum -> the label shown to Admin and Accounts. */
