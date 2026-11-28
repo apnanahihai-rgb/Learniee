@@ -6,7 +6,8 @@ export type UploadFolder =
   | "course-media"
   | "homework"
   | "resources"
-  | "blog-images";
+  | "blog-images"
+  | "community-files";
 
 interface UploadOptions {
   file: File;

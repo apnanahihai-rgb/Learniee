@@ -34,6 +34,18 @@ export async function resolveUploadOwnerId(
     return { error: auth.error };
   }
 
+  // COMMUNITY_FILES is Admin-only (Community, Dec 2026): the key is namespaced
+  // under the Admin's own Cognito sub, taken from the verified token.
+  if (folder === UPLOAD_FOLDERS.COMMUNITY_FILES) {
+    if (auth.payload["custom:role"] !== "admin") {
+      return {
+        error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+
+    return { ownerId: auth.payload.sub };
+  }
+
   const resolvesToTeacher =
     folder === UPLOAD_FOLDERS.TEACHER_DOCUMENTS ||
     folder === UPLOAD_FOLDERS.COURSE_MEDIA ||

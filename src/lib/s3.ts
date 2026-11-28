@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
@@ -36,6 +37,7 @@ export const UPLOAD_FOLDERS = {
   HOMEWORK: "homework",
   RESOURCES: "resources",
   BLOG_IMAGES: "blog-images",
+  COMMUNITY_FILES: "community-files",
 } as const;
 
 export type UploadFolder =
@@ -66,6 +68,8 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   "application/zip",
   "audio/mpeg",
   "audio/mp4",
+  // Community (Dec 2026): Admin shares ebooks.
+  "application/epub+zip",
 ] as const;
 
 /**
@@ -116,4 +120,13 @@ export async function createPresignedDownloadUrl(
   });
 
   return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+}
+
+/**
+ * Removes one object. Callers treat this as best-effort cleanup after the
+ * database row is gone (a failure leaves an orphaned object, never a
+ * dangling reference).
+ */
+export async function deleteS3Object(key: string) {
+  await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
 }

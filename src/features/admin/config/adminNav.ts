@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageCircle,
+  Megaphone,
   ReceiptIndianRupee,
   RefreshCw,
   ShieldAlert,
@@ -97,6 +98,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     label: "Records",
     items: [
+      { label: "Communities", href: "/admin/communities", icon: Megaphone },
       { label: "Resource library", href: "/admin/resources", icon: FolderOpen },
       { label: "Activity log", href: "/admin/activity-logs", icon: History },
     ],

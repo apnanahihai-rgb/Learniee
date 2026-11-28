@@ -61,6 +61,7 @@ model ParentProfile {
   resources           Resource[]
   classRequests       ClassRequest[]
   refundRequests      RefundRequest[]
+  communityMemberships CommunityMember[]
 }
 
 model Admin {
@@ -2165,6 +2166,9 @@ enum ActivityAction {
   COURSE_REJECTED
   /// Admin deleted a course, e.g. from the Lowest rated screen (Oct 27, 2026)
   COURSE_DELETED
+  /// Community (Dec 2026)
+  COMMUNITY_FILE_DELETED
+  COMMUNITY_MEMBER_REMOVED
   USER_DELETED
   /// Teacher Payouts (Sep 9, 2026)
   PAYOUT_HELD_OR_REJECTED
@@ -2478,4 +2482,62 @@ model TeacherAvailability {
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([teacherId, dayOfWeek])
+}
+
+/// Community (Dec 2026, Part 1: Admin). A space where only Admin shares study
+/// material (ebooks, notes, documents). Parents join it and can only read and
+/// react (Parts 2 and 3). HIDDEN = not shown to Parents; Admin still sees it.
+enum CommunityStatus {
+  ACTIVE
+  HIDDEN
+}
+
+model Community {
+  id          String          @id @default(uuid())
+  title       String
+  description String
+  /// Free or paid. `price` is set (> 0) only when `isPaid`; taking the
+  /// payment is a Parent-side step (Part 2).
+  isPaid      Boolean         @default(false)
+  price       Decimal?        @db.Decimal(10, 2)
+  status      CommunityStatus @default(ACTIVE)
+  /// Cognito `sub` of the Admin who created it.
+  createdBySub String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  files   CommunityFile[]
+  members CommunityMember[]
+
+  @@index([status, createdAt])
+}
+
+model CommunityFile {
+  id          String    @id @default(uuid())
+  communityId String
+  title       String
+  /// S3 key under `community-files/` (private bucket, presigned download).
+  fileKey     String
+  fileName    String
+  contentType String
+  sizeBytes   Int?
+  uploadedBySub String?
+  createdAt   DateTime  @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, createdAt])
+}
+
+model CommunityMember {
+  id          String   @id @default(uuid())
+  communityId String
+  parentId    String
+  joinedAt    DateTime @default(now())
+
+  community Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, parentId])
+  @@index([parentId])
 }
